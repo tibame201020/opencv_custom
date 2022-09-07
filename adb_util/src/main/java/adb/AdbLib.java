@@ -14,9 +14,9 @@ public class AdbLib {
             String adb_tools_dir = "platform-tools/";
             File dir = new File(adb_tools_dir);
             dir.mkdirs();
-            String[] tools = new String[] {"adb.exe","AdbWinApi.dll","AdbWinUsbApi.dll","dmtracedump.exe","etc1tool.exe","fastboot.exe","hprof-conv.exe","libwinpthread-1.dll","make_f2fs.exe","make_f2fs_casefold.exe","mke2fs.conf","mke2fs.exe","NOTICE.txt","source.properties","sqlite3.exe"};
+            String[] tools = new String[]{"adb.exe", "AdbWinApi.dll", "AdbWinUsbApi.dll", "dmtracedump.exe", "etc1tool.exe", "fastboot.exe", "hprof-conv.exe", "libwinpthread-1.dll", "make_f2fs.exe", "make_f2fs_casefold.exe", "mke2fs.conf", "mke2fs.exe", "NOTICE.txt", "source.properties", "sqlite3.exe"};
 
-            for (String tool:tools) {
+            for (String tool : tools) {
                 String toolName = adb_tools_dir + tool;
                 copyFile(toolName);
             }

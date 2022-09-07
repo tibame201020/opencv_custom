@@ -13,7 +13,6 @@ public class ADB {
             process.destroy();
         } catch (Exception e) {
             e.printStackTrace();
-            stdout = e.toString();
         }
         return stdout;
     }
