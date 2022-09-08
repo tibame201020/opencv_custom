@@ -24,7 +24,7 @@ public class PictureEvent {
         return Imgcodecs.imdecode(new MatOfByte(bytes), Imgcodecs.IMREAD_COLOR);
     }
 
-    public static void writeToFile(String file, Mat mat) {
+    public void writeToFile(String file, Mat mat) {
         Imgcodecs.imwrite(file, mat);
     }
 

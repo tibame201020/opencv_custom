@@ -3,8 +3,8 @@ package script;
 import adb.Adb;
 import adb.AdbCmd;
 import adb.AdbKeyCode;
-import opencv.util.PictureEvent.Pattern;
 import opencv.util.PictureEvent;
+import opencv.util.PictureEvent.Pattern;
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
 
@@ -13,11 +13,11 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class CustomServer {
-    private static Adb adb = new Adb();
+    private static final Adb adb = new Adb();
 
-    private static PictureEvent pictureEvent = new PictureEvent();
+    private static final PictureEvent pictureEvent = new PictureEvent();
 
-    private static String IMG_DIR = "img/";
+    private static final String IMG_DIR = "img/";
 
     public static boolean restart() {
         try {
@@ -60,7 +60,7 @@ public class CustomServer {
         return list;
     }
 
-    public static void getDeviceList(String message, List<String> list) {
+    private static void getDeviceList(String message, List<String> list) {
         for (String deviceInfo : message.split("\n")) {
             if (deviceInfo.startsWith("List of devices attached")) {
                 continue;
@@ -73,7 +73,7 @@ public class CustomServer {
 
 
     public static String click(double x, double y, String deviceId) {
-        return adb.exec(AdbCmd.TAP.getCmd(deviceId, (int)x, (int)y));
+        return adb.exec(AdbCmd.TAP.getCmd(deviceId, (int) x, (int) y));
     }
 
     public static String keyEvent(AdbKeyCode adbKeyCode, String deviceId) {
@@ -106,12 +106,59 @@ public class CustomServer {
         click(point.x, point.y, deviceId);
     }
 
-    public static void sleep(int secs) throws Exception{
+    public static void sleep(int secs) throws Exception {
         TimeUnit.SECONDS.sleep(secs);
     }
 
-    public static String exec(String command){
+    public static String exec(String command) {
         command = command.replace("adb ", "platform-tools\\adb.exe ");
         return adb.exec(command);
+    }
+
+    public static String swipe(double x1, double y1, double x2, double y2, String deviceId) {
+        String command = AdbCmd.SWIPE.getCmd(deviceId, (int) x1, (int) y1, (int) x2, (int) y2, -9999999);
+        command = command.replace("-9999999", "");
+        return adb.exec(command);
+    }
+    public static String swipe(double x1, double y1, double x2, double y2, int durations, String deviceId) {
+        return adb.exec(AdbCmd.SWIPE.getCmd(deviceId, (int) x1, (int) y1, (int) x2, (int) y2, durations));
+    }
+
+    public static String drag(double x1, double y1, double x2, double y2, String deviceId) {
+        return adb.exec(AdbCmd.DRAG_DROP.getCmd(deviceId, (int) x1, (int) y1, (int) x2, (int) y2, 1000));
+    }
+    public static String drag(double x1, double y1, double x2, double y2, int durations, String deviceId) {
+        return adb.exec(AdbCmd.DRAG_DROP.getCmd(deviceId, (int) x1, (int) y1, (int) x2, (int) y2, durations));
+    }
+
+    public static String drag(String target1, String target2, String deviceId) {
+        Point point1 = findImage(target1, deviceId);
+        Point point2 = findImage(target1, deviceId);
+        return adb.exec(AdbCmd.DRAG_DROP.getCmd(deviceId, (int) point1.x, (int) point1.y, (int) point2.x, (int) point2.y, 1000));
+    }
+
+    public static String drag(String target1, String target2, int durations, String deviceId) {
+        Point point1 = findImage(target1, deviceId);
+        Point point2 = findImage(target1, deviceId);
+        return adb.exec(AdbCmd.DRAG_DROP.getCmd(deviceId, (int) point1.x, (int) point1.y, (int) point2.x, (int) point2.y, durations));
+    }
+
+    public static void takeSnapShot(String imageFileName, String deviceId) {
+        Mat mat = pictureEvent.getMatFromBytes(adb.getSnapShot(deviceId));
+        pictureEvent.writeToFile(imageFileName, mat);
+    }
+
+    public static String startApp(String appPackage, String deviceId) {
+        System.out.println(AdbCmd.START_APP.getCmd(deviceId, appPackage));
+        return adb.exec(AdbCmd.START_APP.getCmd(deviceId, appPackage));
+    }
+
+    public static String stopApp(String appPackage, String deviceId) {
+        System.out.println(AdbCmd.STOP_APP.getCmd(deviceId, appPackage));
+        return adb.exec(AdbCmd.STOP_APP.getCmd(deviceId, appPackage));
+    }
+
+    public static String getAppList(String deviceId) {
+        return adb.exec(AdbCmd.GET_APPS.getCmd(deviceId));
     }
 }
