@@ -10,7 +10,6 @@
         <version>1.0.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <groupId>myself</groupId>
     <artifactId>opencv_util</artifactId>
     <version>1.0.0</version>
     <name>opencv_util</name>
@@ -26,6 +25,7 @@
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
         </dependency>
+
 
 
     </dependencies>

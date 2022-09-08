@@ -1,31 +1,12 @@
 package opencv.util;
 
-import org.opencv.core.Core;
-import org.opencv.core.CvType;
-import org.opencv.core.Mat;
-import org.opencv.core.Point;
+import org.opencv.core.*;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
-import static opencv.util.Constant.SNAPSHOT;
-import static opencv.util.Constant.TARGET_DIR;
-
 public class PictureEvent {
 
-    public static Point findImage(String fileName) {
-        Mat src = getMatFromFile(SNAPSHOT);
-        Mat target = getMatFromFile(TARGET_DIR + fileName);
-        Pattern pattern = matchTemplate(src, target);
-
-        if (pattern.getSimilar() > 0.95) {
-            return pattern.getPoint();
-        } else {
-            return null;
-        }
-
-    }
-
-    public static Pattern matchTemplate(Mat src, Mat temp) {
+    public Pattern matchTemplate(Mat src, Mat temp) {
         int match_method = Imgproc.TM_SQDIFF_NORMED;
 
         Mat result = new Mat(src.rows(), src.cols(), CvType.CV_32FC1);
@@ -35,11 +16,19 @@ public class PictureEvent {
         return new Pattern(mmr.minVal, mmr.minLoc);
     }
 
-    public static Mat getMatFromFile(String filePath) {
+    public Mat getMatFromFile(String filePath) {
         return Imgcodecs.imread(filePath);
     }
 
-    public static class Pattern {
+    public Mat getMatFromBytes(byte[] bytes) {
+        return Imgcodecs.imdecode(new MatOfByte(bytes), Imgcodecs.IMREAD_COLOR);
+    }
+
+    public static void writeToFile(String file, Mat mat) {
+        Imgcodecs.imwrite(file, mat);
+    }
+
+    public class Pattern {
 
         double similar;
 

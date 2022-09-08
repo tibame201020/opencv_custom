@@ -1,45 +1,45 @@
 package org.batch;
 
-import adb.ADB;
-import adb.AdbCmd;
-import opencv.util.PictureEvent.Pattern;
-import opencv.util.PictureEvent;
-import org.apache.commons.io.FileUtils;
-import org.opencv.core.Mat;
+import adb.AdbKeyCode;
 import org.opencv.core.Point;
 import org.springframework.stereotype.Component;
+import script.CustomServer;
 
-import java.io.*;
+import java.util.List;
 
-import static opencv.util.Constant.SNAPSHOT;
-import static opencv.util.Constant.TARGET_DIR;
+import static script.CustomServer.*;
 
 
 @Component
 public class Main {
 
 
-    public void execute() throws IOException {
+    public void execute() throws Exception {
+         List<String> devices = CustomServer.getDevices();
 
-        System.out.println(ADB.exec(AdbCmd.DEVICE_LIST));
+        for (String device : devices) {
+            // just send adb command
+            String cmd = "adb shell input keyevent 3";
+            System.out.println(exec(cmd));
+
+            // find location targetImage from device screen
+            Point point = findImage("line.png", device);
+            System.out.println("point = " + point);
+            // click location
+            System.out.println(click(point.x, point.y, device));
+            // use keyEvent send keyCode
+            keyEvent(AdbKeyCode.KEYCODE_HOME, device);
+            //sleep seconds
+            sleep(1);
+            //click image from device screen
+            clickImg("chrome.png", device);
+
+
+
+        }
 
     }
 
 
-    private void test() {
-        Mat src = PictureEvent.getMatFromFile(SNAPSHOT);
 
-        Mat target = PictureEvent.getMatFromFile(TARGET_DIR + "wantToFind.PNG");
-
-        Pattern pattern = PictureEvent.matchTemplate(src, target);
-
-        System.out.println(pattern.getSimilar());
-        System.out.println(pattern.getPoint());
-
-
-        Point point = PictureEvent.findImage("wantToFind.PNG");
-
-        System.out.println(point);
-
-    }
 }

@@ -7,6 +7,7 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
+        <module name="script_tool" />
         <module name="opencv_util" />
         <module name="adb_util" />
       </profile>
@@ -17,6 +18,7 @@
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="adb_util" options="-parameters" />
       <module name="opencv_util" options="-parameters" />
+      <module name="script_tool" options="-parameters" />
     </option>
   </component>
 </project>

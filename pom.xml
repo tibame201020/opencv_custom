@@ -17,15 +17,18 @@
     <modules>
         <module>opencv_util</module>
         <module>adb_util</module>
+        <module>script_tool</module>
     </modules>
 
     <properties>
         <java.version>1.8</java.version>
         <commons-lang.version>2.6</commons-lang.version>
         <opencv.version>4.5.1-2</opencv.version>
+		<commons-io.version>2.11.0</commons-io.version>
+		
         <opencv_util.version>1.0.0</opencv_util.version>
         <adb_util.version>1.0.0</adb_util.version>
-        <commons-io.version>2.11.0</commons-io.version>
+        <script_tool.version>1.0.0</script_tool.version>
     </properties>
 
     <dependencyManagement>
@@ -42,6 +45,12 @@
                 <artifactId>opencv</artifactId>
                 <version>${opencv.version}</version>
             </dependency>
+			
+			<dependency>
+                <groupId>commons-io</groupId>
+                <artifactId>commons-io</artifactId>
+                <version>${commons-io.version}</version>
+            </dependency>
 
             <dependency>
                 <groupId>myself</groupId>
@@ -50,15 +59,15 @@
             </dependency>
 
             <dependency>
-                <groupId>commons-io</groupId>
-                <artifactId>commons-io</artifactId>
-                <version>${commons-io.version}</version>
+                <groupId>myself</groupId>
+                <artifactId>adb_util</artifactId>
+                <version>${adb_util.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>myself</groupId>
-                <artifactId>adb_util</artifactId>
-                <version>${adb_util.version}</version>
+                <artifactId>script_tool</artifactId>
+                <version>${script_tool.version}</version>
             </dependency>
 
         </dependencies>
