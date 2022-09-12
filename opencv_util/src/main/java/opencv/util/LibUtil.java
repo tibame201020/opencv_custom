@@ -9,13 +9,20 @@ import java.io.InputStream;
 public class LibUtil {
 
     public void loadOpenCVLib() {
+        String OPENCV_DDL_64 = "opencv_java451.dll";
         String OPENCV_DDL_32 = "opencv_java460.dll";
         String DDL_DIR = "ddl/";
 
 
         InputStream inputStream = null;
         try {
-            String opencv_ddl = DDL_DIR + OPENCV_DDL_32;
+            int bitness = Integer.parseInt(System.getProperty("sun.arch.data.model"));
+            String opencv_ddl;
+            if (32 == bitness) {
+                opencv_ddl = DDL_DIR + OPENCV_DDL_32;
+            } else {
+                opencv_ddl = DDL_DIR + OPENCV_DDL_64;
+            }
 
             inputStream = LibUtil.class.getResourceAsStream("/" + opencv_ddl);
 
