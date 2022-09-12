@@ -15,7 +15,10 @@ public enum AdbCmd {
 
     STOP_APP("-s %s shell am force-stop %s"),
 
-    GET_APPS("-s %s shell pm list packages -f")
+    GET_APPS("-s %s shell pm list packages"),
+    GET_ACTIVITY_BY_PACKAGE("-s %s shell cmd package resolve-activity --brief %s | tail -n 1"),
+
+    CLEAN_PACKAGE_DATA("-s %s shell pm clear %s")
     ;
 
 

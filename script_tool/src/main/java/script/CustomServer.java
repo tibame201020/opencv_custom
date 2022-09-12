@@ -5,6 +5,7 @@ import adb.AdbCmd;
 import adb.AdbKeyCode;
 import opencv.util.PictureEvent;
 import opencv.util.PictureEvent.Pattern;
+import org.apache.commons.lang.StringUtils;
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
 
@@ -149,13 +150,21 @@ public class CustomServer {
     }
 
     public static String startApp(String appPackage, String deviceId) {
-        System.out.println(AdbCmd.START_APP.getCmd(deviceId, appPackage));
-        return adb.exec(AdbCmd.START_APP.getCmd(deviceId, appPackage));
+        String findLauncher = adb.exec(AdbCmd.GET_ACTIVITY_BY_PACKAGE.getCmd(deviceId, appPackage));
+
+        if (StringUtils.isNotBlank(findLauncher)) {
+            return adb.exec(AdbCmd.START_APP.getCmd(deviceId, findLauncher));
+        }
+
+        return null;
     }
 
     public static String stopApp(String appPackage, String deviceId) {
-        System.out.println(AdbCmd.STOP_APP.getCmd(deviceId, appPackage));
         return adb.exec(AdbCmd.STOP_APP.getCmd(deviceId, appPackage));
+    }
+
+    public static String cleanAppData(String appPackage, String deviceId) {
+        return adb.exec(AdbCmd.CLEAN_PACKAGE_DATA.getCmd(deviceId, appPackage));
     }
 
     public static String getAppList(String deviceId) {
