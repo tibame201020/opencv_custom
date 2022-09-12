@@ -13,6 +13,10 @@ public class PictureEvent {
         Imgproc.matchTemplate(src, temp, result, match_method);
         Core.MinMaxLocResult mmr = Core.minMaxLoc(result);
 
+        Point point = mmr.minLoc;
+        point.x = point.x + temp.cols()/2.0;
+        point.y = point.y + temp.rows()/2.0;
+
         return new Pattern(mmr.minVal, mmr.minLoc);
     }
 

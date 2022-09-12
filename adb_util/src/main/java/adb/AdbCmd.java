@@ -18,7 +18,8 @@ public enum AdbCmd {
     GET_APPS("-s %s shell pm list packages"),
     GET_ACTIVITY_BY_PACKAGE("-s %s shell cmd package resolve-activity --brief %s | tail -n 1"),
 
-    CLEAN_PACKAGE_DATA("-s %s shell pm clear %s")
+    CLEAN_PACKAGE_DATA("-s %s shell pm clear %s"),
+    INPUT_TEXT("-s %s shell input text %s")
     ;
 
 

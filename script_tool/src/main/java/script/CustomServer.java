@@ -86,7 +86,7 @@ public class CustomServer {
         Mat target = pictureEvent.getMatFromFile(IMG_DIR + fileName);
         Pattern pattern = pictureEvent.matchTemplate(src, target);
 
-        if (pattern.getSimilar() > 0.95) {
+        if (pattern.getSimilar() > 0.99) {
             return pattern.getPoint();
         } else {
             return null;
@@ -94,17 +94,19 @@ public class CustomServer {
 
     }
 
-    public static void clickImg(String fileName, String deviceId) {
+    public static boolean clickImage(String fileName, String deviceId) {
         Mat src = pictureEvent.getMatFromBytes(adb.getSnapShot(deviceId));
         Mat target = pictureEvent.getMatFromFile(IMG_DIR + fileName);
         Pattern pattern = pictureEvent.matchTemplate(src, target);
 
         if (!(pattern.getSimilar() > 0.99)) {
-            return;
+            return false;
         }
 
         Point point = pattern.getPoint();
         click(point.x, point.y, deviceId);
+
+        return true;
     }
 
     public static void sleep(int secs) throws Exception {
@@ -166,8 +168,59 @@ public class CustomServer {
     public static String cleanAppData(String appPackage, String deviceId) {
         return adb.exec(AdbCmd.CLEAN_PACKAGE_DATA.getCmd(deviceId, appPackage));
     }
+    public static boolean waitClickImage(String fileName, int millSeconds, int frequency, String deviceId) throws Exception{
+        if (millSeconds < 0) {
+            return false;
+        }
+
+        Point point = findImage(fileName, deviceId);
+        if (null == point) {
+            millSeconds = (millSeconds - frequency);
+            TimeUnit.MILLISECONDS.sleep(frequency);
+            return waitClickImage(fileName, millSeconds, frequency, deviceId);
+        } else {
+            click(point.x, point.y, deviceId);
+            return true;
+        }
+    }
+    // default 100 ms frequency
+    public static boolean waitClickImage(String fileName, int millSeconds, String deviceId) throws Exception{
+        return waitClickImage(fileName, millSeconds, 100, deviceId);
+    }
+    // default 5 seconds
+    public static boolean waitClickImage(String fileName, String deviceId) throws Exception{
+        return waitClickImage(fileName, 5000, 100, deviceId);
+    }
+
+    public static Point waitImage(String fileName, int millSeconds, int frequency, String deviceId) throws Exception{
+        if (millSeconds < 0) {
+            return null;
+        }
+
+        Point point = findImage(fileName, deviceId);
+        if (null == point) {
+            millSeconds = (millSeconds - frequency);
+            TimeUnit.MILLISECONDS.sleep(frequency);
+            return waitImage(fileName, millSeconds, frequency, deviceId);
+        } else {
+            return point;
+        }
+    }
+    public static Point waitImage(String fileName, int millSeconds, String deviceId) throws Exception{
+        return waitImage(fileName, millSeconds, 100, deviceId);
+    }
+
+    public static Point waitImage(String fileName, String deviceId) throws Exception{
+        return waitImage(fileName, 5000, 100, deviceId);
+    }
+
+
 
     public static String getAppList(String deviceId) {
         return adb.exec(AdbCmd.GET_APPS.getCmd(deviceId));
+    }
+
+    public static String text(String text, String deviceId) {
+        return adb.exec(AdbCmd.INPUT_TEXT.getCmd(deviceId, text));
     }
 }
