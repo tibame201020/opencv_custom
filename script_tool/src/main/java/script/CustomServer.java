@@ -170,7 +170,7 @@ public class CustomServer {
     }
     public static boolean waitClickImage(String fileName, int millSeconds, int frequency, String deviceId) throws Exception{
         if (millSeconds < 0) {
-            return false;
+            throw new RuntimeException(fileName + "not found");
         }
 
         Point point = findImage(fileName, deviceId);
@@ -194,7 +194,7 @@ public class CustomServer {
 
     public static Point waitImage(String fileName, int millSeconds, int frequency, String deviceId) throws Exception{
         if (millSeconds < 0) {
-            return null;
+            throw new RuntimeException(fileName + "not found");
         }
 
         Point point = findImage(fileName, deviceId);
