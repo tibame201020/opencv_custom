@@ -1,6 +1,7 @@
 package adb;
 
 public enum AdbCmd {
+    CONNECT("connect %s"),
     SCREEN_CAP("-s %s exec-out screencap -p"),
     DEVICE_LIST("devices"),
     DAEMON_START("start-server"),
@@ -19,7 +20,9 @@ public enum AdbCmd {
     GET_ACTIVITY_BY_PACKAGE("-s %s shell cmd package resolve-activity --brief %s | tail -n 1"),
 
     CLEAN_PACKAGE_DATA("-s %s shell pm clear %s"),
-    INPUT_TEXT("-s %s shell input text %s")
+    INPUT_TEXT("-s %s shell input text %s"),
+    PULL_DATA("-s %s pull %s %s "),
+    PUSH_DATA("-s %s push %s %s ")
     ;
 
 
@@ -45,6 +48,10 @@ public enum AdbCmd {
 
     public String  getCmd(String deviceId, int x, int y) {
         return String.format(ADB_EXE + cmd, deviceId , x, y);
+    }
+
+    public String  getCmd(String deviceId, String path1, String path2) {
+        return String.format(ADB_EXE + cmd, deviceId , path1, path2);
     }
 
     public String  getCmd(String deviceId, int x1, int y1, int x2, int y2, int durations) {

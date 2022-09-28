@@ -21,11 +21,11 @@ public class PictureEvent {
     }
 
     public Mat getMatFromFile(String filePath) {
-        return Imgcodecs.imread(filePath);
+        return Imgcodecs.imread(filePath, Imgcodecs.IMREAD_GRAYSCALE);
     }
 
     public Mat getMatFromBytes(byte[] bytes) {
-        return Imgcodecs.imdecode(new MatOfByte(bytes), Imgcodecs.IMREAD_COLOR);
+        return Imgcodecs.imdecode(new MatOfByte(bytes), Imgcodecs.IMREAD_GRAYSCALE);
     }
 
     public void writeToFile(String file, Mat mat) {

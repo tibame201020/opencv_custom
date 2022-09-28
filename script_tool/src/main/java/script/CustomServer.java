@@ -94,12 +94,40 @@ public class CustomServer {
 
     }
 
+    public static Point findImage(String fileName, double similar, String deviceId) {
+        Mat src = pictureEvent.getMatFromBytes(adb.getSnapShot(deviceId));
+        Mat target = pictureEvent.getMatFromFile(IMG_DIR + fileName);
+        Pattern pattern = pictureEvent.matchTemplate(src, target);
+
+        if (pattern.getSimilar() > similar) {
+            return pattern.getPoint();
+        } else {
+            return null;
+        }
+
+    }
+
     public static boolean clickImage(String fileName, String deviceId) {
         Mat src = pictureEvent.getMatFromBytes(adb.getSnapShot(deviceId));
         Mat target = pictureEvent.getMatFromFile(IMG_DIR + fileName);
         Pattern pattern = pictureEvent.matchTemplate(src, target);
 
         if (!(pattern.getSimilar() > 0.99)) {
+            return false;
+        }
+
+        Point point = pattern.getPoint();
+        click(point.x, point.y, deviceId);
+
+        return true;
+    }
+
+    public static boolean clickImage(String fileName,double similar, String deviceId) {
+        Mat src = pictureEvent.getMatFromBytes(adb.getSnapShot(deviceId));
+        Mat target = pictureEvent.getMatFromFile(IMG_DIR + fileName);
+        Pattern pattern = pictureEvent.matchTemplate(src, target);
+
+        if (!(pattern.getSimilar() > similar)) {
             return false;
         }
 
@@ -222,5 +250,16 @@ public class CustomServer {
 
     public static String text(String text, String deviceId) {
         return adb.exec(AdbCmd.INPUT_TEXT.getCmd(deviceId, text));
+    }
+
+    public static String connect(String deviceId) {
+        return adb.exec(AdbCmd.CONNECT.getCmd(deviceId));
+    }
+
+    public static String pull(String androidPath, String pcPath , String deviceId) {
+        return adb.exec(AdbCmd.PULL_DATA.getCmd(deviceId, androidPath, pcPath));
+    }
+    public static String push(String pcPath, String androidPath, String deviceId) {
+        return adb.exec(AdbCmd.PUSH_DATA.getCmd(deviceId, pcPath, androidPath));
     }
 }
