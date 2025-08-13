@@ -1,0 +1,212 @@
+import java.util.List;
+
+public class GearDTOs {
+
+    public enum GearMainProp {
+        ATK_PERCENT,
+        LIFE_PERCENT,
+        DEF_PERCENT,
+        CRI_RATE,
+        CRI_DMG,
+        SPEED,
+        EFFECT_RESISTANCE,
+        EFFECTIVENESS,
+        ATK_FLAT,
+        LIFE_FLAT,
+        DEF_FLAT
+    }
+
+    /**
+     * 裝備屬性 (Gear Props)
+     */
+    public record GearProp(
+            // 生命%
+            double lifePercent,
+            // 防禦%
+            double defensePercent,
+            // 攻擊%
+            double attackPercent,
+            // 暴擊%
+            double criticalRate,
+            // 暴擊傷害
+            double criticalDamage,
+            // 速度
+            int speed,
+            // 效果抵抗
+            double effectResist,
+            // 效果命中
+            double effectiveness,
+            // 攻擊白值
+            int flatAttack,
+            // 防禦白值
+            int flatDefense,
+            // 生命白值
+            int flatLife,
+
+            int score,
+            GearMainProp mainProp
+    ) {
+    }
+
+    /**
+     * 套裝效果 (Set Effects)
+     */
+    public enum GearSet {
+        /**
+         * 攻擊 [4]
+         */
+        ATTACK {
+            @Override
+            public boolean belongRequired(List<GearPropBelong> belongs) {
+                return belongs.contains(GearDTOs.GearPropBelong.DAMAGE);
+            }
+        },
+        DESTRUCTION,    // 破滅 [4]
+        DEFENSE,        // 防禦 [2]
+        HEALTH,         // 生命 [2]
+        HIT,            // 命中 [2]
+        RESISTANCE,     // 抵抗 [2]
+        CRITICAL,       // 暴擊 [2]
+        SPEED,          // 速度 [4]
+        REVENGE,        // 復仇 [4]
+        LIFE_STEAL,     // 吸血 []
+        COUNTER,        // 反擊 [4]
+        DUAL_ATTACK,    // 夾攻 [2]
+        IMMUNITY,       // 免疫 [2]
+        RAGE,           // 憤怒 [4]
+        PENETRATION,    // 貫穿 [2]
+        INJURY,         // 傷口 [4]
+        PROTECTION,     // 守護 [2]
+        TORRENT;         // 激流 [2]
+
+        public boolean belongRequired(List<GearPropBelong> belongs) {
+            return !belongs.isEmpty();
+        }
+    }
+
+    public enum GearSetType {
+        FOUR,
+        TWO
+    }
+
+    public enum GearType {
+        WEAPON, HELMET, ARMOR, NECKLACE, RING, SHOES
+    }
+
+    public enum GearPropBelong {
+        DAMAGE {
+            @Override
+            public boolean isGearPropBelong(GearProp gearProp) {
+                int validProps = 0;
+
+                if (gearProp.attackPercent() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.criticalRate() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.criticalDamage() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.speed() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.flatAttack() > 0) {
+                    validProps = validProps + 1;
+                }
+
+                return validProps >= 3;
+            }
+        },
+        TANK_DAMAGE {
+            @Override
+            public boolean isGearPropBelong(GearProp gearProp) {
+                int validProps = 0;
+
+                if (gearProp.attackPercent() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.criticalRate() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.criticalDamage() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.speed() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.lifePercent() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.flatLife() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.defensePercent() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.flatDefense() > 0) {
+                    validProps = validProps + 1;
+                }
+
+                return validProps >= 3;
+            }
+        },
+        TANK {
+            @Override
+            public boolean isGearPropBelong(GearProp gearProp) {
+                int validProps = 0;
+
+                if (gearProp.speed() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.lifePercent() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.flatLife() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.defensePercent() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.flatDefense() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.effectiveness() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.effectResist() > 0) {
+                    validProps = validProps + 1;
+                }
+
+                return validProps >= 3;
+            }
+        },
+        SUPPORT {
+            @Override
+            public boolean isGearPropBelong(GearProp gearProp) {
+                int validProps = 0;
+
+                if (gearProp.speed() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.lifePercent() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.defensePercent() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.effectiveness() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.effectResist() > 0) {
+                    validProps = validProps + 1;
+                }
+
+                return validProps >= 3;
+            }
+        };
+
+        public abstract boolean isGearPropBelong(GearProp gearProp);
+    }
+
+}
