@@ -10,9 +10,10 @@ public class MainScript {
 
     public void execute() {
 
-        var testOcr = "img/gear/gear2.png";
-        var zero = "img/gear/score-ocr/zero.png";
-        var one = "img/gear/score-ocr/one.png";
+        var testOcr = "img/gear/gear13.png";
+
+        var zero = "img/gear/main-ocr/zero.png";
+        var one = "img/gear/main-ocr/one.png";
         var two = "img/gear/score-ocr/two.png";
         var three = "img/gear/score-ocr/three.png";
         var four = "img/gear/score-ocr/four.png";
@@ -24,11 +25,11 @@ public class MainScript {
         var dot = "img/gear/ocr/dot.png";
         var percent = "img/gear/ocr/percent.png";
 
-        double threshold = 0.95;
+        double threshold = 0.8;
 
         openCvService.ocrNumber(new OpenCvService.OcrPath(zero, one, two, three, four, five, six, seven, eight, nine, dot, percent)
                 , openCvService.getMatFromFile(testOcr)
-                , new OpenCvService.OcrRegion(1180, 469, 1233, 497)
+                , new OpenCvService.OcrRegion(1159, 329, 1227, 356)
                 , threshold
                 );
     }
