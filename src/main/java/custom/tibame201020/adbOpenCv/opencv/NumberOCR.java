@@ -10,7 +10,7 @@ import java.util.Map;
 
 public class NumberOCR {
 
-    public String ocrFromImage(Mat targetImg, Map<String, Mat> templates, double threshold, double scale) {
+    public String ocrFromImage(Mat targetImg, Map<String, Mat> templates, double threshold) {
 
 //        Mat targetImg = Imgcodecs.imread(imagePath, Imgcodecs.IMREAD_GRAYSCALE);
 //        if (targetImg.empty()) {
@@ -23,9 +23,7 @@ public class NumberOCR {
         // 遍歷所有模板進行匹配
         for (Map.Entry<String, Mat> entry : templates.entrySet()) {
             String character = entry.getKey();
-            Mat origTemplate = entry.getValue();
-            Mat template = new Mat();
-            Imgproc.resize(origTemplate, template, new Size(), scale, scale, Imgproc.INTER_LINEAR);
+            Mat template = entry.getValue();
 
             int w = template.cols();
             int h = template.rows();
@@ -40,6 +38,7 @@ public class NumberOCR {
                 if (mmr.maxVal >= threshold) {
                     Point matchLoc = mmr.maxLoc;
                     results.add(new MatchResult(character, matchLoc.x));
+                    System.err.printf("match %s at (%s, %s)\n", character, matchLoc.x, matchLoc.y);
 
                     // 將已匹配的區域設為 0，避免重複檢測
                     Rect rect = new Rect((int) matchLoc.x, (int) matchLoc.y, w, h);

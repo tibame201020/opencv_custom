@@ -9,22 +9,8 @@ public class MainScript {
     OpenCvService openCvService = new OpenCvService();
 
     public void execute() {
-//        System.err.println("exec");
-//
-//        var screenPic = "img/screen.png";
-//        var targetPic = "img/target.png";
-//
-//        Mat src = openCvService.getMatFromFile(screenPic);
-//        Mat target = openCvService.getMatFromFile(targetPic);
-//        OpenCvDTOs.MatchPattern pattern = openCvService.findMatch(src, target);
-//
-//        if (pattern.getSimilar() > 0.99) {
-//            System.err.printf("x: %s, y:%s", pattern.point().x, pattern.point().y);
-//        } else {
-//            System.err.println("not found");
-//        }
 
-        var testOcr = "img/gear/gear3.png";
+        var testOcr = "img/gear/gear2.png";
         var zero = "img/gear/score-ocr/zero.png";
         var one = "img/gear/score-ocr/one.png";
         var two = "img/gear/score-ocr/two.png";
@@ -38,11 +24,13 @@ public class MainScript {
         var dot = "img/gear/ocr/dot.png";
         var percent = "img/gear/ocr/percent.png";
 
+        double threshold = 0.95;
 
-
-        openCvService.ocrNumber(
-                openCvService.getMatFromFile(testOcr)
-                , new OpenCvService.OcrRegion(1180, 469, 1222, 498));
+        openCvService.ocrNumber(new OpenCvService.OcrPath(zero, one, two, three, four, five, six, seven, eight, nine, dot, percent)
+                , openCvService.getMatFromFile(testOcr)
+                , new OpenCvService.OcrRegion(1180, 469, 1233, 497)
+                , threshold
+                );
     }
 
 }

@@ -4,9 +4,8 @@ import org.opencv.core.*;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class OpenCvService {
 
@@ -85,56 +84,35 @@ public class OpenCvService {
     ) {
     }
 
-
-
-    public void ocrNumber(Mat source, OcrRegion region) {
-        // 擷取 ROI 區域並儲存為檔案
+    public void ocrNumber(OcrPath ocrPath, Mat source, OcrRegion region, double threshold) {
+        // 擷取 ROI 區域
         Rect roiRect = new Rect(region.x1(), region.y1(),
                 Math.abs(region.x2() - region.x1()), Math.abs(region.y2() - region.y1()));
         Mat roiImg = new Mat(source, roiRect);
-        String imageFilePath = "roi.png";
-        writeToFile(imageFilePath, roiImg);
 
-        // Python 腳本路徑和 Python 解譯器路徑
-        String pythonScriptPath = "path/to/your/ocr.py"; // 替換為你的 Python 腳本路徑
-        String pythonExecutable = "python3"; // 或 "python"，根據你的系統設定
+        writeToFile("roi.png", roiImg);
 
-        try {
-            // 使用 ProcessBuilder 來建構命令
-            ProcessBuilder pb = new ProcessBuilder(pythonExecutable, pythonScriptPath, imageFilePath);
 
-            // 啟動子程序
-            Process p = pb.start();
+        // 預載模板
+        Map<String, Mat> templates = new LinkedHashMap<>();
+        templates.put("0", getMatFromFile(ocrPath.zero()));
+        templates.put("1", getMatFromFile(ocrPath.one()));
+        templates.put("2", getMatFromFile(ocrPath.two()));
+        templates.put("3", getMatFromFile(ocrPath.three()));
+        templates.put("4", getMatFromFile(ocrPath.four()));
+        templates.put("5", getMatFromFile(ocrPath.five()));
+        templates.put("6", getMatFromFile(ocrPath.six()));
+        templates.put("7", getMatFromFile(ocrPath.seven()));
+        templates.put("8", getMatFromFile(ocrPath.eight()));
+        templates.put("9", getMatFromFile(ocrPath.nine()));
+//        templates.put(".", getMatFromFile(ocrPath.dot()));
+        templates.put("%", getMatFromFile(ocrPath.percent()));
 
-            // 讀取 Python 腳本的標準輸出
-            BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
-            StringBuilder output = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                output.append(line);
-            }
+        NumberOCR numberOCR = new NumberOCR();
 
-            // 等待子程序結束並取得回傳碼
-            int exitCode = p.waitFor();
-            if (exitCode == 0) {
-                // Python 腳本成功執行
-                String jsonResult = output.toString();
-                System.out.println("從 Python 取得的原始 JSON 結果: " + jsonResult);
+        var result = numberOCR.ocrFromImage(roiImg, templates, threshold);
 
-                // 在這裡你可以使用 Gson 或 Jackson 等 JSON 函式庫來解析 jsonResult
-                // 例如：
-                // OcrResult[] results = new Gson().fromJson(jsonResult, OcrResult[].class);
-                // for (OcrResult result : results) {
-                //     System.out.println("辨識文字: " + result.getText());
-                // }
-
-            } else {
-                // Python 腳本執行失敗
-                System.err.println("Python 腳本執行失敗，回傳碼: " + exitCode);
-            }
-        } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
-        }
+        System.err.printf("number ocr result: %s", result);
     }
 
 
