@@ -11,31 +11,33 @@ import java.util.Map;
 public class NumberOCR {
 
 
-    public String ocrFromImage(Mat targetImg, Map<String, Mat> templates, double threshold) {
+    public String ocrFromImage(Mat targetImg, Map<String, OpenCvService.TemplateWithMask> templates, double threshold) {
 
         List<MatchResult> results = new ArrayList<>();
 
-        for (Map.Entry<String, Mat> entry : templates.entrySet()) {
+        for (Map.Entry<String, OpenCvService.TemplateWithMask> entry : templates.entrySet()) {
             String character = entry.getKey();
-            Mat template = entry.getValue();
+            OpenCvService.TemplateWithMask templateWithMask = entry.getValue();
+            Mat template = templateWithMask.image();
+            Mat mask = templateWithMask.mask();
 
             int w = template.cols();
             int h = template.rows();
 
             Mat res = new Mat();
-            Imgproc.matchTemplate(targetImg, template, res, Imgproc.TM_CCOEFF_NORMED);
+            Imgproc.matchTemplate(targetImg, template, res, Imgproc.TM_CCOEFF_NORMED, mask);
 
             // 將 res 中 >= threshold 的位置設為 255，其餘設為 0
-            Mat mask = new Mat();
-            Imgproc.threshold(res, mask, threshold, 255, Imgproc.THRESH_BINARY);
+            Mat thresholdMask = new Mat();
+            Imgproc.threshold(res, thresholdMask, threshold, 255, Imgproc.THRESH_BINARY);
 
             // 轉成 8-bit 單通道
-            mask.convertTo(mask, CvType.CV_8U);
+            thresholdMask.convertTo(thresholdMask, CvType.CV_8U);
 
             // 找出所有匹配區塊
             List<MatOfPoint> contours = new ArrayList<>();
             Mat hierarchy = new Mat();
-            Imgproc.findContours(mask, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+            Imgproc.findContours(thresholdMask, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
 
             for (MatOfPoint contour : contours) {
                 Rect rect = Imgproc.boundingRect(contour);

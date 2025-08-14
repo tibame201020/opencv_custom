@@ -9,6 +9,8 @@ import java.util.Map;
 
 public class OpenCvService {
 
+    public record TemplateWithMask(Mat image, Mat mask) {}
+
     /**
      * find match target on src
      *
@@ -38,6 +40,38 @@ public class OpenCvService {
      */
     public Mat getMatFromFile(String filePath) {
         return Imgcodecs.imread(filePath, Imgcodecs.IMREAD_GRAYSCALE);
+    }
+
+    /**
+     * get mat object from file path with mask
+     *
+     * @param filePath file patch
+     * @return mat object and its mask
+     */
+    public TemplateWithMask getMatFromFileWithMask(String filePath) {
+        Mat img = Imgcodecs.imread(filePath, Imgcodecs.IMREAD_UNCHANGED); // 載入包含 Alpha 通道
+        if (img.empty()) {
+            System.err.println("Error: Could not load image " + filePath);
+            return new TemplateWithMask(new Mat(), new Mat());
+        }
+
+        Mat imageMat;
+        Mat maskMat;
+
+        if (img.channels() == 4) { // 如果是 RGBA 圖像
+            imageMat = new Mat();
+            maskMat = new Mat();
+            Imgproc.cvtColor(img, imageMat, Imgproc.COLOR_BGRA2BGR); // 轉換為 BGR
+            Imgproc.cvtColor(imageMat, imageMat, Imgproc.COLOR_BGR2GRAY); // 轉換為灰度圖
+            Core.extractChannel(img, maskMat, 3); // 提取 Alpha 通道作為遮罩
+        } else { // 如果是灰度圖或 RGB 圖像，沒有 Alpha 通道
+            imageMat = Imgcodecs.imread(filePath, Imgcodecs.IMREAD_GRAYSCALE); // 載入為灰度圖
+            maskMat = Mat.ones(imageMat.size(), CvType.CV_8U); // 創建一個全白的遮罩
+            Core.multiply(maskMat, new Scalar(255), maskMat); // 將遮罩設為全白
+        }
+        var finalMat = new TemplateWithMask(imageMat, maskMat);
+writeToFile("maskMat.png", finalMat.image());
+return finalMat;
     }
 
     /**
@@ -94,25 +128,25 @@ public class OpenCvService {
 
 
         // 預載模板
-        Map<String, Mat> templates = new LinkedHashMap<>();
-        templates.put("0", getMatFromFile(ocrPath.zero()));
-        templates.put("1", getMatFromFile(ocrPath.one()));
-        templates.put("2", getMatFromFile(ocrPath.two()));
-        templates.put("3", getMatFromFile(ocrPath.three()));
-        templates.put("4", getMatFromFile(ocrPath.four()));
-        templates.put("5", getMatFromFile(ocrPath.five()));
-        templates.put("6", getMatFromFile(ocrPath.six()));
-        templates.put("7", getMatFromFile(ocrPath.seven()));
-        templates.put("8", getMatFromFile(ocrPath.eight()));
-        templates.put("9", getMatFromFile(ocrPath.nine()));
-//        templates.put(".", getMatFromFile(ocrPath.dot()));
-        templates.put("%", getMatFromFile(ocrPath.percent()));
+        Map<String, TemplateWithMask> templates = new LinkedHashMap<>();
+        templates.put("0", getMatFromFileWithMask(ocrPath.zero()));
+        templates.put("1", getMatFromFileWithMask(ocrPath.one()));
+        templates.put("2", getMatFromFileWithMask(ocrPath.two()));
+        templates.put("3", getMatFromFileWithMask(ocrPath.three()));
+        templates.put("4", getMatFromFileWithMask(ocrPath.four()));
+        templates.put("5", getMatFromFileWithMask(ocrPath.five()));
+        templates.put("6", getMatFromFileWithMask(ocrPath.six()));
+        templates.put("7", getMatFromFileWithMask(ocrPath.seven()));
+        templates.put("8", getMatFromFileWithMask(ocrPath.eight()));
+        // templates.put("9", getMatFromFileWithMask(ocrPath.nine()));
+//        templates.put(".", getMatFromFileWithMask(ocrPath.dot()));
+        // templates.put("%", getMatFromFileWithMask(ocrPath.percent()));
 
         NumberOCR numberOCR = new NumberOCR();
 
         var result = numberOCR.ocrFromImage(roiImg, templates, threshold);
 
-        System.err.printf("number ocr result: %s", result);
+        System.out.printf("number ocr result: %s", result);
     }
 
 
