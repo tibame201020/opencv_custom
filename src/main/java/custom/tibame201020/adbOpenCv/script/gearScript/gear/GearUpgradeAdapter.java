@@ -24,7 +24,8 @@ public interface GearUpgradeAdapter {
             GearDTOs.GearSet.RAGE,
             GearDTOs.GearSet.REVENGE,
             GearDTOs.GearSet.COUNTER,
-            GearDTOs.GearSet.INJURY
+            GearDTOs.GearSet.INJURY,
+            GearDTOs.GearSet.LIFE_STEAL
     );
 
     List<GearDTOs.GearSet> GEAR_SET_TWO_TYPES = List.of(
@@ -33,7 +34,6 @@ public interface GearUpgradeAdapter {
             GearDTOs.GearSet.HIT,
             GearDTOs.GearSet.RESISTANCE,
             GearDTOs.GearSet.CRITICAL,
-            GearDTOs.GearSet.LIFE_STEAL,
             GearDTOs.GearSet.DUAL_ATTACK,
             GearDTOs.GearSet.IMMUNITY,
             GearDTOs.GearSet.PENETRATION,

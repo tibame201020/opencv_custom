@@ -4,6 +4,10 @@ import custom.tibame201020.adbOpenCv.opencv.MatUtility;
 import custom.tibame201020.adbOpenCv.opencv.OpenCvDTOs;
 import custom.tibame201020.adbOpenCv.opencv.OpenCvService;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class GearScript {
 
     OpenCvService openCvService = new OpenCvService();
@@ -26,6 +30,10 @@ public class GearScript {
     GearDTOs.GearOcr _3rdPropOcr = new GearDTOs.GearOcr(propsOcrPath, _3rdPropRegion, 0.8);
     GearDTOs.GearOcr _4thPropOcr = new GearDTOs.GearOcr(propsOcrPath, _4thPropRegion, 0.8);
     GearDTOs.GearOcr scoreOcr = new GearDTOs.GearOcr(scoreOcrPath, scoreRegion, 0.85);
+
+    GearDTOs.GearRegion gearSetTypeRegion = new GearDTOs.GearRegion(900, 550, 100, 40);
+    String gearSetTypeOcrPath = "img/gear/gear-set-type-ocr";
+    GearDTOs.GearOcr gearSetTypeOcr = new GearDTOs.GearOcr(gearSetTypeOcrPath, gearSetTypeRegion, 0.85);
 
     GearDTOs.GearRegion gearLevelRegion = new GearDTOs.GearRegion(972, 180, 35, 23);
     String gearLevelOcrPath = "img/gear/gear-level-ocr";
@@ -58,7 +66,6 @@ public class GearScript {
     GearDTOs.GearOcr _4thPropTypeOcr = new GearDTOs.GearOcr(propTypeOcrPath, _4thtPropTypeRegion, 0.85);
 
 
-
     public void execute() throws Exception {
 //        for (int i = 1; i <= 15; i++) {
 //            var testOcr = "img/gear/gear" + i + ".png";
@@ -67,9 +74,20 @@ public class GearScript {
 //            detectGear(testOcr, title);
 //        }
 
-        var testOcr = "img/gear/gear1.png";
-        MatUtility.saveSliceRegionMat(testOcr, converToOcrRegion(levelOcr.gearRegion()));
 
+        try (var paths = Files.walk(Path.of("img/gear/snapshots"))) {
+            AtomicInteger i = new AtomicInteger(0);
+            paths.forEach(path -> {
+                var fileFullPath = path.toAbsolutePath().toString();
+                if (!fileFullPath.contains(".png")) {
+                    return;
+                }
+                var current = i.incrementAndGet();
+
+                MatUtility.saveSliceRegionMat(fileFullPath, converToOcrRegion(levelOcr.gearRegion()), "roi-level " + current + ".png");
+                MatUtility.saveSliceRegionMat(fileFullPath, converToOcrRegion(gearSetTypeOcr.gearRegion()), "roi-set " + current + ".png");
+            });
+        }
     }
 
     void detectGear(String targetImagePath, String title) throws Exception {

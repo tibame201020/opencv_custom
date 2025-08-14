@@ -71,7 +71,7 @@ public class GearDTOs {
         CRITICAL,       // 暴擊 [2]
         SPEED,          // 速度 [4]
         REVENGE,        // 復仇 [4]
-        LIFE_STEAL,     // 吸血 []
+        LIFE_STEAL,     // 吸血 [4]
         COUNTER,        // 反擊 [4]
         DUAL_ATTACK,    // 夾攻 [2]
         IMMUNITY,       // 免疫 [2]
