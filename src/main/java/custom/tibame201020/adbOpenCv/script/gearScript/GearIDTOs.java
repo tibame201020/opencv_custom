@@ -1,6 +1,6 @@
 package custom.tibame201020.adbOpenCv.script.gearScript;
 
-public interface GearDTOs {
+public interface GearIDTOs {
 
     record GearRegion(
             int x,
