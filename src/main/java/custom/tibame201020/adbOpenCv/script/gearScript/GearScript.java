@@ -4,62 +4,38 @@ import custom.tibame201020.adbOpenCv.opencv.OpenCvDTOs;
 import custom.tibame201020.adbOpenCv.opencv.OpenCvService;
 import custom.tibame201020.adbOpenCv.script.gearScript.gear.GearDTOs;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class GearScript {
 
     OpenCvService openCvService = new OpenCvService();
 
-    GearIDTOs.GearRegion mainPropRegion = new GearIDTOs.GearRegion(1160, 330, 70, 30);
-    GearIDTOs.GearRegion _1stPropRegion = new GearIDTOs.GearRegion(1160, 370, 70, 25);
-    GearIDTOs.GearRegion _2ndPropRegion = new GearIDTOs.GearRegion(1160, 390, 70, 25);
-    GearIDTOs.GearRegion _3rdPropRegion = new GearIDTOs.GearRegion(1160, 415, 70, 25);
-    GearIDTOs.GearRegion _4thPropRegion = new GearIDTOs.GearRegion(1160, 435, 70, 25);
-    GearIDTOs.GearRegion scoreRegion = new GearIDTOs.GearRegion(1160, 470, 70, 30);
+    private final Map<String, GearIDTOs.GearOcr> ocrConfigs = new HashMap<>();
 
-    String mainOcrPath = "img/gear/main-ocr";
-    String propsOcrPath = "img/gear/ocr";
-    String scoreOcrPath = "img/gear/score-ocr";
+    public GearScript() {
+        // Initialize OCR configurations
+        // Main and Sub-properties values
+        ocrConfigs.put("mainProp", new GearIDTOs.GearOcr("img/gear/main-ocr", new GearIDTOs.GearRegion(1160, 330, 70, 30), 0.8));
+        ocrConfigs.put("1stProp", new GearIDTOs.GearOcr("img/gear/ocr", new GearIDTOs.GearRegion(1160, 370, 70, 25), 0.8));
+        ocrConfigs.put("2ndProp", new GearIDTOs.GearOcr("img/gear/ocr", new GearIDTOs.GearRegion(1160, 390, 70, 25), 0.8));
+        ocrConfigs.put("3rdProp", new GearIDTOs.GearOcr("img/gear/ocr", new GearIDTOs.GearRegion(1160, 415, 70, 25), 0.8));
+        ocrConfigs.put("4thProp", new GearIDTOs.GearOcr("img/gear/ocr", new GearIDTOs.GearRegion(1160, 435, 70, 25), 0.8));
+        ocrConfigs.put("score", new GearIDTOs.GearOcr("img/gear/score-ocr", new GearIDTOs.GearRegion(1160, 470, 70, 30), 0.85));
 
+        // Gear metadata
+        ocrConfigs.put("gearSetType", new GearIDTOs.GearOcr("img/gear/gear-set-type-ocr", new GearIDTOs.GearRegion(900, 550, 100, 40), 0.85));
+        ocrConfigs.put("gearLevel", new GearIDTOs.GearOcr("img/gear/gear-level-ocr", new GearIDTOs.GearRegion(972, 180, 35, 23), 0.85));
+        ocrConfigs.put("gearType", new GearIDTOs.GearOcr("img/gear/gear-type-ocr", new GearIDTOs.GearRegion(1007, 180, 35, 23), 0.85));
+        ocrConfigs.put("level", new GearIDTOs.GearOcr("img/gear/level-ocr", new GearIDTOs.GearRegion(935, 167, 35, 25), 0.85));
 
-    GearIDTOs.GearOcr mainPropOcr = new GearIDTOs.GearOcr(mainOcrPath, mainPropRegion, 0.8);
-    GearIDTOs.GearOcr _1stPropOcr = new GearIDTOs.GearOcr(propsOcrPath, _1stPropRegion, 0.8);
-    GearIDTOs.GearOcr _2ndPropOcr = new GearIDTOs.GearOcr(propsOcrPath, _2ndPropRegion, 0.8);
-    GearIDTOs.GearOcr _3rdPropOcr = new GearIDTOs.GearOcr(propsOcrPath, _3rdPropRegion, 0.8);
-    GearIDTOs.GearOcr _4thPropOcr = new GearIDTOs.GearOcr(propsOcrPath, _4thPropRegion, 0.8);
-    GearIDTOs.GearOcr scoreOcr = new GearIDTOs.GearOcr(scoreOcrPath, scoreRegion, 0.85);
-
-    GearIDTOs.GearRegion gearSetTypeRegion = new GearIDTOs.GearRegion(900, 550, 100, 40);
-    String gearSetTypeOcrPath = "img/gear/gear-set-type-ocr";
-    GearIDTOs.GearOcr gearSetTypeOcr = new GearIDTOs.GearOcr(gearSetTypeOcrPath, gearSetTypeRegion, 0.85);
-
-    GearIDTOs.GearRegion gearLevelRegion = new GearIDTOs.GearRegion(972, 180, 35, 23);
-    String gearLevelOcrPath = "img/gear/gear-level-ocr";
-    GearIDTOs.GearOcr gearLevelOcr = new GearIDTOs.GearOcr(gearLevelOcrPath, gearLevelRegion, 0.85);
-
-
-    GearIDTOs.GearRegion gearTypeRegion = new GearIDTOs.GearRegion(1007, 180, 35, 23);
-    String gearTypeOcrPath = "img/gear/gear-type-ocr";
-    GearIDTOs.GearOcr gearTypeOcr = new GearIDTOs.GearOcr(gearTypeOcrPath, gearTypeRegion, 0.85);
-
-    GearIDTOs.GearRegion levelRegion = new GearIDTOs.GearRegion(935, 167, 35, 25);
-    String levelOcrPath = "img/gear/level-ocr";
-    GearIDTOs.GearOcr levelOcr = new GearIDTOs.GearOcr(levelOcrPath, levelRegion, 0.85);
-
-    GearIDTOs.GearRegion mainPropTypeRegion = new GearIDTOs.GearRegion(880, 327, 120, 35);
-    String mainPropTypeOcrPath = "img/gear/main-prop-type-ocr";
-    GearIDTOs.GearOcr mainPropTypeOcr = new GearIDTOs.GearOcr(mainPropTypeOcrPath, mainPropTypeRegion, 0.85);
-
-    String propTypeOcrPath = "img/gear/prop-type-ocr";
-    GearIDTOs.GearRegion _1stPropTypeRegion = new GearIDTOs.GearRegion(875, 369, 120, 30);
-    GearIDTOs.GearOcr _1stPropTypeOcr = new GearIDTOs.GearOcr(propTypeOcrPath, _1stPropTypeRegion, 0.85);
-
-    GearIDTOs.GearRegion _2ndtPropTypeRegion = new GearIDTOs.GearRegion(875, 389, 120, 30);
-    GearIDTOs.GearOcr _2ndPropTypeOcr = new GearIDTOs.GearOcr(propTypeOcrPath, _2ndtPropTypeRegion, 0.85);
-
-    GearIDTOs.GearRegion _3rdtPropTypeRegion = new GearIDTOs.GearRegion(875, 410, 120, 30);
-    GearIDTOs.GearOcr _3rdPropTypeOcr = new GearIDTOs.GearOcr(propTypeOcrPath, _3rdtPropTypeRegion, 0.85);
-
-    GearIDTOs.GearRegion _4thtPropTypeRegion = new GearIDTOs.GearRegion(875, 435, 120, 30);
-    GearIDTOs.GearOcr _4thPropTypeOcr = new GearIDTOs.GearOcr(propTypeOcrPath, _4thtPropTypeRegion, 0.85);
+        // Main and Sub-properties types
+        ocrConfigs.put("mainPropType", new GearIDTOs.GearOcr("img/gear/main-prop-type-ocr", new GearIDTOs.GearRegion(880, 327, 120, 35), 0.85));
+        ocrConfigs.put("1stPropType", new GearIDTOs.GearOcr("img/gear/prop-type-ocr", new GearIDTOs.GearRegion(875, 369, 120, 30), 0.85));
+        ocrConfigs.put("2ndPropType", new GearIDTOs.GearOcr("img/gear/prop-type-ocr", new GearIDTOs.GearRegion(875, 389, 120, 30), 0.85));
+        ocrConfigs.put("3rdPropType", new GearIDTOs.GearOcr("img/gear/prop-type-ocr", new GearIDTOs.GearRegion(875, 410, 120, 30), 0.85));
+        ocrConfigs.put("4thPropType", new GearIDTOs.GearOcr("img/gear/prop-type-ocr", new GearIDTOs.GearRegion(875, 435, 120, 30), 0.85));
+    }
 
 
     public void execute() throws Exception {
@@ -87,25 +63,25 @@ public class GearScript {
     }
 
     GearDTOs.GearProp detectGear(String targetImagePath, String title) throws Exception {
-        var gearLevel = ocrPattern(gearLevelOcr, targetImagePath);
-        var gearType = ocrPattern(gearTypeOcr, targetImagePath);
+        String gearLevel = ocrPattern(ocrConfigs.get("gearLevel"), targetImagePath);
+        String gearType = ocrPattern(ocrConfigs.get("gearType"), targetImagePath);
 
-        var mainType = ocrPattern(mainPropTypeOcr, targetImagePath);
-        var main = ocrCharacter(mainPropOcr, targetImagePath);
+        String mainType = ocrPattern(ocrConfigs.get("mainPropType"), targetImagePath);
+        String main = ocrCharacter(ocrConfigs.get("mainProp"), targetImagePath);
 
-        var _1stType = ocrPattern(_1stPropTypeOcr, targetImagePath);
-        var _1st = ocrCharacter(_1stPropOcr, targetImagePath);
+        String _1stType = ocrPattern(ocrConfigs.get("1stPropType"), targetImagePath);
+        String _1st = ocrCharacter(ocrConfigs.get("1stProp"), targetImagePath);
 
-        var _2ndType = ocrPattern(_2ndPropTypeOcr, targetImagePath);
-        var _2nd = ocrCharacter(_2ndPropOcr, targetImagePath);
+        String _2ndType = ocrPattern(ocrConfigs.get("2ndPropType"), targetImagePath);
+        String _2nd = ocrCharacter(ocrConfigs.get("2ndProp"), targetImagePath);
 
-        var _3rdType = ocrPattern(_3rdPropTypeOcr, targetImagePath);
-        var _3rd = ocrCharacter(_3rdPropOcr, targetImagePath);
+        String _3rdType = ocrPattern(ocrConfigs.get("3rdPropType"), targetImagePath);
+        String _3rd = ocrCharacter(ocrConfigs.get("3rdProp"), targetImagePath);
 
-        var _4thType = ocrPattern(_4thPropTypeOcr, targetImagePath);
-        var _4th = ocrCharacter(_4thPropOcr, targetImagePath);
+        String _4thType = ocrPattern(ocrConfigs.get("4thPropType"), targetImagePath);
+        String _4th = ocrCharacter(ocrConfigs.get("4thProp"), targetImagePath);
 
-        var score = ocrCharacter(scoreOcr, targetImagePath);
+        String score = ocrCharacter(ocrConfigs.get("score"), targetImagePath);
 
 //        System.err.printf("%s [ level: %s, type: %s, main: %s-%s, 1st: %s-%s, 2nd: %s-%s, 3rd: %s-%s, 4th: %s-%s, score: %s ] \n",
 //                title, gearLevel, gearType, mainType, main, _1stType, _1st, _2ndType, _2nd, _3rdType, _3rd, _4thType, _4th, score);
@@ -131,178 +107,90 @@ public class GearScript {
             gearMainProp = GearDTOs.GearMainProp.DEF_FLAT;
         }
 
-        int attackPercent = 0;
-        int flatAttack = 0;
-        int lifePercent = 0;
-        int flatLife = 0;
-        int defensePercent = 0;
-        int flatDefense = 0;
-        int criticalRate = 0;
-        int criticalDamage = 0;
-        int speed = 0;
-        int effectResist = 0;
-        int effectiveness = 0;
+        class GearPropsAccumulator {
+            int attackPercent = 0;
+            int flatAttack = 0;
+            int lifePercent = 0;
+            int flatLife = 0;
+            int defensePercent = 0;
+            int flatDefense = 0;
+            int criticalRate = 0;
+            int criticalDamage = 0;
+            int speed = 0;
+            int effectResist = 0;
+            int effectiveness = 0;
 
-        if (_1stType.equals("atk") && _1st.contains("%")) {
-            attackPercent = Integer.valueOf(_1st.replace("%",""));
-        }
-        if (_1stType.equals("atk") && !_1st.contains("%")) {
-            flatAttack = Integer.valueOf(_1st);
-        }
-        if (_1stType.equals("life") && _1st.contains("%")) {
-            lifePercent = Integer.valueOf(_1st.replace("%",""));
-        }
-        if (_1stType.equals("life") && !_1st.contains("%")) {
-            flatLife = Integer.valueOf(_1st);
-        }
-        if (_1stType.equals("def") && _1st.contains("%")) {
-            defensePercent = Integer.valueOf(_1st.replace("%",""));
-        }
-        if (_1stType.equals("def") && !_1st.contains("%")) {
-            flatDefense = Integer.valueOf(_1st);
-        }
-        _1st = _1st.replace("%", "");
+            void parseAndAccumulate(String type, String value) {
+                int parsedValue = 0;
+                String cleanedValue = value.replace("%", "");
+                try {
+                    parsedValue = Integer.valueOf(cleanedValue);
+                } catch (NumberFormatException e) {
+                    System.err.println("Error parsing number: " + cleanedValue + " for type: " + type);
+                    return;
+                }
 
-        if (_1stType.equals("speed")) {
-            speed = Integer.valueOf(_1st);
-        }
-        if (_1stType.equals("cri-rate")) {
-            criticalRate = Integer.valueOf(_1st);
-        }
-        if (_1stType.equals("cri-damage")) {
-            criticalDamage = Integer.valueOf(_1st);
-        }
-        if (_1stType.equals("effect-hit")) {
-            effectiveness = Integer.valueOf(_1st);
-        }
-        if (_1stType.equals("ceffect-resistance")) {
-            effectResist = Integer.valueOf(_1st);
-        }
-
-        // -----------
-        if (_2ndType.equals("atk") && _2nd.contains("%")) {
-            attackPercent = Integer.valueOf(_2nd.replace("%",""));
-        }
-        if (_2ndType.equals("atk") && !_2nd.contains("%")) {
-            flatAttack = Integer.valueOf(_2nd);
-        }
-        if (_2ndType.equals("life") && _2nd.contains("%")) {
-            lifePercent = Integer.valueOf(_2nd.replace("%",""));
-        }
-        if (_2ndType.equals("life") && !_2nd.contains("%")) {
-            flatLife = Integer.valueOf(_2nd);
-        }
-        if (_2ndType.equals("def") && _2nd.contains("%")) {
-            defensePercent = Integer.valueOf(_2nd.replace("%",""));
-        }
-        if (_2ndType.equals("def") && !_2nd.contains("%")) {
-            flatDefense = Integer.valueOf(_2nd);
-        }
-        _2nd = _2nd.replace("%", "");
-
-        if (_2ndType.equals("speed")) {
-            speed = Integer.valueOf(_2nd);
-        }
-        if (_2ndType.equals("cri-rate")) {
-            criticalRate = Integer.valueOf(_2nd);
-        }
-        if (_2ndType.equals("cri-damage")) {
-            criticalDamage = Integer.valueOf(_2nd);
-        }
-        if (_2ndType.equals("effect-hit")) {
-            effectiveness = Integer.valueOf(_2nd);
-        }
-        if (_2ndType.equals("ceffect-resistance")) {
-            effectResist = Integer.valueOf(_2nd);
+                switch (type) {
+                    case "atk":
+                        if (value.contains("%")) {
+                            this.attackPercent += parsedValue;
+                        } else {
+                            this.flatAttack += parsedValue;
+                        }
+                        break;
+                    case "life":
+                        if (value.contains("%")) {
+                            this.lifePercent += parsedValue;
+                        } else {
+                            this.flatLife += parsedValue;
+                        }
+                        break;
+                    case "def":
+                        if (value.contains("%")) {
+                            this.defensePercent += parsedValue;
+                        } else {
+                            this.flatDefense += parsedValue;
+                        }
+                        break;
+                    case "speed":
+                        this.speed += parsedValue;
+                        break;
+                    case "cri-rate":
+                        this.criticalRate += parsedValue;
+                        break;
+                    case "cri-damage":
+                        this.criticalDamage += parsedValue;
+                        break;
+                    case "effect-hit":
+                        this.effectiveness += parsedValue;
+                        break;
+                    case "ceffect-resistance": // Assuming this was a typo and should be "effect-resistance"
+                        this.effectResist += parsedValue;
+                        break;
+                    default:
+                        System.err.println("Unknown property type: " + type);
+                }
+            }
         }
 
-        // -----------
-        if (_3rdType.equals("atk") && _3rd.contains("%")) {
-            attackPercent = Integer.valueOf(_3rd.replace("%",""));
-        }
-        if (_3rdType.equals("atk") && !_3rd.contains("%")) {
-            flatAttack = Integer.valueOf(_3rd);
-        }
-        if (_3rdType.equals("life") && _3rd.contains("%")) {
-            lifePercent = Integer.valueOf(_3rd.replace("%",""));
-        }
-        if (_3rdType.equals("life") && !_3rd.contains("%")) {
-            flatLife = Integer.valueOf(_3rd);
-        }
-        if (_3rdType.equals("def") && _3rd.contains("%")) {
-            defensePercent = Integer.valueOf(_3rd.replace("%",""));
-        }
-        if (_3rdType.equals("def") && !_3rd.contains("%")) {
-            flatDefense = Integer.valueOf(_3rd);
-        }
-        _3rd = _3rd.replace("%", "");
-        if (_3rdType.equals("speed")) {
-            speed = Integer.valueOf(_3rd);
-        }
-        if (_3rdType.equals("cri-rate")) {
-            criticalRate = Integer.valueOf(_3rd);
-        }
-        if (_3rdType.equals("cri-damage")) {
-            criticalDamage = Integer.valueOf(_3rd);
-        }
-        if (_3rdType.equals("effect-hit")) {
-            effectiveness = Integer.valueOf(_3rd);
-        }
-        if (_3rdType.equals("ceffect-resistance")) {
-            effectResist = Integer.valueOf(_3rd);
-        }
+        GearPropsAccumulator propsAccumulator = new GearPropsAccumulator();
+        propsAccumulator.parseAndAccumulate(_1stType, _1st);
+        propsAccumulator.parseAndAccumulate(_2ndType, _2nd);
+        propsAccumulator.parseAndAccumulate(_3rdType, _3rd);
+        propsAccumulator.parseAndAccumulate(_4thType, _4th);
 
-        // -----------
-        if (_4thType.equals("atk") && _4th.contains("%")) {
-            attackPercent = Integer.valueOf(_4th.replace("%",""));
-        }
-        if (_4thType.equals("atk") && !_4th.contains("%")) {
-            flatAttack = Integer.valueOf(_4th);
-        }
-        if (_4thType.equals("life") && _4th.contains("%")) {
-            lifePercent = Integer.valueOf(_4th.replace("%",""));
-        }
-        if (_4thType.equals("life") && !_4th.contains("%")) {
-            flatLife = Integer.valueOf(_4th);
-        }
-        if (_4thType.equals("def") && _4th.contains("%")) {
-            defensePercent = Integer.valueOf(_4th.replace("%",""));
-        }
-        if (_4thType.equals("def") && !_4th.contains("%")) {
-            flatDefense = Integer.valueOf(_4th);
-        }
-        _4th = _4th.replace("%", "");
-        if (_4thType.equals("speed")) {
-            speed = Integer.valueOf(_4th);
-        }
-        if (_4thType.equals("cri-rate")) {
-            criticalRate = Integer.valueOf(_4th);
-        }
-        if (_4thType.equals("cri-damage")) {
-            criticalDamage = Integer.valueOf(_4th);
-        }
-        if (_4thType.equals("effect-hit")) {
-            effectiveness = Integer.valueOf(_4th);
-        }
-        if (_4thType.equals("ceffect-resistance")) {
-            effectResist = Integer.valueOf(_4th);
-        }
-
-
-        // todo have % that is percent props
-        // GearDTOs.GearMainProp gearMainProp = new GearDTOs.GearMainProp();
         var prop = new GearDTOs.GearProp(
-                attackPercent,
-                flatAttack,
-                lifePercent,
-                flatLife,
-                defensePercent,
-                flatDefense,
-                criticalRate,
-                criticalDamage,
-                speed,
-                effectResist,
-                effectiveness,
+                propsAccumulator.attackPercent,
+                propsAccumulator.flatAttack,
+                propsAccumulator.lifePercent,
+                propsAccumulator.flatLife,
+                propsAccumulator.defensePercent,
+                propsAccumulator.flatDefense,
+                propsAccumulator.criticalRate,
+                propsAccumulator.criticalDamage,
+                propsAccumulator.speed,
+                propsAccumulator.effectResist,
+                propsAccumulator.effectiveness,
                 Integer.valueOf(score),
                 gearMainProp
         );
