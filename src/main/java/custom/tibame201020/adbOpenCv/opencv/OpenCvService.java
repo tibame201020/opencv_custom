@@ -114,7 +114,7 @@ public class OpenCvService {
     ) {
     }
 
-    public void ocrNumber(OcrPath ocrPath, Mat source, OcrRegion region, double threshold) {
+    public String ocrNumber(OcrPath ocrPath, Mat source, OcrRegion region, double threshold) {
         // 擷取 ROI 區域
         Rect roiRect = new Rect(region.x1(), region.y1(),
                 Math.abs(region.x2() - region.x1()), Math.abs(region.y2() - region.y1()));
@@ -141,8 +141,9 @@ public class OpenCvService {
         NumberOCR numberOCR = new NumberOCR();
 
         var result = numberOCR.ocrFromImage(roiImg, templates, threshold);
+        writeToFile(result + ".png", roiImg);
 
-        System.out.printf("number ocr result: %s", result);
+        return result;
     }
 
 
