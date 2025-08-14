@@ -22,29 +22,28 @@ public class GearDTOs {
      * 裝備屬性 (Gear Props)
      */
     public record GearProp(
-            // 生命%
-            double lifePercent,
-            // 防禦%
-            double defensePercent,
             // 攻擊%
-            double attackPercent,
+            int attackPercent,
+            // 攻擊白值
+            int flatAttack,
+            // 生命%
+            int lifePercent,
+            // 生命白值
+            int flatLife,
+            // 防禦%
+            int defensePercent,
+            // 防禦白值
+            int flatDefense,
             // 暴擊%
-            double criticalRate,
+            int criticalRate,
             // 暴擊傷害
-            double criticalDamage,
+            int criticalDamage,
             // 速度
             int speed,
             // 效果抵抗
-            double effectResist,
+            int effectResist,
             // 效果命中
-            double effectiveness,
-            // 攻擊白值
-            int flatAttack,
-            // 防禦白值
-            int flatDefense,
-            // 生命白值
-            int flatLife,
-
+            int effectiveness,
             int score,
             GearMainProp mainProp
     ) {

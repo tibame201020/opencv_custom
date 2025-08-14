@@ -107,14 +107,208 @@ public class GearScript {
 
         var score = ocrCharacter(scoreOcr, targetImagePath);
 
-        System.err.printf("%s [ level: %s, type: %s, main: %s-%s, 1st: %s-%s, 2nd: %s-%s, 3rd: %s-%s, 4th: %s-%s, score: %s ] \n",
-                title, gearLevel, gearType, mainType, main, _1stType, _1st, _2ndType, _2nd, _3rdType, _3rd, _4thType, _4th, score);
+//        System.err.printf("%s [ level: %s, type: %s, main: %s-%s, 1st: %s-%s, 2nd: %s-%s, 3rd: %s-%s, 4th: %s-%s, score: %s ] \n",
+//                title, gearLevel, gearType, mainType, main, _1stType, _1st, _2ndType, _2nd, _3rdType, _3rd, _4thType, _4th, score);
+
+        GearDTOs.GearMainProp gearMainProp = GearDTOs.GearMainProp.SPEED;
+
+        if (mainType.equals("atk") && main.contains("%")) {
+            gearMainProp = GearDTOs.GearMainProp.ATK_PERCENT;
+        }
+        if (mainType.equals("atk") && !main.contains("%")) {
+            gearMainProp = GearDTOs.GearMainProp.ATK_FLAT;
+        }
+        if (mainType.equals("life") && main.contains("%")) {
+            gearMainProp = GearDTOs.GearMainProp.LIFE_PERCENT;
+        }
+        if (mainType.equals("life") && !main.contains("%")) {
+            gearMainProp = GearDTOs.GearMainProp.LIFE_FLAT;
+        }
+        if (mainType.equals("def") && main.contains("%")) {
+            gearMainProp = GearDTOs.GearMainProp.DEF_PERCENT;
+        }
+        if (mainType.equals("def") && !main.contains("%")) {
+            gearMainProp = GearDTOs.GearMainProp.DEF_FLAT;
+        }
+
+        int attackPercent = 0;
+        int flatAttack = 0;
+        int lifePercent = 0;
+        int flatLife = 0;
+        int defensePercent = 0;
+        int flatDefense = 0;
+        int criticalRate = 0;
+        int criticalDamage = 0;
+        int speed = 0;
+        int effectResist = 0;
+        int effectiveness = 0;
+
+        if (_1stType.equals("atk") && _1st.contains("%")) {
+            attackPercent = Integer.valueOf(_1st.replace("%",""));
+        }
+        if (_1stType.equals("atk") && !_1st.contains("%")) {
+            flatAttack = Integer.valueOf(_1st);
+        }
+        if (_1stType.equals("life") && _1st.contains("%")) {
+            lifePercent = Integer.valueOf(_1st.replace("%",""));
+        }
+        if (_1stType.equals("life") && !_1st.contains("%")) {
+            flatLife = Integer.valueOf(_1st);
+        }
+        if (_1stType.equals("def") && _1st.contains("%")) {
+            defensePercent = Integer.valueOf(_1st.replace("%",""));
+        }
+        if (_1stType.equals("def") && !_1st.contains("%")) {
+            flatDefense = Integer.valueOf(_1st);
+        }
+        _1st = _1st.replace("%", "");
+
+        if (_1stType.equals("speed")) {
+            speed = Integer.valueOf(_1st);
+        }
+        if (_1stType.equals("cri-rate")) {
+            criticalRate = Integer.valueOf(_1st);
+        }
+        if (_1stType.equals("cri-damage")) {
+            criticalDamage = Integer.valueOf(_1st);
+        }
+        if (_1stType.equals("effect-hit")) {
+            effectiveness = Integer.valueOf(_1st);
+        }
+        if (_1stType.equals("ceffect-resistance")) {
+            effectResist = Integer.valueOf(_1st);
+        }
+
+        // -----------
+        if (_2ndType.equals("atk") && _2nd.contains("%")) {
+            attackPercent = Integer.valueOf(_2nd.replace("%",""));
+        }
+        if (_2ndType.equals("atk") && !_2nd.contains("%")) {
+            flatAttack = Integer.valueOf(_2nd);
+        }
+        if (_2ndType.equals("life") && _2nd.contains("%")) {
+            lifePercent = Integer.valueOf(_2nd.replace("%",""));
+        }
+        if (_2ndType.equals("life") && !_2nd.contains("%")) {
+            flatLife = Integer.valueOf(_2nd);
+        }
+        if (_2ndType.equals("def") && _2nd.contains("%")) {
+            defensePercent = Integer.valueOf(_2nd.replace("%",""));
+        }
+        if (_2ndType.equals("def") && !_2nd.contains("%")) {
+            flatDefense = Integer.valueOf(_2nd);
+        }
+        _2nd = _2nd.replace("%", "");
+
+        if (_2ndType.equals("speed")) {
+            speed = Integer.valueOf(_2nd);
+        }
+        if (_2ndType.equals("cri-rate")) {
+            criticalRate = Integer.valueOf(_2nd);
+        }
+        if (_2ndType.equals("cri-damage")) {
+            criticalDamage = Integer.valueOf(_2nd);
+        }
+        if (_2ndType.equals("effect-hit")) {
+            effectiveness = Integer.valueOf(_2nd);
+        }
+        if (_2ndType.equals("ceffect-resistance")) {
+            effectResist = Integer.valueOf(_2nd);
+        }
+
+        // -----------
+        if (_3rdType.equals("atk") && _3rd.contains("%")) {
+            attackPercent = Integer.valueOf(_3rd.replace("%",""));
+        }
+        if (_3rdType.equals("atk") && !_3rd.contains("%")) {
+            flatAttack = Integer.valueOf(_3rd);
+        }
+        if (_3rdType.equals("life") && _3rd.contains("%")) {
+            lifePercent = Integer.valueOf(_3rd.replace("%",""));
+        }
+        if (_3rdType.equals("life") && !_3rd.contains("%")) {
+            flatLife = Integer.valueOf(_3rd);
+        }
+        if (_3rdType.equals("def") && _3rd.contains("%")) {
+            defensePercent = Integer.valueOf(_3rd.replace("%",""));
+        }
+        if (_3rdType.equals("def") && !_3rd.contains("%")) {
+            flatDefense = Integer.valueOf(_3rd);
+        }
+        _3rd = _3rd.replace("%", "");
+        if (_3rdType.equals("speed")) {
+            speed = Integer.valueOf(_3rd);
+        }
+        if (_3rdType.equals("cri-rate")) {
+            criticalRate = Integer.valueOf(_3rd);
+        }
+        if (_3rdType.equals("cri-damage")) {
+            criticalDamage = Integer.valueOf(_3rd);
+        }
+        if (_3rdType.equals("effect-hit")) {
+            effectiveness = Integer.valueOf(_3rd);
+        }
+        if (_3rdType.equals("ceffect-resistance")) {
+            effectResist = Integer.valueOf(_3rd);
+        }
+
+        // -----------
+        if (_4thType.equals("atk") && _4th.contains("%")) {
+            attackPercent = Integer.valueOf(_4th.replace("%",""));
+        }
+        if (_4thType.equals("atk") && !_4th.contains("%")) {
+            flatAttack = Integer.valueOf(_4th);
+        }
+        if (_4thType.equals("life") && _4th.contains("%")) {
+            lifePercent = Integer.valueOf(_4th.replace("%",""));
+        }
+        if (_4thType.equals("life") && !_4th.contains("%")) {
+            flatLife = Integer.valueOf(_4th);
+        }
+        if (_4thType.equals("def") && _4th.contains("%")) {
+            defensePercent = Integer.valueOf(_4th.replace("%",""));
+        }
+        if (_4thType.equals("def") && !_4th.contains("%")) {
+            flatDefense = Integer.valueOf(_4th);
+        }
+        _4th = _4th.replace("%", "");
+        if (_4thType.equals("speed")) {
+            speed = Integer.valueOf(_4th);
+        }
+        if (_4thType.equals("cri-rate")) {
+            criticalRate = Integer.valueOf(_4th);
+        }
+        if (_4thType.equals("cri-damage")) {
+            criticalDamage = Integer.valueOf(_4th);
+        }
+        if (_4thType.equals("effect-hit")) {
+            effectiveness = Integer.valueOf(_4th);
+        }
+        if (_4thType.equals("ceffect-resistance")) {
+            effectResist = Integer.valueOf(_4th);
+        }
+
 
         // todo have % that is percent props
         // GearDTOs.GearMainProp gearMainProp = new GearDTOs.GearMainProp();
-        // return new GearDTOs.GearProp();
+        var prop = new GearDTOs.GearProp(
+                attackPercent,
+                flatAttack,
+                lifePercent,
+                flatLife,
+                defensePercent,
+                flatDefense,
+                criticalRate,
+                criticalDamage,
+                speed,
+                effectResist,
+                effectiveness,
+                Integer.valueOf(score),
+                gearMainProp
+        );
+        System.err.println(prop);
 
-        return null;
+        return prop;
     }
 
     String ocrPattern(GearIDTOs.GearOcr gearOcr, String sourcePath) throws Exception {
