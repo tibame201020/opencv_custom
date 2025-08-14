@@ -76,6 +76,17 @@ public class MatUtility {
     }
 
     /**
+     * slice mat from source by region then save
+     * @param sourcePath source image path
+     * @param region region
+     */
+    public static void saveSliceRegionMat(String sourcePath, OpenCvDTOs.OcrRegion region) {
+        var sliced = sliceRegionMat(sourcePath, region);
+
+        writeToFile("roi.png", sliced);
+    }
+
+    /**
      * write mat to filePath
      *
      * @param filePath filePath

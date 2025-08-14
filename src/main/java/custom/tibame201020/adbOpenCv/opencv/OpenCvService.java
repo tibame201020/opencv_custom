@@ -52,7 +52,7 @@ public class OpenCvService {
     public String ocrPattern(String ocrTemplatesPath, String sourcePath, OpenCvDTOs.OcrRegion ocrRegion, double threshold) throws Exception {
         Mat targetImg = MatUtility.sliceRegionMat(sourcePath, ocrRegion);
 
-//        MatUtility.writeToFile("roi.png", targetImg);
+        MatUtility.writeToFile("roi.png", targetImg);
 
 //        return null;
 //

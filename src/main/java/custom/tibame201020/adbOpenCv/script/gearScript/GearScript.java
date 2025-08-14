@@ -1,5 +1,6 @@
 package custom.tibame201020.adbOpenCv.script.gearScript;
 
+import custom.tibame201020.adbOpenCv.opencv.MatUtility;
 import custom.tibame201020.adbOpenCv.opencv.OpenCvDTOs;
 import custom.tibame201020.adbOpenCv.opencv.OpenCvService;
 
@@ -35,6 +36,10 @@ public class GearScript {
     String gearTypeOcrPath = "img/gear/gear-type-ocr";
     GearDTOs.GearOcr gearTypeOcr = new GearDTOs.GearOcr(gearTypeOcrPath, gearTypeRegion, 0.85);
 
+    GearDTOs.GearRegion levelRegion = new GearDTOs.GearRegion(935, 167, 35, 25);
+    String levelOcrPath = "img/gear/level-ocr";
+    GearDTOs.GearOcr levelOcr = new GearDTOs.GearOcr(levelOcrPath, levelRegion, 0.85);
+
     GearDTOs.GearRegion mainPropTypeRegion = new GearDTOs.GearRegion(880, 327, 120, 35);
     String mainPropTypeOcrPath = "img/gear/main-prop-type-ocr";
     GearDTOs.GearOcr mainPropTypeOcr = new GearDTOs.GearOcr(mainPropTypeOcrPath, mainPropTypeRegion, 0.85);
@@ -55,15 +60,16 @@ public class GearScript {
 
 
     public void execute() throws Exception {
-        for (int i = 1; i <= 15; i++) {
-            var testOcr = "img/gear/gear" + i + ".png";
-            var title = "gear" + i;
+//        for (int i = 1; i <= 15; i++) {
+//            var testOcr = "img/gear/gear" + i + ".png";
+//            var title = "gear" + i;
+//
+//            detectGear(testOcr, title);
+//        }
 
-            detectGear(testOcr, title);
-        }
-//        var testOcr = "img/gear/gear9.png";
-//        var result = ocrPattern(_1stPropTypeOcr, testOcr);
-//        System.err.println(result);
+        var testOcr = "img/gear/gear1.png";
+        MatUtility.saveSliceRegionMat(testOcr, converToOcrRegion(levelOcr.gearRegion()));
+
     }
 
     void detectGear(String targetImagePath, String title) throws Exception {
