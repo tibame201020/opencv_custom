@@ -1,3 +1,5 @@
+package custom.tibame201020.adbOpenCv.script.gearScript.gear;
+
 import java.util.List;
 
 public class GearDTOs {
@@ -10,7 +12,7 @@ public class GearDTOs {
         CRI_DMG,
         SPEED,
         EFFECT_RESISTANCE,
-        EFFECTIVENESS,
+        EFFECT_HIT,
         ATK_FLAT,
         LIFE_FLAT,
         DEF_FLAT
@@ -58,7 +60,7 @@ public class GearDTOs {
         ATTACK {
             @Override
             public boolean belongRequired(List<GearPropBelong> belongs) {
-                return belongs.contains(GearDTOs.GearPropBelong.DAMAGE);
+                return belongs.contains(GearPropBelong.DAMAGE);
             }
         },
         DESTRUCTION,    // 破滅 [4]

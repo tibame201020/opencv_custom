@@ -1,3 +1,5 @@
+package custom.tibame201020.adbOpenCv.script.gearScript.gear;
+
 public class PurpleGearUpgradeAdapter implements GearUpgradeAdapter {
 
     @Override

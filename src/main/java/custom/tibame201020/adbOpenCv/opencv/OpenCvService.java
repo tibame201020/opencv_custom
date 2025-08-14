@@ -1,6 +1,7 @@
 package custom.tibame201020.adbOpenCv.opencv;
 
 import custom.tibame201020.adbOpenCv.opencv.ocr.CharacterOCR;
+import custom.tibame201020.adbOpenCv.opencv.ocr.PatternOCR;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -51,7 +52,13 @@ public class OpenCvService {
     public String ocrPattern(String ocrTemplatesPath, String sourcePath, OpenCvDTOs.OcrRegion ocrRegion, double threshold) throws Exception {
         Mat targetImg = MatUtility.sliceRegionMat(sourcePath, ocrRegion);
 
-        return null;
+//        MatUtility.writeToFile("roi.png", targetImg);
+
+//        return null;
+//
+        PatternOCR patternOCR = new PatternOCR();
+
+        return patternOCR.executeOCR(ocrTemplatesPath, targetImg, threshold);
     }
 
 }

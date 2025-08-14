@@ -1,3 +1,5 @@
+package custom.tibame201020.adbOpenCv.script.gearScript.gear;
+
 import java.util.List;
 
 public interface GearUpgradeAdapter {
