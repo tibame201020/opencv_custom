@@ -18,7 +18,7 @@ class GearScriptTest {
 
     @Test
     void detectGear_gear1() throws Exception {
-        var testOcr = "img/gear/gear1.png";
+        var testOcr = "img/gear/test-mapping/gear1.png";
         var title = "gear1";
 
         
@@ -46,7 +46,7 @@ class GearScriptTest {
 
     @Test
     void detectGear_gear2() throws Exception {
-        var testOcr = "img/gear/gear2.png";
+        var testOcr = "img/gear/test-mapping/gear2.png";
         var title = "gear2";
 
         var expect = new GearDTOs.GearProp(
@@ -73,7 +73,7 @@ class GearScriptTest {
 
     @Test
     void detectGear_gear3() throws Exception {
-        var testOcr = "img/gear/gear3.png";
+        var testOcr = "img/gear/test-mapping/gear3.png";
         var title = "gear3";
 
         var expect = new GearDTOs.GearProp(
@@ -100,7 +100,7 @@ class GearScriptTest {
 
     @Test
     void detectGear_gear4() throws Exception {
-        var testOcr = "img/gear/gear4.png";
+        var testOcr = "img/gear/test-mapping/gear4.png";
         var title = "gear4";
 
         var expect = new GearDTOs.GearProp(
@@ -127,7 +127,7 @@ class GearScriptTest {
 
     @Test
     void detectGear_gear5() throws Exception {
-        var testOcr = "img/gear/gear5.png";
+        var testOcr = "img/gear/test-mapping/gear5.png";
         var title = "gear5";
 
         var expect = new GearDTOs.GearProp(
@@ -140,7 +140,7 @@ class GearScriptTest {
                 4,  // criticalRate
                 6,  // criticalDamage
                 0,  // speed
-                0,  // effectResist
+                7,  // effectResist
                 0,  // effectiveness
                 32, // score
                 GearDTOs.GearMainProp.SPEED
@@ -154,7 +154,7 @@ class GearScriptTest {
 
     @Test
     void detectGear_gear6() throws Exception {
-        var testOcr = "img/gear/gear6.png";
+        var testOcr = "img/gear/test-mapping/gear6.png";
         var title = "gear6";
 
         var expect = new GearDTOs.GearProp(
@@ -181,7 +181,7 @@ class GearScriptTest {
 
     @Test
     void detectGear_gear7() throws Exception {
-        var testOcr = "img/gear/gear7.png";
+        var testOcr = "img/gear/test-mapping/gear7.png";
         var title = "gear7";
 
         var expect = new GearDTOs.GearProp(
@@ -208,7 +208,7 @@ class GearScriptTest {
 
     @Test
     void detectGear_gear8() throws Exception {
-        var testOcr = "img/gear/gear8.png";
+        var testOcr = "img/gear/test-mapping/gear8.png";
         var title = "gear8";
 
         var expect = new GearDTOs.GearProp(
@@ -235,7 +235,7 @@ class GearScriptTest {
 
     @Test
     void detectGear_gear9() throws Exception {
-        var testOcr = "img/gear/gear9.png";
+        var testOcr = "img/gear/test-mapping/gear9.png";
         var title = "gear9";
 
         var expect = new GearDTOs.GearProp(
@@ -262,7 +262,7 @@ class GearScriptTest {
 
     @Test
     void detectGear_gear10() throws Exception {
-        var testOcr = "img/gear/gear10.png";
+        var testOcr = "img/gear/test-mapping/gear10.png";
         var title = "gear10";
 
         var expect = new GearDTOs.GearProp(
@@ -275,7 +275,7 @@ class GearScriptTest {
                 0,  // criticalRate
                 0,  // criticalDamage
                 4,  // speed
-                0,  // effectResist
+                7,  // effectResist
                 0,  // effectiveness
                 34, // score
                 GearDTOs.GearMainProp.DEF_FLAT
@@ -289,7 +289,7 @@ class GearScriptTest {
 
     @Test
     void detectGear_gear11() throws Exception {
-        var testOcr = "img/gear/gear11.png";
+        var testOcr = "img/gear/test-mapping/gear11.png";
         var title = "gear11";
 
         var expect = new GearDTOs.GearProp(
@@ -316,7 +316,7 @@ class GearScriptTest {
 
     @Test
     void detectGear_gear12() throws Exception {
-        var testOcr = "img/gear/gear12.png";
+        var testOcr = "img/gear/test-mapping/gear12.png";
         var title = "gear12";
 
         var expect = new GearDTOs.GearProp(
@@ -343,7 +343,7 @@ class GearScriptTest {
 
     @Test
     void detectGear_gear13() throws Exception {
-        var testOcr = "img/gear/gear13.png";
+        var testOcr = "img/gear/test-mapping/gear13.png";
         var title = "gear13";
 
         var expect = new GearDTOs.GearProp(
@@ -370,7 +370,7 @@ class GearScriptTest {
 
     @Test
     void detectGear_gear14() throws Exception {
-        var testOcr = "img/gear/gear14.png";
+        var testOcr = "img/gear/test-mapping/gear14.png";
         var title = "gear14";
 
         var expect = new GearDTOs.GearProp(
@@ -397,7 +397,7 @@ class GearScriptTest {
 
     @Test
     void detectGear_gear15() throws Exception {
-        var testOcr = "img/gear/gear15.png";
+        var testOcr = "img/gear/test-mapping/gear15.png";
         var title = "gear15";
 
         var expect = new GearDTOs.GearProp(

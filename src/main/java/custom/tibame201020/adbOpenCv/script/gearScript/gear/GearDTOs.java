@@ -77,7 +77,7 @@ public class GearDTOs {
         RAGE,           // 憤怒 [4]
         PENETRATION,    // 貫穿 [2]
         INJURY,         // 傷口 [4]
-        PROTECTION,     // 守護 [2]
+        PROTECTION,     // 守護 [4]
         TORRENT;         // 激流 [2]
 
         public boolean belongRequired(List<GearPropBelong> belongs) {
