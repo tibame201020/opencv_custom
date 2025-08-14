@@ -9,8 +9,6 @@ import java.util.Map;
 
 public class OpenCvService {
 
-    public record TemplateWithMask(Mat image, Mat mask) {}
-
     /**
      * find match target on src
      *
@@ -46,32 +44,30 @@ public class OpenCvService {
      * get mat object from file path with mask
      *
      * @param filePath file patch
-     * @return mat object and its mask
+     * @return mat object
      */
-    public TemplateWithMask getMatFromFileWithMask(String filePath) {
+    public Mat getMatFromFileWithMask(String filePath) {
         Mat img = Imgcodecs.imread(filePath, Imgcodecs.IMREAD_UNCHANGED); // 載入包含 Alpha 通道
         if (img.empty()) {
             System.err.println("Error: Could not load image " + filePath);
-            return new TemplateWithMask(new Mat(), new Mat());
+            return new Mat();
         }
 
-        Mat imageMat;
-        Mat maskMat;
+        Mat processedMat;
 
         if (img.channels() == 4) { // 如果是 RGBA 圖像
-            imageMat = new Mat();
-            maskMat = new Mat();
-            Imgproc.cvtColor(img, imageMat, Imgproc.COLOR_BGRA2BGR); // 轉換為 BGR
-            Imgproc.cvtColor(imageMat, imageMat, Imgproc.COLOR_BGR2GRAY); // 轉換為灰度圖
-            Core.extractChannel(img, maskMat, 3); // 提取 Alpha 通道作為遮罩
+            Mat alpha = new Mat();
+            Core.extractChannel(img, alpha, 3); // 提取 Alpha 通道作為遮罩
+
+            processedMat = new Mat(img.size(), CvType.CV_8U, new Scalar(255)); // 創建一個全白的背景 Mat
+            Imgproc.cvtColor(img, img, Imgproc.COLOR_BGRA2BGR); // 轉換為 BGR
+            Imgproc.cvtColor(img, img, Imgproc.COLOR_BGR2GRAY); // 轉換為灰度圖
+
+            img.copyTo(processedMat, alpha); // 將前景複製到白色背景上
         } else { // 如果是灰度圖或 RGB 圖像，沒有 Alpha 通道
-            imageMat = Imgcodecs.imread(filePath, Imgcodecs.IMREAD_GRAYSCALE); // 載入為灰度圖
-            maskMat = Mat.ones(imageMat.size(), CvType.CV_8U); // 創建一個全白的遮罩
-            Core.multiply(maskMat, new Scalar(255), maskMat); // 將遮罩設為全白
+            processedMat = Imgcodecs.imread(filePath, Imgcodecs.IMREAD_GRAYSCALE); // 直接載入為灰度圖
         }
-        var finalMat = new TemplateWithMask(imageMat, maskMat);
-writeToFile("maskMat.png", finalMat.image());
-return finalMat;
+        return processedMat;
     }
 
     /**
@@ -128,7 +124,7 @@ return finalMat;
 
 
         // 預載模板
-        Map<String, TemplateWithMask> templates = new LinkedHashMap<>();
+        Map<String, Mat> templates = new LinkedHashMap<>();
         templates.put("0", getMatFromFileWithMask(ocrPath.zero()));
         templates.put("1", getMatFromFileWithMask(ocrPath.one()));
         templates.put("2", getMatFromFileWithMask(ocrPath.two()));
@@ -138,9 +134,9 @@ return finalMat;
         templates.put("6", getMatFromFileWithMask(ocrPath.six()));
         templates.put("7", getMatFromFileWithMask(ocrPath.seven()));
         templates.put("8", getMatFromFileWithMask(ocrPath.eight()));
-        // templates.put("9", getMatFromFileWithMask(ocrPath.nine()));
-//        templates.put(".", getMatFromFileWithMask(ocrPath.dot()));
-        // templates.put("%", getMatFromFileWithMask(ocrPath.percent()));
+        templates.put("9", getMatFromFileWithMask(ocrPath.nine()));
+        templates.put(".", getMatFromFileWithMask(ocrPath.dot()));
+        templates.put("%", getMatFromFileWithMask(ocrPath.percent()));
 
         NumberOCR numberOCR = new NumberOCR();
 
