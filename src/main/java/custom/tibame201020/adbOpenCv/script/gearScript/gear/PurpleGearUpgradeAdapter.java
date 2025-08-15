@@ -1,5 +1,8 @@
 package custom.tibame201020.adbOpenCv.script.gearScript.gear;
 
+import org.springframework.stereotype.Service;
+
+@Service
 public class PurpleGearUpgradeAdapter implements GearUpgradeAdapter {
 
     @Override

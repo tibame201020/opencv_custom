@@ -7,21 +7,27 @@ import custom.tibame201020.adbOpenCv.script.gearScript.gear.GearDTOs;
 import custom.tibame201020.adbOpenCv.script.gearScript.gear.PurpleGearUpgradeAdapter;
 import custom.tibame201020.adbOpenCv.script.gearScript.gear.RedGearUpgradeAdapter;
 import org.opencv.core.Mat;
+import org.springframework.stereotype.Service;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
+@Service
 public class GearScript {
 
-    final OpenCvService openCvService = new OpenCvService();
-    final PurpleGearUpgradeAdapter purpleGearUpgradeAdapter = new PurpleGearUpgradeAdapter();
-    final RedGearUpgradeAdapter redGearUpgradeAdapter = new RedGearUpgradeAdapter();
+    private final OpenCvService openCvService;
+    private final PurpleGearUpgradeAdapter purpleGearUpgradeAdapter;
+    private final RedGearUpgradeAdapter redGearUpgradeAdapter;
 
     private final Map<String, GearImageDTOs.GearOcr> ocrConfigs = new HashMap<>();
 
-    public GearScript() {
+    public GearScript(OpenCvService openCvService, PurpleGearUpgradeAdapter purpleGearUpgradeAdapter, RedGearUpgradeAdapter redGearUpgradeAdapter) {
+        this.openCvService = openCvService;
+        this.purpleGearUpgradeAdapter = purpleGearUpgradeAdapter;
+        this.redGearUpgradeAdapter = redGearUpgradeAdapter;
+
         // Initialize OCR configurations
         // Main and Sub-properties values
         ocrConfigs.put("mainProp", new GearImageDTOs.GearOcr("images/gear/number-ocr/main-ocr", new GearImageDTOs.GearRegion(1160, 330, 70, 30), 0.8));

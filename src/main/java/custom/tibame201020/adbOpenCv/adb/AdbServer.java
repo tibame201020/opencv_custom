@@ -7,22 +7,29 @@ import custom.tibame201020.adbOpenCv.opencv.OpenCvService;
 import io.micrometer.common.util.StringUtils;
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
+import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+@Service
 public class AdbServer {
 
-    private static final Adb adb = new Adb();
-    private static final OpenCvService OPEN_CV_SERVICE = new OpenCvService();
+    private final Adb adb;
+    private final OpenCvService openCvService;
+
+    public AdbServer(Adb adb, OpenCvService openCvService) {
+        this.adb = adb;
+        this.openCvService = openCvService;
+    }
 
     /**
      * restart adb daemon server
      *
      * @return bool status
      */
-    public static boolean restart() {
+    public boolean restart() {
         try {
             adb.exec(AdbCommand.DAEMON_CLOSE.getCommand());
             adb.exec(AdbCommand.DAEMON_START.getCommand());
@@ -37,7 +44,7 @@ public class AdbServer {
      *
      * @return bool status
      */
-    public static boolean close() {
+    public boolean close() {
         try {
             adb.exec(AdbCommand.DAEMON_CLOSE.getCommand());
             return true;
@@ -51,7 +58,7 @@ public class AdbServer {
      *
      * @return bool status
      */
-    public static boolean start() {
+    public boolean start() {
         try {
             adb.exec(AdbCommand.DAEMON_START.getCommand());
             return true;
@@ -65,7 +72,7 @@ public class AdbServer {
      *
      * @return device id list
      */
-    public static List<String> getDevices() {
+    public List<String> getDevices() {
         String stdout = adb.exec(AdbCommand.DEVICE_LIST.getCommand());
         if (!stdout.startsWith("List of devices attached")) {
             return List.of();
@@ -81,7 +88,7 @@ public class AdbServer {
      * @param stdout stdout
      * @return device id list
      */
-    private static List<String> readDeviceList(String stdout) {
+    private List<String> readDeviceList(String stdout) {
         List<String> deviceIdList = new ArrayList<>();
 
         for (String deviceInfo : stdout.split("\n")) {
@@ -105,7 +112,7 @@ public class AdbServer {
      * @param deviceId device id
      * @return stdout
      */
-    public static String click(double x, double y, String deviceId) {
+    public String click(double x, double y, String deviceId) {
         return adb.exec(AdbCommand.TAP.getCommand(deviceId, (int) x, (int) y));
     }
 
@@ -116,7 +123,7 @@ public class AdbServer {
      * @param deviceId   device id
      * @return stdout
      */
-    public static String keyEvent(AdbKeyCode adbKeyCode, String deviceId) {
+    public String keyEvent(AdbKeyCode adbKeyCode, String deviceId) {
         return adb.exec(adbKeyCode.getCommand(deviceId));
     }
 
@@ -127,10 +134,10 @@ public class AdbServer {
      * @param deviceId  device id
      * @return point
      */
-    public static Point findImage(String imagePath, String deviceId) {
+    public Point findImage(String imagePath, String deviceId) {
         Mat src = MatUtility.convertBytesToMat(adb.getSnapshot(deviceId));
         Mat target = MatUtility.getMatFromFile(imagePath);
-        OpenCvDTOs.MatchPattern pattern = OPEN_CV_SERVICE.findMatch(src, target);
+        OpenCvDTOs.MatchPattern pattern = openCvService.findMatch(src, target);
 
         if (pattern.getSimilar() > 0.99) {
             return pattern.point();
@@ -148,10 +155,10 @@ public class AdbServer {
      * @param deviceId device id
      * @return point
      */
-    public static Point findImage(String fileName, double similar, String deviceId) {
+    public Point findImage(String fileName, double similar, String deviceId) {
         Mat src = MatUtility.convertBytesToMat(adb.getSnapshot(deviceId));
         Mat target = MatUtility.getMatFromFile(fileName);
-        OpenCvDTOs.MatchPattern pattern = OPEN_CV_SERVICE.findMatch(src, target);
+        OpenCvDTOs.MatchPattern pattern = openCvService.findMatch(src, target);
 
         if (pattern.getSimilar() > similar) {
             return pattern.point();
@@ -168,10 +175,10 @@ public class AdbServer {
      * @param deviceId  device id
      * @return bool status
      */
-    public static boolean clickImage(String imagePath, String deviceId) {
+    public boolean clickImage(String imagePath, String deviceId) {
         Mat src = MatUtility.convertBytesToMat(adb.getSnapshot(deviceId));
         Mat target = MatUtility.getMatFromFile(imagePath);
-        OpenCvDTOs.MatchPattern pattern = OPEN_CV_SERVICE.findMatch(src, target);
+        OpenCvDTOs.MatchPattern pattern = openCvService.findMatch(src, target);
 
         if (!(pattern.getSimilar() > 0.99)) {
             return false;
@@ -190,10 +197,10 @@ public class AdbServer {
      * @param deviceId  device id
      * @return bool status
      */
-    public static boolean clickImage(String imagePath, double similar, String deviceId) {
+    public boolean clickImage(String imagePath, double similar, String deviceId) {
         Mat src = MatUtility.convertBytesToMat(adb.getSnapshot(deviceId));
         Mat target = MatUtility.getMatFromFile(imagePath);
-        OpenCvDTOs.MatchPattern pattern = OPEN_CV_SERVICE.findMatch(src, target);
+        OpenCvDTOs.MatchPattern pattern = openCvService.findMatch(src, target);
 
         if (!(pattern.getSimilar() > similar)) {
             return false;
@@ -210,7 +217,7 @@ public class AdbServer {
      * @param seconds seconds
      * @throws Exception e
      */
-    public static void sleep(int seconds) throws Exception {
+    public void sleep(int seconds) throws Exception {
         TimeUnit.SECONDS.sleep(seconds);
     }
 
@@ -220,7 +227,7 @@ public class AdbServer {
      * @param command command
      * @return stdout
      */
-    public static String exec(String command) {
+    public String exec(String command) {
         command = command.replace("adb ", "platform-tools\\adb.exe ");
         return adb.exec(command);
     }
@@ -235,7 +242,7 @@ public class AdbServer {
      * @param deviceId device id
      * @return stdout
      */
-    public static String swipe(double x1, double y1, double x2, double y2, String deviceId) {
+    public String swipe(double x1, double y1, double x2, double y2, String deviceId) {
         String command = AdbCommand.SWIPE.getCommand(deviceId, (int) x1, (int) y1, (int) x2, (int) y2, -9999999);
         command = command.replace("-9999999", "");
         return adb.exec(command);
@@ -252,7 +259,7 @@ public class AdbServer {
      * @param deviceId  device id
      * @return stdout
      */
-    public static String swipe(double x1, double y1, double x2, double y2, int durations, String deviceId) {
+    public String swipe(double x1, double y1, double x2, double y2, int durations, String deviceId) {
         return adb.exec(AdbCommand.SWIPE.getCommand(deviceId, (int) x1, (int) y1, (int) x2, (int) y2, durations));
     }
 
@@ -266,7 +273,7 @@ public class AdbServer {
      * @param deviceId device id
      * @return stdout
      */
-    public static String drag(double x1, double y1, double x2, double y2, String deviceId) {
+    public String drag(double x1, double y1, double x2, double y2, String deviceId) {
         return adb.exec(AdbCommand.DRAG_DROP.getCommand(deviceId, (int) x1, (int) y1, (int) x2, (int) y2, 1000));
     }
 
@@ -281,7 +288,7 @@ public class AdbServer {
      * @param deviceId  device id
      * @return stdout
      */
-    public static String drag(double x1, double y1, double x2, double y2, int durations, String deviceId) {
+    public String drag(double x1, double y1, double x2, double y2, int durations, String deviceId) {
         return adb.exec(AdbCommand.DRAG_DROP.getCommand(deviceId, (int) x1, (int) y1, (int) x2, (int) y2, durations));
     }
 
@@ -293,7 +300,7 @@ public class AdbServer {
      * @param deviceId device id
      * @return stdout
      */
-    public static String drag(String target1, String target2, String deviceId) {
+    public String drag(String target1, String target2, String deviceId) {
         Point point1 = findImage(target1, deviceId);
         Point point2 = findImage(target2, deviceId);
         return adb.exec(AdbCommand.DRAG_DROP.getCommand(deviceId, (int) point1.x, (int) point1.y, (int) point2.x, (int) point2.y, 1000));
@@ -308,7 +315,7 @@ public class AdbServer {
      * @param deviceId  device id
      * @return stdout
      */
-    public static String drag(String target1, String target2, int durations, String deviceId) {
+    public String drag(String target1, String target2, int durations, String deviceId) {
         Point point1 = findImage(target1, deviceId);
         Point point2 = findImage(target2, deviceId);
         return adb.exec(AdbCommand.DRAG_DROP.getCommand(deviceId, (int) point1.x, (int) point1.y, (int) point2.x, (int) point2.y, durations));
@@ -320,7 +327,7 @@ public class AdbServer {
      * @param imageFileName save image name & path
      * @param deviceId      device id
      */
-    public static void takeSnapshot(String imageFileName, String deviceId) {
+    public void takeSnapshot(String imageFileName, String deviceId) {
         Mat mat = MatUtility.convertBytesToMat(adb.getSnapshot(deviceId));
         MatUtility.writeToFile(imageFileName, mat);
     }
@@ -332,7 +339,7 @@ public class AdbServer {
      * @param deviceId   device id
      * @return stdout
      */
-    public static String startApp(String appPackage, String deviceId) {
+    public String startApp(String appPackage, String deviceId) {
         String findLauncher = adb.exec(AdbCommand.GET_ACTIVITY_BY_PACKAGE.getCommand(deviceId, appPackage));
 
         if (StringUtils.isNotBlank(findLauncher)) {
@@ -349,7 +356,7 @@ public class AdbServer {
      * @param deviceId   device id
      * @return stdout
      */
-    public static String stopApp(String appPackage, String deviceId) {
+    public String stopApp(String appPackage, String deviceId) {
         return adb.exec(AdbCommand.STOP_APP.getCommand(deviceId, appPackage));
     }
 
@@ -360,7 +367,7 @@ public class AdbServer {
      * @param deviceId   device id
      * @return stdout
      */
-    public static String cleanupAppData(String appPackage, String deviceId) {
+    public String cleanupAppData(String appPackage, String deviceId) {
         return adb.exec(AdbCommand.CLEAN_PACKAGE_DATA.getCommand(deviceId, appPackage));
     }
 
@@ -374,7 +381,7 @@ public class AdbServer {
      * @return bool status
      * @throws Exception e
      */
-    public static boolean waitClickImage(String fileName, int millSeconds, int frequency, String deviceId) throws Exception {
+    public boolean waitClickImage(String fileName, int millSeconds, int frequency, String deviceId) throws Exception {
         if (millSeconds < 0) {
             throw new RuntimeException(fileName + "not found");
         }
@@ -400,7 +407,7 @@ public class AdbServer {
      * @return bool status
      * @throws Exception e
      */
-    public static Point waitImage(String fileName, int millSeconds, int frequency, String deviceId) throws Exception {
+    public Point waitImage(String fileName, int millSeconds, int frequency, String deviceId) throws Exception {
         if (millSeconds < 0) {
             throw new RuntimeException(fileName + "not found");
         }
@@ -422,7 +429,7 @@ public class AdbServer {
      * @param deviceId device id
      * @return stdout - appList
      */
-    public static String getAppList(String deviceId) {
+    public String getAppList(String deviceId) {
         return adb.exec(AdbCommand.GET_APPS.getCommand(deviceId));
     }
 
@@ -433,7 +440,7 @@ public class AdbServer {
      * @param deviceId device id
      * @return stdout
      */
-    public static String typeText(String text, String deviceId) {
+    public String typeText(String text, String deviceId) {
         return adb.exec(AdbCommand.INPUT_TEXT.getCommand(deviceId, text));
     }
 
@@ -443,7 +450,7 @@ public class AdbServer {
      * @param deviceId device id
      * @return stdout
      */
-    public static String connect(String deviceId) {
+    public String connect(String deviceId) {
         return adb.exec(AdbCommand.CONNECT.getCommand(deviceId));
     }
 
@@ -455,7 +462,7 @@ public class AdbServer {
      * @param deviceId    device id
      * @return stdout
      */
-    public static String pull(String androidPath, String diskPath, String deviceId) {
+    public String pull(String androidPath, String diskPath, String deviceId) {
         return adb.exec(AdbCommand.PULL_DATA.getCommand(deviceId, androidPath, diskPath));
     }
 
@@ -467,7 +474,7 @@ public class AdbServer {
      * @param deviceId    device id
      * @return stdout
      */
-    public static String push(String diskPath, String androidPath, String deviceId) {
+    public String push(String diskPath, String androidPath, String deviceId) {
         return adb.exec(AdbCommand.PUSH_DATA.getCommand(deviceId, diskPath, androidPath));
     }
 }

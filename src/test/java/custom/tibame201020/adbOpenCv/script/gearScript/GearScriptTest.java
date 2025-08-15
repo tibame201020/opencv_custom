@@ -1,6 +1,11 @@
 package custom.tibame201020.adbOpenCv.script.gearScript;
 
+import custom.tibame201020.adbOpenCv.opencv.OpenCvService;
+import custom.tibame201020.adbOpenCv.opencv.ocr.CharacterOCR;
+import custom.tibame201020.adbOpenCv.opencv.ocr.PatternOCR;
 import custom.tibame201020.adbOpenCv.script.gearScript.gear.GearDTOs;
+import custom.tibame201020.adbOpenCv.script.gearScript.gear.PurpleGearUpgradeAdapter;
+import custom.tibame201020.adbOpenCv.script.gearScript.gear.RedGearUpgradeAdapter;
 import nu.pattern.OpenCV;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -9,7 +14,13 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 class GearScriptTest {
 
-    final GearScript gearScript = new GearScript();
+    final CharacterOCR characterOCR = new CharacterOCR();
+    final PatternOCR patternOCR = new PatternOCR();
+    final OpenCvService openCvService = new OpenCvService(characterOCR, patternOCR);
+    final PurpleGearUpgradeAdapter purpleGearUpgradeAdapter = new PurpleGearUpgradeAdapter();
+    final RedGearUpgradeAdapter redGearUpgradeAdapter = new RedGearUpgradeAdapter();
+
+    final GearScript gearScript = new GearScript(openCvService, purpleGearUpgradeAdapter, redGearUpgradeAdapter);
 
     @BeforeAll
     static void initial() {

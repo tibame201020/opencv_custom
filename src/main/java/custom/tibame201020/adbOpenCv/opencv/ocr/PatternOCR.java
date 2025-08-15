@@ -2,10 +2,13 @@ package custom.tibame201020.adbOpenCv.opencv.ocr;
 
 import org.opencv.core.*;
 import org.opencv.imgproc.Imgproc;
+import org.springframework.stereotype.Service;
 
 import java.util.Map;
 
+@Service
 public class PatternOCR implements MatchOCRAdaptor {
+
     @Override
     public String executeOCR(String ocrTemplatesPath, Mat targetImg, double threshold) throws Exception {
         var templates = loadTemplateMatMap(ocrTemplatesPath);

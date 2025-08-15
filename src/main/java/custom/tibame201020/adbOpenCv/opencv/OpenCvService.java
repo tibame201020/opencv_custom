@@ -7,11 +7,18 @@ import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
 import org.opencv.imgproc.Imgproc;
+import org.springframework.stereotype.Service;
 
+@Service
 public class OpenCvService {
 
-    private final CharacterOCR characterOCR = new CharacterOCR();
-    private final PatternOCR patternOCR = new PatternOCR();
+    private final CharacterOCR characterOCR;
+    private final PatternOCR patternOCR;
+
+    public OpenCvService(CharacterOCR characterOCR, PatternOCR patternOCR) {
+        this.characterOCR = characterOCR;
+        this.patternOCR = patternOCR;
+    }
 
 
     /**
