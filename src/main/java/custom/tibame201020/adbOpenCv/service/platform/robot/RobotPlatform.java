@@ -1,8 +1,9 @@
-package custom.tibame201020.adbOpenCv.robot;
+package custom.tibame201020.adbOpenCv.service.platform.robot;
 
-import custom.tibame201020.adbOpenCv.opencv.MatUtility;
-import custom.tibame201020.adbOpenCv.opencv.OpenCvDTOs;
-import custom.tibame201020.adbOpenCv.opencv.OpenCvService;
+import custom.tibame201020.adbOpenCv.service.core.opencv.MatUtility;
+import custom.tibame201020.adbOpenCv.service.core.opencv.OpenCvDTOs;
+import custom.tibame201020.adbOpenCv.service.core.opencv.OpenCvService;
+import custom.tibame201020.adbOpenCv.service.platform.PlatformService;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
@@ -15,11 +16,16 @@ import java.util.UUID;
 
 @Service
 @Lazy
-public class RobotService {
+public class RobotPlatform implements PlatformService {
     private final OpenCvService openCvService;
 
-    public RobotService(OpenCvService openCvService) {
+    public RobotPlatform(OpenCvService openCvService) {
         this.openCvService = openCvService;
+    }
+
+    @Override
+    public OpenCvService getOpenCvService() {
+        return openCvService;
     }
 
     /**
@@ -52,5 +58,4 @@ public class RobotService {
 
         return result;
     }
-
 }

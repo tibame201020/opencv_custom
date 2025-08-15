@@ -1,27 +1,23 @@
 package custom.tibame201020.adbOpenCv.script;
 
-import custom.tibame201020.adbOpenCv.adb.AdbServer;
-import custom.tibame201020.adbOpenCv.robot.RobotService;
 import custom.tibame201020.adbOpenCv.script.gearScript.GearScript;
+import custom.tibame201020.adbOpenCv.service.platform.adb.AdbPlatform;
+import custom.tibame201020.adbOpenCv.service.platform.robot.RobotPlatform;
 import org.springframework.stereotype.Component;
 
 @Component
 public class MainScript {
 
+    private final AdbPlatform adbPlatform;
+    private final RobotPlatform robotPlatform;
 
-    private final AdbServer adbServer;
-
-    private final RobotService robotService;
-
-    public MainScript(AdbServer adbServer, RobotService robotService) {
-
-        this.adbServer = adbServer;
-
-        this.robotService = robotService;
+    public MainScript(AdbPlatform adbPlatform, RobotPlatform robotPlatform) {
+        this.adbPlatform = adbPlatform;
+        this.robotPlatform = robotPlatform;
     }
 
     public void execute() throws Exception {
-        GearScript gearScript = new GearScript(adbServer);
+        GearScript gearScript = new GearScript(adbPlatform);
         gearScript.execute();
 
 //        RobotScript robotScript = new RobotScript(robotService);

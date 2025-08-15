@@ -1,4 +1,4 @@
-package custom.tibame201020.adbOpenCv.opencv;
+package custom.tibame201020.adbOpenCv.service.core.opencv;
 
 import org.opencv.core.*;
 import org.opencv.imgcodecs.Imgcodecs;

@@ -1,4 +1,4 @@
-package custom.tibame201020.adbOpenCv.adb;
+package custom.tibame201020.adbOpenCv.service.platform.adb;
 
 import io.micrometer.common.util.StringUtils;
 import org.apache.commons.io.IOUtils;

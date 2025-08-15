@@ -1,10 +1,10 @@
 package custom.tibame201020.adbOpenCv.script.gearScript;
 
-import custom.tibame201020.adbOpenCv.adb.Adb;
-import custom.tibame201020.adbOpenCv.adb.AdbServer;
-import custom.tibame201020.adbOpenCv.opencv.OpenCvService;
-import custom.tibame201020.adbOpenCv.opencv.ocr.CharacterOCR;
-import custom.tibame201020.adbOpenCv.opencv.ocr.PatternOCR;
+import custom.tibame201020.adbOpenCv.service.platform.adb.Adb;
+import custom.tibame201020.adbOpenCv.service.platform.adb.AdbPlatform;
+import custom.tibame201020.adbOpenCv.service.core.opencv.OpenCvService;
+import custom.tibame201020.adbOpenCv.service.core.opencv.ocr.CharacterOCR;
+import custom.tibame201020.adbOpenCv.service.core.opencv.ocr.PatternOCR;
 import custom.tibame201020.adbOpenCv.script.gearScript.gear.GearDTOs;
 import nu.pattern.OpenCV;
 import org.junit.jupiter.api.BeforeAll;
@@ -19,9 +19,9 @@ class GearScriptTest {
     final OpenCvService openCvService = new OpenCvService(characterOCR, patternOCR);
 
     final Adb adb = new Adb();
-    final AdbServer adbServer = new AdbServer(adb, openCvService);
+    final AdbPlatform adbPlatform = new AdbPlatform(adb, openCvService);
 
-    final GearScript gearScript = new GearScript(adbServer);
+    final GearScript gearScript = new GearScript(adbPlatform);
 
     @BeforeAll
     static void initial() {

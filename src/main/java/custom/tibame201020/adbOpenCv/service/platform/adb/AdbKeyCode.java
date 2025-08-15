@@ -1,4 +1,4 @@
-package custom.tibame201020.adbOpenCv.adb;
+package custom.tibame201020.adbOpenCv.service.platform.adb;
 
 /**
  * adb key code enum

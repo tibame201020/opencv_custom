@@ -1,7 +1,7 @@
-package custom.tibame201020.adbOpenCv.opencv;
+package custom.tibame201020.adbOpenCv.service.core.opencv;
 
-import custom.tibame201020.adbOpenCv.opencv.ocr.CharacterOCR;
-import custom.tibame201020.adbOpenCv.opencv.ocr.PatternOCR;
+import custom.tibame201020.adbOpenCv.service.core.opencv.ocr.CharacterOCR;
+import custom.tibame201020.adbOpenCv.service.core.opencv.ocr.PatternOCR;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;

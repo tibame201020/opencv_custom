@@ -1,6 +1,6 @@
-package custom.tibame201020.adbOpenCv.opencv.ocr;
+package custom.tibame201020.adbOpenCv.service.core.opencv.ocr;
 
-import custom.tibame201020.adbOpenCv.opencv.MatUtility;
+import custom.tibame201020.adbOpenCv.service.core.opencv.MatUtility;
 import org.opencv.core.Mat;
 
 import java.nio.file.Files;

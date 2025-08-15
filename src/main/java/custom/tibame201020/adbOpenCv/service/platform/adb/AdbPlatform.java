@@ -1,9 +1,10 @@
-package custom.tibame201020.adbOpenCv.adb;
+package custom.tibame201020.adbOpenCv.service.platform.adb;
 
 
-import custom.tibame201020.adbOpenCv.opencv.MatUtility;
-import custom.tibame201020.adbOpenCv.opencv.OpenCvDTOs;
-import custom.tibame201020.adbOpenCv.opencv.OpenCvService;
+import custom.tibame201020.adbOpenCv.service.core.opencv.MatUtility;
+import custom.tibame201020.adbOpenCv.service.core.opencv.OpenCvDTOs;
+import custom.tibame201020.adbOpenCv.service.core.opencv.OpenCvService;
+import custom.tibame201020.adbOpenCv.service.platform.PlatformService;
 import io.micrometer.common.util.StringUtils;
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
@@ -16,16 +17,17 @@ import java.util.concurrent.TimeUnit;
 
 @Service
 @Lazy
-public class AdbServer {
+public class AdbPlatform implements PlatformService {
 
     private final Adb adb;
     private final OpenCvService openCvService;
 
-    public AdbServer(Adb adb, OpenCvService openCvService) {
+    public AdbPlatform(Adb adb, OpenCvService openCvService) {
         this.adb = adb;
         this.openCvService = openCvService;
     }
 
+    @Override
     public OpenCvService getOpenCvService() {
         return openCvService;
     }

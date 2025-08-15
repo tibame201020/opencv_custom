@@ -1,4 +1,4 @@
-package custom.tibame201020.adbOpenCv.opencv.ocr;
+package custom.tibame201020.adbOpenCv.service.core.opencv.ocr;
 
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;

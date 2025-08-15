@@ -1,12 +1,13 @@
 package custom.tibame201020.adbOpenCv.script.gearScript;
 
-import custom.tibame201020.adbOpenCv.adb.AdbServer;
-import custom.tibame201020.adbOpenCv.opencv.MatUtility;
-import custom.tibame201020.adbOpenCv.opencv.OpenCvDTOs;
-import custom.tibame201020.adbOpenCv.opencv.OpenCvService;
+import custom.tibame201020.adbOpenCv.script.Script;
 import custom.tibame201020.adbOpenCv.script.gearScript.gear.GearDTOs;
 import custom.tibame201020.adbOpenCv.script.gearScript.gear.PurpleGearUpgradeAdapter;
 import custom.tibame201020.adbOpenCv.script.gearScript.gear.RedGearUpgradeAdapter;
+import custom.tibame201020.adbOpenCv.service.core.opencv.MatUtility;
+import custom.tibame201020.adbOpenCv.service.core.opencv.OpenCvDTOs;
+import custom.tibame201020.adbOpenCv.service.core.opencv.OpenCvService;
+import custom.tibame201020.adbOpenCv.service.platform.adb.AdbPlatform;
 import org.opencv.core.Mat;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -18,18 +19,18 @@ import java.util.Map;
 
 @Service
 @Lazy
-public class GearScript {
+public class GearScript implements Script {
 
-    private final AdbServer adbServer;
+    private final AdbPlatform adbPlatform;
     private final OpenCvService openCvService;
     private final PurpleGearUpgradeAdapter purpleGearUpgradeAdapter;
     private final RedGearUpgradeAdapter redGearUpgradeAdapter;
 
     private final Map<String, GearImageDTOs.GearOcr> ocrConfigs = new HashMap<>();
 
-    public GearScript(AdbServer adbServer) {
-        this.adbServer = adbServer;
-        this.openCvService = adbServer.getOpenCvService();
+    public GearScript(AdbPlatform adbPlatform) {
+        this.adbPlatform = adbPlatform;
+        this.openCvService = adbPlatform.getOpenCvService();
         this.purpleGearUpgradeAdapter = new PurpleGearUpgradeAdapter();
         this.redGearUpgradeAdapter = new RedGearUpgradeAdapter();
 
@@ -56,6 +57,7 @@ public class GearScript {
         ocrConfigs.put("4thPropType", new GearImageDTOs.GearOcr("images/gear/prop-type-ocr", new GearImageDTOs.GearRegion(875, 435, 120, 30), 0.85));
     }
 
+    @Override
     public void execute() throws Exception {
 
         var testPath = "images/gear/test-mapping";

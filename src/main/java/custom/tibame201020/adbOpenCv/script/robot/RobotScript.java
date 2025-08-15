@@ -1,27 +1,29 @@
 package custom.tibame201020.adbOpenCv.script.robot;
 
-import custom.tibame201020.adbOpenCv.robot.RobotService;
+import custom.tibame201020.adbOpenCv.script.Script;
+import custom.tibame201020.adbOpenCv.service.platform.robot.RobotPlatform;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 @Component
 @Lazy
-public class RobotScript {
+public class RobotScript implements Script {
 
-    private final RobotService robotService;
+    private final RobotPlatform robotPlatform;
 
-    public RobotScript(RobotService robotService) {
-        this.robotService = robotService;
+    public RobotScript(RobotPlatform robotPlatform) {
+        this.robotPlatform = robotPlatform;
     }
 
+    @Override
     public void execute() throws Exception {
         System.setProperty("java.awt.headless", "false");
 
         var testSnapshot = "robot-snapshot.png";
-        var snapshotPath = robotService.snapshot(testSnapshot);
+        var snapshotPath = robotPlatform.snapshot(testSnapshot);
         System.err.println(snapshotPath);
 
-        var result = robotService.findImage(testSnapshot);
+        var result = robotPlatform.findImage(testSnapshot);
         System.err.printf("x: %s, y: %s", result.point().x, result.point().x);
     }
 }
