@@ -5,7 +5,6 @@ import java.util.List;
 
 public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
 
-
     @Override
     public boolean isOkToUpgrade(GearDTOs.Gear gear) {
         GearDTOs.GearSet gearSet = gear.metadata().set();
@@ -21,19 +20,24 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
         if (!gearPropNeeded) {
             return false;
         }
+
         int score = gear.metadata().score();
+        var calcScore = gearProp.calcScore();
         int gearLevel = gear.metadata().level();
-        if (gearLevel == 0) {
+
+        if (gearLevel >= 0 && gearLevel < 9) {
             return score >= 27;
         }
-        if (gearLevel > 0 && gearLevel < 9) {
-            return score >= 40;
-        }
-        if (gearLevel >= 9 && gearLevel < 15) {
-            return score >= 55;
+
+        if (gearLevel >= 9 && gearLevel < 12) {
+            return calcScore >= 50;
         }
 
-        return score >= 80;
+        if (gearLevel >= 12) {
+            return calcScore >= 50;
+        }
+
+        return score >= 75 && calcScore >= 60;
     }
 
 
@@ -52,9 +56,11 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
         if (!gearPropNeeded) {
             return false;
         }
-        int score = gear.metadata().score();
 
-        return score >= 80;
+        int score = gear.metadata().score();
+        var calcScore = gearProp.calcScore();
+
+        return score >= 75 && calcScore >= 60;
     }
 
     boolean mainPropRequired(GearDTOs.GearSet gearSet, GearDTOs.GearType gearType, GearDTOs.GearMainProp mainProp) {
@@ -80,29 +86,12 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
         List<GearDTOs.GearPropBelong> belongs = detectGearBelong(gearProp);
 
         return switch (gearSet) {
-            case ATTACK -> belongs.contains(GearDTOs.GearPropBelong.DAMAGE);
-            case DESTRUCTION ->
-                    belongs.contains(GearDTOs.GearPropBelong.DAMAGE) || belongs.contains(GearDTOs.GearPropBelong.TANK_DAMAGE);
-            case DEFENSE -> true;
-            case HEALTH -> true;
-            case HIT -> true;
-            case RESISTANCE -> true;
-            case CRITICAL ->
-                    belongs.contains(GearDTOs.GearPropBelong.DAMAGE) || belongs.contains(GearDTOs.GearPropBelong.TANK_DAMAGE);
-            case SPEED -> true;
-            case REVENGE -> true;
-            case LIFE_STEAL -> true;
-            case COUNTER ->
-                    belongs.contains(GearDTOs.GearPropBelong.DAMAGE) || belongs.contains(GearDTOs.GearPropBelong.TANK_DAMAGE);
-            case DUAL_ATTACK -> true;
-            case IMMUNITY -> true;
-            case RAGE -> belongs.contains(GearDTOs.GearPropBelong.DAMAGE);
-            case PENETRATION ->
-                    belongs.contains(GearDTOs.GearPropBelong.DAMAGE) || belongs.contains(GearDTOs.GearPropBelong.TANK_DAMAGE);
-            case INJURY ->
+            case ATTACK, RAGE, TORRENT -> belongs.contains(GearDTOs.GearPropBelong.DAMAGE);
+            case DESTRUCTION, CRITICAL, COUNTER, PENETRATION, INJURY ->
                     belongs.contains(GearDTOs.GearPropBelong.DAMAGE) || belongs.contains(GearDTOs.GearPropBelong.TANK_DAMAGE);
             case PROTECTION -> belongs.contains(GearDTOs.GearPropBelong.TANK);
-            case TORRENT -> belongs.contains(GearDTOs.GearPropBelong.DAMAGE);
+            case DEFENSE, HEALTH, HIT, RESISTANCE, SPEED, REVENGE, LIFE_STEAL, DUAL_ATTACK, IMMUNITY ->
+                    !belongs.isEmpty();
         };
     }
 

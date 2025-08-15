@@ -17,20 +17,22 @@ public class PurpleGearUpgradeAdapter implements GearUpgradeAdapter {
         }
 
         int gearLevel = gear.metadata().level();
-
         int speed = gearProp.speed();
 
-        if (gearLevel == 0) {
+        if (gearLevel >= 0 && gearLevel < 3) {
+            return speed >= 2;
+        }
+        if (gearLevel >= 3 && gearLevel < 6) {
             return speed >= 3;
         }
-        if (gearLevel < 3) {
-            return speed >= 4;
+        if (gearLevel >= 6 && gearLevel < 9) {
+            return speed >= 8;
         }
-        if (gearLevel < 9) {
-            return speed >= 5;
+        if (gearLevel >= 9 && gearLevel < 12) {
+            return speed >= 12;
         }
-        if (gearLevel < 15) {
-            return speed >= 10;
+        if (gearLevel >= 12 && gearLevel < 15) {
+            return speed >= 12;
         }
 
         return speed >= 18;

@@ -56,9 +56,9 @@ public class OpenCvService {
      * ocr characters from source image mat by region
      *
      * @param ocrTemplatesPath ocr templates base path
-     * @param source try ocr source image mat
-     * @param ocrRegion ocr region
-     * @param threshold threshold
+     * @param source           try ocr source image mat
+     * @param ocrRegion        ocr region
+     * @param threshold        threshold
      * @return ocr result
      * @throws Exception e
      */
@@ -73,9 +73,9 @@ public class OpenCvService {
      * ocr pattern from source image path by region
      *
      * @param ocrTemplatesPath ocr templates base path
-     * @param sourcePath  try ocr source image path
-     * @param ocrRegion ocr region
-     * @param threshold threshold
+     * @param sourcePath       try ocr source image path
+     * @param ocrRegion        ocr region
+     * @param threshold        threshold
      * @return ocr result
      * @throws Exception e
      */
@@ -89,9 +89,9 @@ public class OpenCvService {
      * ocr pattern from source image mat by region
      *
      * @param ocrTemplatesPath ocr templates base path
-     * @param source  try ocr source image mat
-     * @param ocrRegion ocr region
-     * @param threshold threshold
+     * @param source           try ocr source image mat
+     * @param ocrRegion        ocr region
+     * @param threshold        threshold
      * @return ocr result
      * @throws Exception e
      */

@@ -79,7 +79,7 @@ public class MatUtility {
      * slice mat from source by region
      *
      * @param source source mat
-     * @param region     region
+     * @param region region
      * @return sliced mat
      */
     public static Mat sliceRegionMat(Mat source, OpenCvDTOs.OcrRegion region) {

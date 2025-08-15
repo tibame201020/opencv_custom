@@ -4,6 +4,8 @@ import custom.tibame201020.adbOpenCv.opencv.MatUtility;
 import custom.tibame201020.adbOpenCv.opencv.OpenCvDTOs;
 import custom.tibame201020.adbOpenCv.opencv.OpenCvService;
 import custom.tibame201020.adbOpenCv.script.gearScript.gear.GearDTOs;
+import custom.tibame201020.adbOpenCv.script.gearScript.gear.PurpleGearUpgradeAdapter;
+import custom.tibame201020.adbOpenCv.script.gearScript.gear.RedGearUpgradeAdapter;
 import org.opencv.core.Mat;
 
 import java.nio.file.Files;
@@ -13,38 +15,39 @@ import java.util.Map;
 
 public class GearScript {
 
-    OpenCvService openCvService = new OpenCvService();
+    final OpenCvService openCvService = new OpenCvService();
+    final PurpleGearUpgradeAdapter purpleGearUpgradeAdapter = new PurpleGearUpgradeAdapter();
+    final RedGearUpgradeAdapter redGearUpgradeAdapter = new RedGearUpgradeAdapter();
 
-    private final Map<String, GearIDTOs.GearOcr> ocrConfigs = new HashMap<>();
+    private final Map<String, GearImageDTOs.GearOcr> ocrConfigs = new HashMap<>();
 
     public GearScript() {
         // Initialize OCR configurations
         // Main and Sub-properties values
-        ocrConfigs.put("mainProp", new GearIDTOs.GearOcr("img/gear/number-ocr/main-ocr", new GearIDTOs.GearRegion(1160, 330, 70, 30), 0.8));
-        ocrConfigs.put("1stProp", new GearIDTOs.GearOcr("img/gear/number-ocr/ocr", new GearIDTOs.GearRegion(1160, 370, 70, 25), 0.8));
-        ocrConfigs.put("2ndProp", new GearIDTOs.GearOcr("img/gear/number-ocr/ocr", new GearIDTOs.GearRegion(1160, 390, 70, 25), 0.8));
-        ocrConfigs.put("3rdProp", new GearIDTOs.GearOcr("img/gear/number-ocr/ocr", new GearIDTOs.GearRegion(1160, 415, 70, 25), 0.8));
-        ocrConfigs.put("4thProp", new GearIDTOs.GearOcr("img/gear/number-ocr/ocr", new GearIDTOs.GearRegion(1160, 435, 70, 25), 0.8));
-        ocrConfigs.put("score", new GearIDTOs.GearOcr("img/gear/number-ocr/score-ocr", new GearIDTOs.GearRegion(1160, 470, 70, 30), 0.85));
+        ocrConfigs.put("mainProp", new GearImageDTOs.GearOcr("img/gear/number-ocr/main-ocr", new GearImageDTOs.GearRegion(1160, 330, 70, 30), 0.8));
+        ocrConfigs.put("1stProp", new GearImageDTOs.GearOcr("img/gear/number-ocr/ocr", new GearImageDTOs.GearRegion(1160, 370, 70, 25), 0.8));
+        ocrConfigs.put("2ndProp", new GearImageDTOs.GearOcr("img/gear/number-ocr/ocr", new GearImageDTOs.GearRegion(1160, 390, 70, 25), 0.8));
+        ocrConfigs.put("3rdProp", new GearImageDTOs.GearOcr("img/gear/number-ocr/ocr", new GearImageDTOs.GearRegion(1160, 415, 70, 25), 0.8));
+        ocrConfigs.put("4thProp", new GearImageDTOs.GearOcr("img/gear/number-ocr/ocr", new GearImageDTOs.GearRegion(1160, 435, 70, 25), 0.8));
+        ocrConfigs.put("score", new GearImageDTOs.GearOcr("img/gear/number-ocr/score-ocr", new GearImageDTOs.GearRegion(1160, 470, 70, 30), 0.85));
 
         // Gear metadata
-        ocrConfigs.put("gearSet", new GearIDTOs.GearOcr("img/gear/gear-set-ocr", new GearIDTOs.GearRegion(900, 550, 100, 40), 0.95));
-        ocrConfigs.put("gearRarity", new GearIDTOs.GearOcr("img/gear/gear-rarity-ocr", new GearIDTOs.GearRegion(972, 180, 35, 23), 0.85));
-        ocrConfigs.put("gearType", new GearIDTOs.GearOcr("img/gear/gear-type-ocr", new GearIDTOs.GearRegion(1007, 180, 35, 23), 0.85));
-        ocrConfigs.put("gearLevel", new GearIDTOs.GearOcr("img/gear/gear-level-ocr", new GearIDTOs.GearRegion(935, 167, 35, 25), 0.99));
+        ocrConfigs.put("gearSet", new GearImageDTOs.GearOcr("img/gear/gear-set-ocr", new GearImageDTOs.GearRegion(900, 550, 100, 40), 0.95));
+        ocrConfigs.put("gearRarity", new GearImageDTOs.GearOcr("img/gear/gear-rarity-ocr", new GearImageDTOs.GearRegion(972, 180, 35, 23), 0.85));
+        ocrConfigs.put("gearType", new GearImageDTOs.GearOcr("img/gear/gear-type-ocr", new GearImageDTOs.GearRegion(1007, 180, 35, 23), 0.85));
+        ocrConfigs.put("gearLevel", new GearImageDTOs.GearOcr("img/gear/gear-level-ocr", new GearImageDTOs.GearRegion(935, 167, 35, 25), 0.99));
 
         // Main and Sub-properties types
-        ocrConfigs.put("mainPropType", new GearIDTOs.GearOcr("img/gear/main-prop-type-ocr", new GearIDTOs.GearRegion(880, 327, 120, 35), 0.85));
-        ocrConfigs.put("1stPropType", new GearIDTOs.GearOcr("img/gear/prop-type-ocr", new GearIDTOs.GearRegion(875, 369, 120, 30), 0.85));
-        ocrConfigs.put("2ndPropType", new GearIDTOs.GearOcr("img/gear/prop-type-ocr", new GearIDTOs.GearRegion(875, 389, 120, 30), 0.85));
-        ocrConfigs.put("3rdPropType", new GearIDTOs.GearOcr("img/gear/prop-type-ocr", new GearIDTOs.GearRegion(875, 410, 120, 30), 0.85));
-        ocrConfigs.put("4thPropType", new GearIDTOs.GearOcr("img/gear/prop-type-ocr", new GearIDTOs.GearRegion(875, 435, 120, 30), 0.85));
+        ocrConfigs.put("mainPropType", new GearImageDTOs.GearOcr("img/gear/main-prop-type-ocr", new GearImageDTOs.GearRegion(880, 327, 120, 35), 0.85));
+        ocrConfigs.put("1stPropType", new GearImageDTOs.GearOcr("img/gear/prop-type-ocr", new GearImageDTOs.GearRegion(875, 369, 120, 30), 0.85));
+        ocrConfigs.put("2ndPropType", new GearImageDTOs.GearOcr("img/gear/prop-type-ocr", new GearImageDTOs.GearRegion(875, 389, 120, 30), 0.85));
+        ocrConfigs.put("3rdPropType", new GearImageDTOs.GearOcr("img/gear/prop-type-ocr", new GearImageDTOs.GearRegion(875, 410, 120, 30), 0.85));
+        ocrConfigs.put("4thPropType", new GearImageDTOs.GearOcr("img/gear/prop-type-ocr", new GearImageDTOs.GearRegion(875, 435, 120, 30), 0.85));
     }
-
 
     public void execute() throws Exception {
 
-        var testPath = "img/gear/test-mapping/level";
+        var testPath = "img/gear/test-mapping";
 
         try (var paths = Files.walk(Path.of(testPath))) {
             paths.forEach(path -> {
@@ -55,7 +58,14 @@ public class GearScript {
                 var title = path.getFileName().toString();
 
                 try {
-                   var gear = detectGear(fileFullPath, title);
+                    var gear = detectGear(fileFullPath, title);
+                    var action = judgmentGear(gear);
+
+                    System.err.println("-------------------------------");
+                    System.err.println(gear.metadata());
+                    System.err.println(gear.prop());
+                    System.err.println(action);
+
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
@@ -78,7 +88,32 @@ public class GearScript {
 //        }
     }
 
-    GearDTOs.Gear detectGear(String targetGearImagePath, String title) throws  Exception {
+    GearDTOs.GearAction judgmentGear(GearDTOs.Gear gear) {
+        var rarity = gear.metadata().rarity();
+        var level = gear.metadata().level();
+
+        return switch (rarity) {
+            case GearDTOs.GearRarity.HERO -> {
+                var result = level == 15 ? purpleGearUpgradeAdapter.isOkToStore(gear) : purpleGearUpgradeAdapter.isOkToUpgrade(gear);
+                yield result ? GearDTOs.GearAction.UPGRADE : GearDTOs.GearAction.SELL;
+            }
+            case GearDTOs.GearRarity.LEGEND -> {
+                var result = level == 15 ? redGearUpgradeAdapter.isOkToStore(gear) : redGearUpgradeAdapter.isOkToUpgrade(gear);
+                yield result ? GearDTOs.GearAction.UPGRADE : GearDTOs.GearAction.SELL;
+            }
+            default -> GearDTOs.GearAction.EXTRACTION;
+        };
+    }
+
+    /**
+     * detect gear metadata prop from image
+     *
+     * @param targetGearImagePath gear image path
+     * @param title               title
+     * @return gear record
+     * @throws Exception e
+     */
+    GearDTOs.Gear detectGear(String targetGearImagePath, String title) throws Exception {
         Mat source = MatUtility.getMatFromFileWithMask(targetGearImagePath);
 
         String gearSetOcr = ocrPattern(ocrConfigs.get("gearSet"), source);
@@ -102,20 +137,32 @@ public class GearScript {
         String _4thType = ocrPattern(ocrConfigs.get("4thPropType"), source);
         String _4th = ocrCharacter(ocrConfigs.get("4thProp"), source);
 
-        var metadata = detectGearMetadata(gearSetOcr, gearRarityOcr, gearTypeOcr, gearLevelOcr, mainType, main, scoreOcr);
-        var prop = detectGearProp(mainType, main, _1stType, _1st, _2ndType, _2nd, _3rdType, _3rd, _4thType, _4th);
+        var metadata = convertGearMetadata(gearSetOcr, gearRarityOcr, gearTypeOcr, gearLevelOcr, mainType, main, scoreOcr);
+        var prop = convertGearProp(mainType, main, _1stType, _1st, _2ndType, _2nd, _3rdType, _3rd, _4thType, _4th);
 
-        var gear = new GearDTOs.Gear(metadata, prop);
-        System.err.println(gear.metadata());
-        System.err.println(gear.prop());
-
-        return gear;
+        return new GearDTOs.Gear(metadata, prop);
     }
 
-    GearDTOs.GearMetadata detectGearMetadata(String gearSetOcr, String gearRarityOcr, String gearTypeOcr, String gearLevelOcr, String mainType, String main, String scoreOcr) {
+    /**
+     * convert ocr results to gear metadata
+     *
+     * @param gearSetOcr    gear set ocr string
+     * @param gearRarityOcr gear rarity ocr string
+     * @param gearTypeOcr   gear type ocr string
+     * @param gearLevelOcr  gear level ocr string
+     * @param mainType      gear main type ocr string
+     * @param main          gear main ocr string
+     * @param scoreOcr      gear score ocr string
+     * @return gear metadata record
+     */
+    GearDTOs.GearMetadata convertGearMetadata(String gearSetOcr, String gearRarityOcr, String gearTypeOcr, String gearLevelOcr, String mainType, String main, String scoreOcr) {
         GearDTOs.GearSet gearSet = GearDTOs.GearSet.valueOf(gearSetOcr);
+
+        gearRarityOcr = gearRarityOcr.isBlank() ? "OTHER" : gearRarityOcr;
         GearDTOs.GearRarity gearRarity = GearDTOs.GearRarity.valueOf(gearRarityOcr);
+
         GearDTOs.GearType gearType = GearDTOs.GearType.valueOf(gearTypeOcr);
+
         gearLevelOcr = gearLevelOcr.isBlank() ? "0" : gearLevelOcr;
         int gearLevel = Integer.parseInt(gearLevelOcr);
 
@@ -134,7 +181,22 @@ public class GearScript {
         return new GearDTOs.GearMetadata(gearSet, gearRarity, gearType, gearLevel, gearMainProp, Integer.parseInt(scoreOcr));
     }
 
-    GearDTOs.GearProp detectGearProp(String mainType, String main, String _1stType, String _1st, String _2ndType, String _2nd, String _3rdType, String _3rd, String _4thType, String _4th) {
+    /**
+     * convert ocr results to gear prop record
+     *
+     * @param mainType gear main type ocr string
+     * @param main     gear main ocr string
+     * @param _1stType gear _1st type ocr string
+     * @param _1st     gear _1st ocr string
+     * @param _2ndType gear _2nd type ocr string
+     * @param _2nd     gear _2nd ocr string
+     * @param _3rdType gear _3rd type ocr string
+     * @param _3rd     gear _3rd ocr string
+     * @param _4thType gear _4th type ocr string
+     * @param _4th     gear _4th ocr string
+     * @return gear prop record
+     */
+    GearDTOs.GearProp convertGearProp(String mainType, String main, String _1stType, String _1st, String _2ndType, String _2nd, String _3rdType, String _3rd, String _4thType, String _4th) {
         class GearPropsAccumulator {
             int attackPercent = 0;
             int flatAttack = 0;
@@ -161,39 +223,39 @@ public class GearScript {
                 switch (type) {
                     case "atk":
                         if (value.contains("%")) {
-                            this.attackPercent += parsedValue;
+                            this.attackPercent = parsedValue;
                         } else {
-                            this.flatAttack += parsedValue;
+                            this.flatAttack = parsedValue;
                         }
                         break;
                     case "life":
                         if (value.contains("%")) {
-                            this.lifePercent += parsedValue;
+                            this.lifePercent = parsedValue;
                         } else {
-                            this.flatLife += parsedValue;
+                            this.flatLife = parsedValue;
                         }
                         break;
                     case "def":
                         if (value.contains("%")) {
-                            this.defensePercent += parsedValue;
+                            this.defensePercent = parsedValue;
                         } else {
-                            this.flatDefense += parsedValue;
+                            this.flatDefense = parsedValue;
                         }
                         break;
                     case "speed":
-                        this.speed += parsedValue;
+                        this.speed = parsedValue;
                         break;
                     case "cri-rate":
-                        this.criticalRate += parsedValue;
+                        this.criticalRate = parsedValue;
                         break;
                     case "cri-damage":
-                        this.criticalDamage += parsedValue;
+                        this.criticalDamage = parsedValue;
                         break;
                     case "effect-hit":
-                        this.effectiveness += parsedValue;
+                        this.effectiveness = parsedValue;
                         break;
                     case "effect-resistance":
-                        this.effectResist += parsedValue;
+                        this.effectResist = parsedValue;
                         break;
                     default:
                         System.err.println("Unknown property type: " + type);
@@ -223,15 +285,15 @@ public class GearScript {
         );
     }
 
-    String ocrPattern(GearIDTOs.GearOcr gearOcr, Mat source) throws Exception {
+    String ocrPattern(GearImageDTOs.GearOcr gearOcr, Mat source) throws Exception {
         return openCvService.ocrPattern(gearOcr.ocrTemplatesPath(), source, convert2OcrRegion(gearOcr.gearRegion()), gearOcr.threshold());
     }
 
-    String ocrCharacter(GearIDTOs.GearOcr gearOcr, Mat source) throws Exception {
+    String ocrCharacter(GearImageDTOs.GearOcr gearOcr, Mat source) throws Exception {
         return openCvService.ocrCharacter(gearOcr.ocrTemplatesPath(), source, convert2OcrRegion(gearOcr.gearRegion()), gearOcr.threshold());
     }
 
-    OpenCvDTOs.OcrRegion convert2OcrRegion(GearIDTOs.GearRegion gearRegion) {
+    OpenCvDTOs.OcrRegion convert2OcrRegion(GearImageDTOs.GearRegion gearRegion) {
         return new OpenCvDTOs.OcrRegion(
                 gearRegion.x(),
                 gearRegion.y(),

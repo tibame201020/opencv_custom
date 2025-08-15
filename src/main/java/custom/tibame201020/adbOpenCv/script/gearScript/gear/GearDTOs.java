@@ -4,13 +4,26 @@ public class GearDTOs {
 
     /**
      * gear wrapper
+     *
      * @param metadata gear metadata
-     * @param prop gear prop
+     * @param prop     gear prop
      */
     public record Gear(
             GearMetadata metadata,
             GearProp prop
-    ) {}
+    ) {
+        public double highestScore() {
+            var weightedScore = switch (metadata.level) {
+                case 6 -> prop.calcScore() + 24;
+                case 9 -> prop.calcScore() + 16;
+                case 12 -> prop.calcScore() + 8;
+                case 15 -> prop.calcScore() + 0;
+                default -> throw new RuntimeException("not valid level: " + metadata.level);
+            };
+
+            return weightedScore * 1.2 + 27;
+        }
+    }
 
     /**
      * gear main prop enum
@@ -55,25 +68,31 @@ public class GearDTOs {
             int effectResist,
             // 效果命中
             int effectiveness
-    ) {}
+    ) {
+        public double calcScore() {
+            return attackPercent + defensePercent + lifePercent + effectiveness + effectResist + speed * 2 + criticalRate * 1.5 + criticalDamage * 1.125;
+        }
+    }
 
     /**
      * gear metadata
-     * @param set gear set
-     * @param rarity gear rarity
-     * @param type gear type
-     * @param level gear level
+     *
+     * @param set      gear set
+     * @param rarity   gear rarity
+     * @param type     gear type
+     * @param level    gear level
      * @param mainProp main prop
-     * @param score score
+     * @param score    score
      */
-    public record GearMetadata (
+    public record GearMetadata(
             GearSet set,
             GearRarity rarity,
             GearType type,
             int level,
             GearMainProp mainProp,
             int score
-    ) {}
+    ) {
+    }
 
     /**
      * 套裝效果 (Set Effects)
@@ -82,7 +101,7 @@ public class GearDTOs {
         /**
          * 攻擊 [4]
          */
-        ATTACK ,
+        ATTACK,
         DESTRUCTION,    // 破滅 [4]
         DEFENSE,        // 防禦 [2]
         HEALTH,         // 生命 [2]
@@ -99,7 +118,7 @@ public class GearDTOs {
         PENETRATION,    // 貫穿 [2]
         INJURY,         // 傷口 [4]
         PROTECTION,     // 守護 [4]
-        TORRENT;         // 激流 [2]
+        TORRENT         // 激流 [2]
     }
 
     /**
@@ -121,7 +140,7 @@ public class GearDTOs {
      * gear rarity enum
      */
     public enum GearRarity {
-        HERO, LEGEND
+        LEGEND, HERO, OTHER
     }
 
     /**
@@ -241,6 +260,21 @@ public class GearDTOs {
         };
 
         public abstract boolean isGearPropBelong(GearProp gearProp);
+    }
+
+    public enum GearAction {
+        /**
+         * 強化
+         */
+        UPGRADE,
+        /**
+         * sell
+         */
+        SELL,
+        /**
+         * 翠取
+         */
+        EXTRACTION;
     }
 
 }
