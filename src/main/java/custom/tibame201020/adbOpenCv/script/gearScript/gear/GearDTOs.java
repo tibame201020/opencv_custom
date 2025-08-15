@@ -1,8 +1,11 @@
 package custom.tibame201020.adbOpenCv.script.gearScript.gear;
 
-import java.util.List;
-
 public class GearDTOs {
+
+    public record Gear(
+            GearMetadata metadata,
+            GearProp gearProp
+    ) {}
 
     public enum GearMainProp {
         ATK_PERCENT,
@@ -43,11 +46,18 @@ public class GearDTOs {
             // 效果抵抗
             int effectResist,
             // 效果命中
-            int effectiveness,
-            int score,
-            GearMainProp mainProp
+            int effectiveness
     ) {
     }
+
+    public record GearMetadata (
+            GearSet gearSet,
+            GearRarity gearRarity,
+            GearType gearType,
+            int gearLevel,
+            GearMainProp mainProp,
+            int score
+    ) {}
 
     /**
      * 套裝效果 (Set Effects)
@@ -56,12 +66,7 @@ public class GearDTOs {
         /**
          * 攻擊 [4]
          */
-        ATTACK {
-            @Override
-            public boolean belongRequired(List<GearPropBelong> belongs) {
-                return belongs.contains(GearPropBelong.DAMAGE);
-            }
-        },
+        ATTACK ,
         DESTRUCTION,    // 破滅 [4]
         DEFENSE,        // 防禦 [2]
         HEALTH,         // 生命 [2]
@@ -79,10 +84,6 @@ public class GearDTOs {
         INJURY,         // 傷口 [4]
         PROTECTION,     // 守護 [4]
         TORRENT;         // 激流 [2]
-
-        public boolean belongRequired(List<GearPropBelong> belongs) {
-            return !belongs.isEmpty();
-        }
     }
 
     public enum GearSetType {
@@ -92,6 +93,10 @@ public class GearDTOs {
 
     public enum GearType {
         WEAPON, HELMET, ARMOR, NECKLACE, RING, SHOES
+    }
+
+    public enum GearRarity {
+        HERO, LEGEND
     }
 
     public enum GearPropBelong {

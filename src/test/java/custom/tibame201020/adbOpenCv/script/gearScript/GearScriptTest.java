@@ -17,14 +17,13 @@ class GearScriptTest {
     }
 
     @Test
-    void detectGear_gear1() throws Exception {
+    void detectGear_gearProp1() throws Exception {
         var testOcr = "img/gear/test-mapping/gear1.png";
         var title = "gear1";
 
-        
         var expect = new GearDTOs.GearProp(
                 17, // attackPercent
-                0,  // flatAttack
+                515,  // flatAttack
                 0,  // lifePercent
                 0,  // flatLife
                 0,  // defensePercent
@@ -33,19 +32,17 @@ class GearScriptTest {
                 15, // criticalDamage
                 17, // speed
                 0,  // effectResist
-                0,  // effectiveness
-                103, // score
-                GearDTOs.GearMainProp.ATK_FLAT
+                0  // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGearProp(testOcr, title);
 
         assertThat(result)
                 .isEqualTo(expect);
     }
 
     @Test
-    void detectGear_gear2() throws Exception {
+    void detectGear_gearProp2() throws Exception {
         var testOcr = "img/gear/test-mapping/gear2.png";
         var title = "gear2";
 
@@ -53,26 +50,24 @@ class GearScriptTest {
                 9,  // attackPercent
                 0,  // flatAttack
                 31, // lifePercent
-                0,  // flatLife
+                2765,  // flatLife
                 0,  // defensePercent
                 0,  // flatDefense
                 11, // criticalRate
                 0,  // criticalDamage
                 8,  // speed
                 0,  // effectResist
-                0,  // effectiveness
-                99, // score
-                GearDTOs.GearMainProp.LIFE_FLAT
+                0  // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGearProp(testOcr, title);
 
         assertThat(result)
                 .isEqualTo(expect);
     }
 
     @Test
-    void detectGear_gear3() throws Exception {
+    void detectGear_gearProp3() throws Exception {
         var testOcr = "img/gear/test-mapping/gear3.png";
         var title = "gear3";
 
@@ -82,30 +77,28 @@ class GearScriptTest {
                 23, // lifePercent
                 0,  // flatLife
                 25, // defensePercent
-                0,  // flatDefense
+                310,  // flatDefense
                 0,  // criticalRate
                 0,  // criticalDamage
                 8,  // speed
                 0,  // effectResist
-                8,  // effectiveness
-                98, // score
-                GearDTOs.GearMainProp.DEF_FLAT
+                8  // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGearProp(testOcr, title);
 
         assertThat(result)
                 .isEqualTo(expect);
     }
 
     @Test
-    void detectGear_gear4() throws Exception {
+    void detectGear_gearProp4() throws Exception {
         var testOcr = "img/gear/test-mapping/gear4.png";
         var title = "gear4";
 
         var expect = new GearDTOs.GearProp(
                 8,  // attackPercent
-                0,  // flatAttack
+                100,  // flatAttack
                 0,  // lifePercent
                 0,  // flatLife
                 0,  // defensePercent
@@ -114,19 +107,17 @@ class GearScriptTest {
                 7,  // criticalDamage
                 0,  // speed
                 0,  // effectResist
-                8,  // effectiveness
-                28, // score
-                GearDTOs.GearMainProp.ATK_FLAT
+                8  // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGearProp(testOcr, title);
 
         assertThat(result)
                 .isEqualTo(expect);
     }
 
     @Test
-    void detectGear_gear5() throws Exception {
+    void detectGear_gearProp5() throws Exception {
         var testOcr = "img/gear/test-mapping/gear5.png";
         var title = "gear5";
 
@@ -139,21 +130,19 @@ class GearScriptTest {
                 0,  // flatDefense
                 4,  // criticalRate
                 6,  // criticalDamage
-                0,  // speed
+                8,  // speed
                 7,  // effectResist
-                0,  // effectiveness
-                32, // score
-                GearDTOs.GearMainProp.SPEED
+                0  // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGearProp(testOcr, title);
 
         assertThat(result)
                 .isEqualTo(expect);
     }
 
     @Test
-    void detectGear_gear6() throws Exception {
+    void detectGear_gearProp6() throws Exception {
         var testOcr = "img/gear/test-mapping/gear6.png";
         var title = "gear6";
 
@@ -163,24 +152,22 @@ class GearScriptTest {
                 16, // lifePercent
                 0,  // flatLife
                 0,  // defensePercent
-                0,  // flatDefense
+                310,  // flatDefense
                 16, // criticalRate
                 13, // criticalDamage
                 8,  // speed
                 0,  // effectResist
-                0,  // effectiveness
-                98, // score
-                GearDTOs.GearMainProp.DEF_FLAT
+                0  // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGearProp(testOcr, title);
 
         assertThat(result)
                 .isEqualTo(expect);
     }
 
     @Test
-    void detectGear_gear7() throws Exception {
+    void detectGear_gearProp7() throws Exception {
         var testOcr = "img/gear/test-mapping/gear7.png";
         var title = "gear7";
 
@@ -190,24 +177,22 @@ class GearScriptTest {
                 0,    // lifePercent
                 542,  // flatLife
                 0,    // defensePercent
-                0,    // flatDefense
+                300,    // flatDefense
                 0,    // criticalRate
                 23,   // criticalDamage
                 4,    // speed
                 0,    // effectResist
-                6,    // effectiveness
-                76,   // score
-                GearDTOs.GearMainProp.DEF_FLAT
+                6    // effectivenessT
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGearProp(testOcr, title);
 
         assertThat(result)
                 .isEqualTo(expect);
     }
 
     @Test
-    void detectGear_gear8() throws Exception {
+    void detectGear_gearProp8() throws Exception {
         var testOcr = "img/gear/test-mapping/gear8.png";
         var title = "gear8";
 
@@ -216,30 +201,28 @@ class GearScriptTest {
                 44, // flatAttack
                 0,  // lifePercent
                 0,  // flatLife
-                0,  // defensePercent
+                60,  // defensePercent
                 0,  // flatDefense
                 0,  // criticalRate
                 0,  // criticalDamage
                 7,  // speed
                 0,  // effectResist
-                25, // effectiveness
-                76, // score
-                GearDTOs.GearMainProp.DEF_PERCENT
+                25 // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGearProp(testOcr, title);
 
         assertThat(result)
                 .isEqualTo(expect);
     }
 
     @Test
-    void detectGear_gear9() throws Exception {
+    void detectGear_gearProp9() throws Exception {
         var testOcr = "img/gear/test-mapping/gear9.png";
         var title = "gear9";
 
         var expect = new GearDTOs.GearProp(
-                0,   // attackPercent
+                60,   // attackPercent
                 155, // flatAttack
                 0,   // lifePercent
                 390, // flatLife
@@ -249,19 +232,17 @@ class GearScriptTest {
                 4,   // criticalDamage
                 7,   // speed
                 0,   // effectResist
-                0,   // effectiveness
-                65,  // score
-                GearDTOs.GearMainProp.ATK_PERCENT
+                0   // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGearProp(testOcr, title);
 
         assertThat(result)
                 .isEqualTo(expect);
     }
 
     @Test
-    void detectGear_gear10() throws Exception {
+    void detectGear_gearProp10() throws Exception {
         var testOcr = "img/gear/test-mapping/gear10.png";
         var title = "gear10";
 
@@ -271,30 +252,28 @@ class GearScriptTest {
                 6,  // lifePercent
                 0,  // flatLife
                 8,  // defensePercent
-                0,  // flatDefense
+                60,  // flatDefense
                 0,  // criticalRate
                 0,  // criticalDamage
                 4,  // speed
                 7,  // effectResist
-                0,  // effectiveness
-                34, // score
-                GearDTOs.GearMainProp.DEF_FLAT
+                0  // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGearProp(testOcr, title);
 
         assertThat(result)
                 .isEqualTo(expect);
     }
 
     @Test
-    void detectGear_gear11() throws Exception {
+    void detectGear_gearProp11() throws Exception {
         var testOcr = "img/gear/test-mapping/gear11.png";
         var title = "gear11";
 
         var expect = new GearDTOs.GearProp(
                 6,  // attackPercent
-                0,  // flatAttack
+                100,  // flatAttack
                 0,  // lifePercent
                 0,  // flatLife
                 0,  // defensePercent
@@ -303,19 +282,17 @@ class GearScriptTest {
                 0,  // criticalDamage
                 3,  // speed
                 0,  // effectResist
-                8,  // effectiveness
-                32, // score
-                GearDTOs.GearMainProp.ATK_FLAT
+                8  // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGearProp(testOcr, title);
 
         assertThat(result)
                 .isEqualTo(expect);
     }
 
     @Test
-    void detectGear_gear12() throws Exception {
+    void detectGear_gearProp12() throws Exception {
         var testOcr = "img/gear/test-mapping/gear12.png";
         var title = "gear12";
 
@@ -328,21 +305,19 @@ class GearScriptTest {
                 0,  // flatDefense
                 6,  // criticalRate
                 21, // criticalDamage
-                0,  // speed
+                45,  // speed
                 0,  // effectResist
-                0,  // effectiveness
-                102, // score
-                GearDTOs.GearMainProp.SPEED
+                0  // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGearProp(testOcr, title);
 
         assertThat(result)
                 .isEqualTo(expect);
     }
 
     @Test
-    void detectGear_gear13() throws Exception {
+    void detectGear_gearProp13() throws Exception {
         var testOcr = "img/gear/test-mapping/gear13.png";
         var title = "gear13";
 
@@ -350,33 +325,31 @@ class GearScriptTest {
                 17, // attackPercent
                 0,  // flatAttack
                 0,  // lifePercent
-                0,  // flatLife
+                2835,  // flatLife
                 0,  // defensePercent
                 0,  // flatDefense
                 11, // criticalRate
                 16, // criticalDamage
                 9,  // speed
                 0,  // effectResist
-                0,  // effectiveness
-                97, // score
-                GearDTOs.GearMainProp.LIFE_FLAT
+                0  // effectivenessT
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGearProp(testOcr, title);
 
         assertThat(result)
                 .isEqualTo(expect);
     }
 
     @Test
-    void detectGear_gear14() throws Exception {
+    void detectGear_gearProp14() throws Exception {
         var testOcr = "img/gear/test-mapping/gear14.png";
         var title = "gear14";
 
         var expect = new GearDTOs.GearProp(
                 21, // attackPercent
                 0,  // flatAttack
-                0,  // lifePercent
+                65,  // lifePercent
                 0,  // flatLife
                 16, // defensePercent
                 0,  // flatDefense
@@ -384,26 +357,24 @@ class GearScriptTest {
                 0,  // criticalDamage
                 11, // speed
                 0,  // effectResist
-                8,  // effectiveness
-                93, // score
-                GearDTOs.GearMainProp.LIFE_PERCENT
+                8  // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGearProp(testOcr, title);
 
         assertThat(result)
                 .isEqualTo(expect);
     }
 
     @Test
-    void detectGear_gear15() throws Exception {
+    void detectGear_gearProp15() throws Exception {
         var testOcr = "img/gear/test-mapping/gear15.png";
         var title = "gear15";
 
         var expect = new GearDTOs.GearProp(
                 21, // attackPercent
                 0,  // flatAttack
-                0,  // lifePercent
+                65,  // lifePercent
                 0,  // flatLife
                 16, // defensePercent
                 0,  // flatDefense
@@ -411,12 +382,10 @@ class GearScriptTest {
                 0,  // criticalDamage
                 11, // speed
                 0,  // effectResist
-                8,  // effectiveness
-                93, // score
-                GearDTOs.GearMainProp.LIFE_PERCENT
+                8  // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGearProp(testOcr, title);
 
         assertThat(result)
                 .isEqualTo(expect);

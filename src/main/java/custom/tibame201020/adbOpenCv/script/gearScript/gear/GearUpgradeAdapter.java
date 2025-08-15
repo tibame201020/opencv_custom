@@ -4,18 +4,9 @@ import java.util.List;
 
 public interface GearUpgradeAdapter {
 
-    boolean isOkToUpgrade(
-            GearDTOs.GearSet gearSet,
-            GearDTOs.GearType gearType,
-            int currentLevel,
-            GearDTOs.GearProp gearProp
-    );
+    boolean isOkToUpgrade(GearDTOs.Gear gear);
 
-    boolean isOkToStore(
-            GearDTOs.GearSet gearSet,
-            GearDTOs.GearType gearType,
-            GearDTOs.GearProp gearProp
-    );
+    boolean isOkToStore(GearDTOs.Gear gear);
 
     List<GearDTOs.GearSet> GEAR_SET_FOUR_TYPES = List.of(
             GearDTOs.GearSet.ATTACK,
