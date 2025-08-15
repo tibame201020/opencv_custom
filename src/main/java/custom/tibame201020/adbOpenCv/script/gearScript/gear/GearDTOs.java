@@ -2,11 +2,19 @@ package custom.tibame201020.adbOpenCv.script.gearScript.gear;
 
 public class GearDTOs {
 
+    /**
+     * gear wrapper
+     * @param metadata gear metadata
+     * @param prop gear prop
+     */
     public record Gear(
             GearMetadata metadata,
-            GearProp gearProp
+            GearProp prop
     ) {}
 
+    /**
+     * gear main prop enum
+     */
     public enum GearMainProp {
         ATK_PERCENT,
         LIFE_PERCENT,
@@ -47,14 +55,22 @@ public class GearDTOs {
             int effectResist,
             // 效果命中
             int effectiveness
-    ) {
-    }
+    ) {}
 
+    /**
+     * gear metadata
+     * @param set gear set
+     * @param rarity gear rarity
+     * @param type gear type
+     * @param level gear level
+     * @param mainProp main prop
+     * @param score score
+     */
     public record GearMetadata (
-            GearSet gearSet,
-            GearRarity gearRarity,
-            GearType gearType,
-            int gearLevel,
+            GearSet set,
+            GearRarity rarity,
+            GearType type,
+            int level,
             GearMainProp mainProp,
             int score
     ) {}
@@ -86,19 +102,31 @@ public class GearDTOs {
         TORRENT;         // 激流 [2]
     }
 
+    /**
+     * gear set type enum
+     */
     public enum GearSetType {
         FOUR,
         TWO
     }
 
+    /**
+     * gear type enum
+     */
     public enum GearType {
         WEAPON, HELMET, ARMOR, NECKLACE, RING, SHOES
     }
 
+    /**
+     * gear rarity enum
+     */
     public enum GearRarity {
         HERO, LEGEND
     }
 
+    /**
+     * gear belong role type
+     */
     public enum GearPropBelong {
         DAMAGE {
             @Override

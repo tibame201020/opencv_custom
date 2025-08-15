@@ -4,9 +4,9 @@ public class PurpleGearUpgradeAdapter implements GearUpgradeAdapter {
 
     @Override
     public boolean isOkToUpgrade(GearDTOs.Gear gear) {
-        GearDTOs.GearSet gearSet = gear.metadata().gearSet();
-        GearDTOs.GearType gearType = gear.metadata().gearType();
-        GearDTOs.GearProp gearProp = gear.gearProp();
+        GearDTOs.GearSet gearSet = gear.metadata().set();
+        GearDTOs.GearType gearType = gear.metadata().type();
+        GearDTOs.GearProp gearProp = gear.prop();
 
         if (gearType.equals(GearDTOs.GearType.SHOES)) {
             return false;
@@ -16,7 +16,7 @@ public class PurpleGearUpgradeAdapter implements GearUpgradeAdapter {
             return false;
         }
 
-        int gearLevel = gear.metadata().gearLevel();
+        int gearLevel = gear.metadata().level();
 
         int speed = gearProp.speed();
 
@@ -38,8 +38,8 @@ public class PurpleGearUpgradeAdapter implements GearUpgradeAdapter {
 
     @Override
     public boolean isOkToStore(GearDTOs.Gear gear) {
-        GearDTOs.GearSet gearSet = gear.metadata().gearSet();
-        GearDTOs.GearProp gearProp = gear.gearProp();
+        GearDTOs.GearSet gearSet = gear.metadata().set();
+        GearDTOs.GearProp gearProp = gear.prop();
 
         GearDTOs.GearSetType gearSetType = gearSetType(gearSet);
         if (!gearSet.equals(GearDTOs.GearSet.SPEED) || gearSetType.equals(GearDTOs.GearSetType.FOUR)) {

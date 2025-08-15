@@ -8,9 +8,9 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
 
     @Override
     public boolean isOkToUpgrade(GearDTOs.Gear gear) {
-        GearDTOs.GearSet gearSet = gear.metadata().gearSet();
-        GearDTOs.GearType gearType = gear.metadata().gearType();
-        GearDTOs.GearProp gearProp = gear.gearProp();
+        GearDTOs.GearSet gearSet = gear.metadata().set();
+        GearDTOs.GearType gearType = gear.metadata().type();
+        GearDTOs.GearProp gearProp = gear.prop();
         GearDTOs.GearMainProp gearMainProp = gear.metadata().mainProp();
 
         boolean mainPropRequired = mainPropRequired(gearSet, gearType, gearMainProp);
@@ -22,7 +22,7 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
             return false;
         }
         int score = gear.metadata().score();
-        int gearLevel = gear.metadata().gearLevel();
+        int gearLevel = gear.metadata().level();
         if (gearLevel == 0) {
             return score >= 27;
         }
@@ -39,9 +39,9 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
 
     @Override
     public boolean isOkToStore(GearDTOs.Gear gear) {
-        GearDTOs.GearSet gearSet = gear.metadata().gearSet();
-        GearDTOs.GearType gearType = gear.metadata().gearType();
-        GearDTOs.GearProp gearProp = gear.gearProp();
+        GearDTOs.GearSet gearSet = gear.metadata().set();
+        GearDTOs.GearType gearType = gear.metadata().type();
+        GearDTOs.GearProp gearProp = gear.prop();
         GearDTOs.GearMainProp gearMainProp = gear.metadata().mainProp();
 
         boolean mainPropRequired = mainPropRequired(gearSet, gearType, gearMainProp);
