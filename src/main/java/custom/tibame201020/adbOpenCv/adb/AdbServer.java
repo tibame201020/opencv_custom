@@ -7,6 +7,7 @@ import custom.tibame201020.adbOpenCv.opencv.OpenCvService;
 import io.micrometer.common.util.StringUtils;
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Service
+@Lazy
 public class AdbServer {
 
     private final Adb adb;

@@ -3,6 +3,7 @@ package custom.tibame201020.adbOpenCv.robot;
 import custom.tibame201020.adbOpenCv.opencv.MatUtility;
 import custom.tibame201020.adbOpenCv.opencv.OpenCvDTOs;
 import custom.tibame201020.adbOpenCv.opencv.OpenCvService;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
@@ -13,6 +14,7 @@ import java.nio.file.Path;
 import java.util.UUID;
 
 @Service
+@Lazy
 public class RobotService {
     private final OpenCvService openCvService;
 

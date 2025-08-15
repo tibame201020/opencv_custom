@@ -7,6 +7,7 @@ import custom.tibame201020.adbOpenCv.script.gearScript.gear.GearDTOs;
 import custom.tibame201020.adbOpenCv.script.gearScript.gear.PurpleGearUpgradeAdapter;
 import custom.tibame201020.adbOpenCv.script.gearScript.gear.RedGearUpgradeAdapter;
 import org.opencv.core.Mat;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.Files;
@@ -15,6 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Service
+@Lazy
 public class GearScript {
 
     private final OpenCvService openCvService;

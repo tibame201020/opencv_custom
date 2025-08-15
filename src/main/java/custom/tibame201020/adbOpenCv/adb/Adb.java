@@ -2,6 +2,7 @@ package custom.tibame201020.adbOpenCv.adb;
 
 import io.micrometer.common.util.StringUtils;
 import org.apache.commons.io.IOUtils;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
@@ -11,6 +12,7 @@ import java.nio.charset.StandardCharsets;
  * process wrapper
  */
 @Service
+@Lazy
 public class Adb {
 
     /**

@@ -2,11 +2,13 @@ package custom.tibame201020.adbOpenCv.opencv.ocr;
 
 import org.opencv.core.*;
 import org.opencv.imgproc.Imgproc;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
 
 @Service
+@Lazy
 public class PatternOCR implements MatchOCRAdaptor {
 
     @Override
