@@ -3,9 +3,9 @@ package custom.tibame201020.adbOpenCv.script.robot;
 import custom.tibame201020.adbOpenCv.script.Script;
 import custom.tibame201020.adbOpenCv.service.platform.robot.RobotPlatform;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
-@Component
+@Service
 @Lazy
 public class RobotScript implements Script {
 
