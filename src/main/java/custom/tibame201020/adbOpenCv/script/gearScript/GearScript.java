@@ -12,10 +12,11 @@ import org.opencv.core.Mat;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 @Lazy
@@ -41,64 +42,125 @@ public class GearScript implements Script {
         ocrConfigs.put("2ndProp", new GearImageDTOs.GearOcr("images/gear/number-ocr/ocr", new GearImageDTOs.GearRegion(1160, 390, 70, 25), 0.8));
         ocrConfigs.put("3rdProp", new GearImageDTOs.GearOcr("images/gear/number-ocr/ocr", new GearImageDTOs.GearRegion(1160, 415, 70, 25), 0.8));
         ocrConfigs.put("4thProp", new GearImageDTOs.GearOcr("images/gear/number-ocr/ocr", new GearImageDTOs.GearRegion(1160, 435, 70, 25), 0.8));
-        ocrConfigs.put("score", new GearImageDTOs.GearOcr("images/gear/number-ocr/score-ocr", new GearImageDTOs.GearRegion(1160, 470, 70, 30), 0.85));
+        ocrConfigs.put("score", new GearImageDTOs.GearOcr("images/gear/number-ocr/score-ocr", new GearImageDTOs.GearRegion(1160, 470, 70, 30), 0.84));
 
         // Gear metadata
         ocrConfigs.put("gearSet", new GearImageDTOs.GearOcr("images/gear/gear-set-ocr", new GearImageDTOs.GearRegion(900, 550, 100, 40), 0.95));
         ocrConfigs.put("gearRarity", new GearImageDTOs.GearOcr("images/gear/gear-rarity-ocr", new GearImageDTOs.GearRegion(972, 180, 35, 23), 0.85));
         ocrConfigs.put("gearType", new GearImageDTOs.GearOcr("images/gear/gear-type-ocr", new GearImageDTOs.GearRegion(1007, 180, 35, 23), 0.85));
-        ocrConfigs.put("gearLevel", new GearImageDTOs.GearOcr("images/gear/gear-level-ocr", new GearImageDTOs.GearRegion(935, 167, 35, 25), 0.99));
+        ocrConfigs.put("gearLevel", new GearImageDTOs.GearOcr("images/gear/gear-level-ocr", new GearImageDTOs.GearRegion(935, 168, 35, 25), 0.95));
 
         // Main and Sub-properties types
         ocrConfigs.put("mainPropType", new GearImageDTOs.GearOcr("images/gear/main-prop-type-ocr", new GearImageDTOs.GearRegion(880, 327, 120, 35), 0.85));
-        ocrConfigs.put("1stPropType", new GearImageDTOs.GearOcr("images/gear/prop-type-ocr", new GearImageDTOs.GearRegion(875, 369, 120, 30), 0.85));
+        ocrConfigs.put("1stPropType", new GearImageDTOs.GearOcr("images/gear/prop-type-ocr", new GearImageDTOs.GearRegion(875, 365, 120, 30), 0.85));
         ocrConfigs.put("2ndPropType", new GearImageDTOs.GearOcr("images/gear/prop-type-ocr", new GearImageDTOs.GearRegion(875, 389, 120, 30), 0.85));
         ocrConfigs.put("3rdPropType", new GearImageDTOs.GearOcr("images/gear/prop-type-ocr", new GearImageDTOs.GearRegion(875, 410, 120, 30), 0.85));
         ocrConfigs.put("4thPropType", new GearImageDTOs.GearOcr("images/gear/prop-type-ocr", new GearImageDTOs.GearRegion(875, 435, 120, 30), 0.85));
     }
 
+    void upgradeGear(String deviceId, GearDTOs.Gear gear) throws Exception {
+        OpenCvDTOs.OcrRegion region = new OpenCvDTOs.OcrRegion(1077, 640, 1225, 707);
+
+        adbPlatform.clickImage("images/gear/action/upgrade-1.png", region, deviceId);
+        adbPlatform.waitImage("images/gear/action/upgrade-2.png", 5000, 100, deviceId);
+        adbPlatform.sleep(1);
+        region = new OpenCvDTOs.OcrRegion(925, 620, 1230, 700);
+        adbPlatform.clickImage("images/gear/action/upgrade-3.png", region, deviceId);
+
+        var level = gear.metadata().level();
+        var upgradeLevelOptions = List.of(6, 9, 12, 15);
+        var closetUpgradeLevel = upgradeLevelOptions.stream().filter(option -> option > level).min(Integer::compareTo).orElse(15);
+        var upgradeOptionImage = "images/gear/action/plus-" + closetUpgradeLevel + ".png";
+        region = new OpenCvDTOs.OcrRegion(950, 315, 1190, 625);
+        adbPlatform.sleep(1);
+        adbPlatform.clickImage(upgradeOptionImage, region, deviceId);
+        adbPlatform.sleep(1);
+
+
+//        adbPlatform.sleep(1);
+//        adbPlatform.click(1075, 578, deviceId);
+//        adbPlatform.click(1075, 520, deviceId);
+//        adbPlatform.click(1075, 460, deviceId);
+//        adbPlatform.click(1075, 400, deviceId);
+//        adbPlatform.click(1075, 350, deviceId);
+//        adbPlatform.sleep(3);
+
+        region = new OpenCvDTOs.OcrRegion(725, 640, 810, 680);
+        adbPlatform.clickImage("images/gear/action/upgrade-4.png", region, deviceId);
+
+        adbPlatform.sleep(3);
+        adbPlatform.click(640, 520, deviceId);
+        adbPlatform.click(640, 520, deviceId);
+        adbPlatform.click(640, 520, deviceId);
+
+        adbPlatform.waitImage("images/gear/action/upgrade-2.png", 7000, 100, deviceId);
+
+        region = new OpenCvDTOs.OcrRegion(0, 0, 65, 55);
+        adbPlatform.clickImage("images/gear/action/upgrade-5.png", region, deviceId);
+    }
+
+    void sellGear(String deviceId) throws Exception {
+        adbPlatform.click(918, 617, deviceId);
+        adbPlatform.sleep(1);
+        adbPlatform.click(750, 530, deviceId);
+        adbPlatform.sleep(3);
+    }
+
+    void extractGear(String deviceId) throws Exception {
+        adbPlatform.click(985, 620, deviceId);
+        adbPlatform.sleep(1);
+        adbPlatform.click(750, 530, deviceId);
+        adbPlatform.sleep(3);
+    }
+
+    void storeGear(String deviceId) throws Exception {
+        adbPlatform.click(1045, 620, deviceId);
+        adbPlatform.sleep(1);
+        adbPlatform.click(755, 455, deviceId);
+        adbPlatform.sleep(3);
+    }
+
+    void gearLoop(String deviceId) throws Exception {
+        System.err.println("-------------------------------");
+        adbPlatform.sleep(1);
+        adbPlatform.click(195, 199, deviceId);
+        adbPlatform.sleep(2);
+        var snapshotMat = adbPlatform.takeSnapshot(deviceId);
+
+        var gear = detectGear(snapshotMat);
+        var action = judgmentGear(gear);
+        System.err.println(gear.metadata());
+        System.err.println(gear.prop());
+        System.err.println(action);
+
+        switch (action) {
+            case GearDTOs.GearAction.EXTRACTION -> extractGear(deviceId);
+            case GearDTOs.GearAction.UPGRADE -> upgradeGear(deviceId, gear);
+            case GearDTOs.GearAction.SELL -> sellGear(deviceId);
+            case GearDTOs.GearAction.STORE -> storeGear(deviceId);
+        }
+    }
+
     @Override
     public void execute() throws Exception {
+        Scanner scanner = new Scanner(System.in);
 
-        var testPath = "images/gear/test-mapping";
+        var devices = adbPlatform.getDevices();
+        System.out.println("Please input device id: " + devices);
 
-        try (var paths = Files.walk(Path.of(testPath))) {
-            paths.forEach(path -> {
-                var fileFullPath = path.toAbsolutePath().toString();
-                if (!fileFullPath.contains(".png")) {
-                    return;
-                }
-                var title = path.getFileName().toString();
+        var deviceId = scanner.nextLine();
 
-                try {
-                    var gear = detectGear(fileFullPath, title);
-                    var action = judgmentGear(gear);
-
-                    System.err.println("-------------------------------");
-                    System.err.println(gear.metadata());
-                    System.err.println(gear.prop());
-                    System.err.println(action);
-
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            });
+        if (!devices.contains(deviceId)) {
+            System.err.println("Invalid device id: " + deviceId);
+            return;
         }
 
+        adbPlatform.connect(deviceId);
 
-//        var snapshotPath = "images/gear/snapshots";
-//        try (var paths = Files.walk(Path.of(snapshotPath))) {
-//            AtomicInteger i = new AtomicInteger(0);
-//            paths.forEach(path -> {
-//                var fileFullPath = path.toAbsolutePath().toString();
-//                if (!fileFullPath.contains(".png")) {
-//                    return;
-//                }
-//                var current = i.incrementAndGet();
-//
-//                MatUtility.saveSliceRegionMat(fileFullPath, convert2OcrRegion(ocrConfigs.get("gearLevel").gearRegion()), "roi-set " + current + ".png");
-//            });
-//        }
+        while (true) {
+            gearLoop(deviceId);
+        }
+
     }
 
     GearDTOs.GearAction judgmentGear(GearDTOs.Gear gear) {
@@ -108,11 +170,11 @@ public class GearScript implements Script {
         return switch (rarity) {
             case GearDTOs.GearRarity.HERO -> {
                 var result = level == 15 ? purpleGearUpgradeAdapter.isOkToStore(gear) : purpleGearUpgradeAdapter.isOkToUpgrade(gear);
-                yield result ? GearDTOs.GearAction.UPGRADE : GearDTOs.GearAction.SELL;
+                yield result ? (level == 15 ? GearDTOs.GearAction.STORE : GearDTOs.GearAction.UPGRADE) : GearDTOs.GearAction.SELL;
             }
             case GearDTOs.GearRarity.LEGEND -> {
                 var result = level == 15 ? redGearUpgradeAdapter.isOkToStore(gear) : redGearUpgradeAdapter.isOkToUpgrade(gear);
-                yield result ? GearDTOs.GearAction.UPGRADE : GearDTOs.GearAction.SELL;
+                yield result ? (level == 15 ? GearDTOs.GearAction.STORE : GearDTOs.GearAction.UPGRADE) : GearDTOs.GearAction.SELL;
             }
             default -> GearDTOs.GearAction.EXTRACTION;
         };
@@ -122,13 +184,16 @@ public class GearScript implements Script {
      * detect gear metadata prop from image
      *
      * @param targetGearImagePath gear image path
-     * @param title               title
      * @return gear record
      * @throws Exception e
      */
-    GearDTOs.Gear detectGear(String targetGearImagePath, String title) throws Exception {
+    GearDTOs.Gear detectGear(String targetGearImagePath) throws Exception {
         Mat source = MatUtility.getMatFromFileWithMask(targetGearImagePath);
 
+        return detectGear(source);
+    }
+
+    GearDTOs.Gear detectGear(Mat source) throws Exception {
         String gearSetOcr = ocrPattern(ocrConfigs.get("gearSet"), source);
         String gearRarityOcr = ocrPattern(ocrConfigs.get("gearRarity"), source);
         String gearTypeOcr = ocrPattern(ocrConfigs.get("gearType"), source);
@@ -151,7 +216,10 @@ public class GearScript implements Script {
         String _4th = ocrCharacter(ocrConfigs.get("4thProp"), source);
 
         var metadata = convertGearMetadata(gearSetOcr, gearRarityOcr, gearTypeOcr, gearLevelOcr, mainType, main, scoreOcr);
-        var prop = convertGearProp(mainType, main, _1stType, _1st, _2ndType, _2nd, _3rdType, _3rd, _4thType, _4th);
+
+        boolean ignoreUnknownTypes = !metadata.rarity().equals(GearDTOs.GearRarity.LEGEND);
+
+        var prop = convertGearProp(mainType, main, _1stType, _1st, _2ndType, _2nd, _3rdType, _3rd, _4thType, _4th, ignoreUnknownTypes);
 
         return new GearDTOs.Gear(metadata, prop);
     }
@@ -209,7 +277,7 @@ public class GearScript implements Script {
      * @param _4th     gear _4th ocr string
      * @return gear prop record
      */
-    GearDTOs.GearProp convertGearProp(String mainType, String main, String _1stType, String _1st, String _2ndType, String _2nd, String _3rdType, String _3rd, String _4thType, String _4th) {
+    GearDTOs.GearProp convertGearProp(String mainType, String main, String _1stType, String _1st, String _2ndType, String _2nd, String _3rdType, String _3rd, String _4thType, String _4th, boolean ignoreUnknownTypes) {
         class GearPropsAccumulator {
             int attackPercent = 0;
             int flatAttack = 0;
@@ -272,6 +340,10 @@ public class GearScript implements Script {
                         break;
                     default:
                         System.err.println("Unknown property type: " + type);
+                        if (!ignoreUnknownTypes) {
+                            throw new IllegalArgumentException("Unsupported property type: " + type);
+                        }
+
                 }
             }
         }

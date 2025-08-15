@@ -136,6 +136,27 @@ public class AdbPlatform implements PlatformService {
     }
 
     /**
+     * find image on device screen, with region
+     *
+     * @param imagePath image file path
+     * @param region    region
+     * @param deviceId  device id
+     * @return point
+     */
+    public Point findImage(String imagePath, OpenCvDTOs.OcrRegion region, String deviceId) {
+        Mat src = MatUtility.convertBytesToMat(adb.getSnapshot(deviceId));
+        Mat srcRegion = MatUtility.sliceRegionMat(src, region);
+        Mat target = MatUtility.getMatFromFile(imagePath);
+        OpenCvDTOs.MatchPattern pattern = openCvService.findMatch(srcRegion, target);
+
+        if (pattern.getSimilar() > 0.99) {
+            return new Point(pattern.point().x + region.x1(), pattern.point().y + region.y1());
+        } else {
+            return null;
+        }
+    }
+
+    /**
      * find image on device screen
      *
      * @param imagePath image file path
@@ -152,7 +173,6 @@ public class AdbPlatform implements PlatformService {
         } else {
             return null;
         }
-
     }
 
     /**
@@ -173,7 +193,28 @@ public class AdbPlatform implements PlatformService {
         } else {
             return null;
         }
+    }
 
+    /**
+     * click image on device, with region
+     *
+     * @param imagePath image file path
+     * @param region    region
+     * @param deviceId  device id
+     * @return bool status
+     */
+    public boolean clickImage(String imagePath, OpenCvDTOs.OcrRegion region, String deviceId) {
+        Mat src = MatUtility.convertBytesToMat(adb.getSnapshot(deviceId));
+        Mat srcRegion = MatUtility.sliceRegionMat(src, region);
+        Mat target = MatUtility.getMatFromFile(imagePath);
+        OpenCvDTOs.MatchPattern pattern = openCvService.findMatch(srcRegion, target);
+
+        if (!(pattern.getSimilar() > 0.99)) {
+            return false;
+        }
+        Point point = pattern.point();
+        var stdout = click(point.x + region.x1(), point.y + region.y1(), deviceId);
+        return !stdout.isEmpty();
     }
 
     /**
@@ -327,6 +368,16 @@ public class AdbPlatform implements PlatformService {
         Point point1 = findImage(target1, deviceId);
         Point point2 = findImage(target2, deviceId);
         return adb.exec(AdbCommand.DRAG_DROP.getCommand(deviceId, (int) point1.x, (int) point1.y, (int) point2.x, (int) point2.y, durations));
+    }
+
+    /**
+     * take snapshot on device
+     *
+     * @param deviceId device id
+     * @return Mat
+     */
+    public Mat takeSnapshot(String deviceId) {
+        return MatUtility.convertBytesToMat(adb.getSnapshot(deviceId));
     }
 
     /**

@@ -14,10 +14,12 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
 
         boolean mainPropRequired = mainPropRequired(gearSet, gearType, gearMainProp);
         if (!mainPropRequired) {
+            System.err.println("--- main prop not required");
             return false;
         }
         boolean gearPropNeeded = gearPropNeeded(gearSet, gearProp);
         if (!gearPropNeeded) {
+            System.err.println("--- gear prop not needed");
             return false;
         }
 
@@ -26,18 +28,18 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
         int gearLevel = gear.metadata().level();
 
         if (gearLevel >= 0 && gearLevel < 9) {
-            return score >= 27;
+            return score >= 25;
         }
 
         if (gearLevel >= 9 && gearLevel < 12) {
-            return calcScore >= 50;
+            return score >= 60;
         }
 
         if (gearLevel >= 12) {
-            return calcScore >= 50;
+            return score >= 70;
         }
 
-        return score >= 75 && calcScore >= 60;
+        return score >= 85 || calcScore >= 70;
     }
 
 
@@ -47,6 +49,12 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
         GearDTOs.GearType gearType = gear.metadata().type();
         GearDTOs.GearProp gearProp = gear.prop();
         GearDTOs.GearMainProp gearMainProp = gear.metadata().mainProp();
+
+        var speed = gear.prop().speed();
+        if (speed >= 20 && !gear.metadata().type().equals(GearDTOs.GearType.SHOES)) {
+            System.err.println("--- speed enough");
+            return true;
+        }
 
         boolean mainPropRequired = mainPropRequired(gearSet, gearType, gearMainProp);
         if (!mainPropRequired) {
@@ -59,8 +67,14 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
 
         int score = gear.metadata().score();
         var calcScore = gearProp.calcScore();
+        System.err.println("score: " + score + ", calcScore: " + calcScore);
 
-        return score >= 75 && calcScore >= 60;
+        var type = gear.metadata().type();
+        if (type.equals(GearDTOs.GearType.SHOES) || type.equals(GearDTOs.GearType.NECKLACE) || type.equals(GearDTOs.GearType.RING)) {
+            return score >= 85;
+        }
+
+        return score >= 85 || calcScore >= 70;
     }
 
     boolean mainPropRequired(GearDTOs.GearSet gearSet, GearDTOs.GearType gearType, GearDTOs.GearMainProp mainProp) {
@@ -84,6 +98,7 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
 
     boolean gearPropNeeded(GearDTOs.GearSet gearSet, GearDTOs.GearProp gearProp) {
         List<GearDTOs.GearPropBelong> belongs = detectGearBelong(gearProp);
+        System.err.println("belongs: " + belongs);
 
         return switch (gearSet) {
             case ATTACK, RAGE, TORRENT -> belongs.contains(GearDTOs.GearPropBelong.DAMAGE);

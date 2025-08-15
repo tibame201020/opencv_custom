@@ -168,7 +168,7 @@ public class GearDTOs {
                     validProps = validProps + 1;
                 }
 
-                return validProps >= 3;
+                return validProps >= 4;
             }
         },
         TANK_DAMAGE {
@@ -201,7 +201,7 @@ public class GearDTOs {
                     validProps = validProps + 1;
                 }
 
-                return validProps >= 3;
+                return validProps >= 4;
             }
         },
         TANK {
@@ -231,7 +231,7 @@ public class GearDTOs {
                     validProps = validProps + 1;
                 }
 
-                return validProps >= 3;
+                return validProps >= 4;
             }
         },
         SUPPORT {
@@ -255,7 +255,7 @@ public class GearDTOs {
                     validProps = validProps + 1;
                 }
 
-                return validProps >= 3;
+                return validProps >= 4;
             }
         };
 
@@ -274,7 +274,8 @@ public class GearDTOs {
         /**
          * 翠取
          */
-        EXTRACTION
+        EXTRACTION,
+        STORE
     }
 
 }
