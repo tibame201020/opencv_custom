@@ -76,6 +76,20 @@ public class MatUtility {
     }
 
     /**
+     * slice mat from source by region
+     *
+     * @param source source mat
+     * @param region     region
+     * @return sliced mat
+     */
+    public static Mat sliceRegionMat(Mat source, OpenCvDTOs.OcrRegion region) {
+        Rect roiRect = new Rect(region.x1(), region.y1(),
+                Math.abs(region.x2() - region.x1()), Math.abs(region.y2() - region.y1()));
+
+        return new Mat(source, roiRect);
+    }
+
+    /**
      * slice mat from source by region then save
      *
      * @param sourcePath source image path

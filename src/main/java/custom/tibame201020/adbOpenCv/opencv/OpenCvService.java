@@ -10,6 +10,10 @@ import org.opencv.imgproc.Imgproc;
 
 public class OpenCvService {
 
+    private final CharacterOCR characterOCR = new CharacterOCR();
+    private final PatternOCR patternOCR = new PatternOCR();
+
+
     /**
      * find match target on src
      *
@@ -32,7 +36,7 @@ public class OpenCvService {
     }
 
     /**
-     * ocr characters from
+     * ocr characters from source image path by region
      *
      * @param ocrTemplatesPath ocr templates base path
      * @param sourcePath       try ocr source image path
@@ -48,15 +52,51 @@ public class OpenCvService {
         return characterOCR.executeOCR(ocrTemplatesPath, targetImg, threshold);
     }
 
-    //todo
+    /**
+     * ocr characters from source image mat by region
+     *
+     * @param ocrTemplatesPath ocr templates base path
+     * @param source try ocr source image mat
+     * @param ocrRegion ocr region
+     * @param threshold threshold
+     * @return ocr result
+     * @throws Exception e
+     */
+    public String ocrCharacter(String ocrTemplatesPath, Mat source, OpenCvDTOs.OcrRegion ocrRegion, double threshold) throws Exception {
+        Mat targetImg = MatUtility.sliceRegionMat(source, ocrRegion);
+
+        return characterOCR.executeOCR(ocrTemplatesPath, targetImg, threshold);
+    }
+
+
+    /**
+     * ocr pattern from source image path by region
+     *
+     * @param ocrTemplatesPath ocr templates base path
+     * @param sourcePath  try ocr source image path
+     * @param ocrRegion ocr region
+     * @param threshold threshold
+     * @return ocr result
+     * @throws Exception e
+     */
     public String ocrPattern(String ocrTemplatesPath, String sourcePath, OpenCvDTOs.OcrRegion ocrRegion, double threshold) throws Exception {
         Mat targetImg = MatUtility.sliceRegionMat(sourcePath, ocrRegion);
 
-//        MatUtility.writeToFile("roi.png", targetImg);
+        return patternOCR.executeOCR(ocrTemplatesPath, targetImg, threshold);
+    }
 
-//        return null;
-//
-        PatternOCR patternOCR = new PatternOCR();
+    /**
+     * ocr pattern from source image mat by region
+     *
+     * @param ocrTemplatesPath ocr templates base path
+     * @param source  try ocr source image mat
+     * @param ocrRegion ocr region
+     * @param threshold threshold
+     * @return ocr result
+     * @throws Exception e
+     */
+    public String ocrPattern(String ocrTemplatesPath, Mat source, OpenCvDTOs.OcrRegion ocrRegion, double threshold) throws Exception {
+        Mat targetImg = MatUtility.sliceRegionMat(source, ocrRegion);
 
         return patternOCR.executeOCR(ocrTemplatesPath, targetImg, threshold);
     }
