@@ -10,7 +10,6 @@ public class RobotScript {
 
     private final RobotService robotService;
 
-
     public RobotScript(RobotService robotService) {
         this.robotService = robotService;
     }

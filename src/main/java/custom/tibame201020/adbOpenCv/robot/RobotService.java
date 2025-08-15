@@ -24,6 +24,7 @@ public class RobotService {
 
     /**
      * took snapshot from robot
+     *
      * @param savePath save snapshot image path
      * @return saved image path
      * @throws Exception e
@@ -39,7 +40,7 @@ public class RobotService {
         return saveFile.getAbsolutePath();
     }
 
-    public OpenCvDTOs. MatchPattern findImage(String targetImagePath) throws Exception {
+    public OpenCvDTOs.MatchPattern findImage(String targetImagePath) throws Exception {
         var snapshotImageName = UUID.randomUUID() + ".png";
         var snapshotPath = snapshot(snapshotImageName);
 

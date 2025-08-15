@@ -1,5 +1,6 @@
 package custom.tibame201020.adbOpenCv.script.gearScript;
 
+import custom.tibame201020.adbOpenCv.adb.AdbServer;
 import custom.tibame201020.adbOpenCv.opencv.MatUtility;
 import custom.tibame201020.adbOpenCv.opencv.OpenCvDTOs;
 import custom.tibame201020.adbOpenCv.opencv.OpenCvService;
@@ -19,16 +20,18 @@ import java.util.Map;
 @Lazy
 public class GearScript {
 
+    private final AdbServer adbServer;
     private final OpenCvService openCvService;
     private final PurpleGearUpgradeAdapter purpleGearUpgradeAdapter;
     private final RedGearUpgradeAdapter redGearUpgradeAdapter;
 
     private final Map<String, GearImageDTOs.GearOcr> ocrConfigs = new HashMap<>();
 
-    public GearScript(OpenCvService openCvService, PurpleGearUpgradeAdapter purpleGearUpgradeAdapter, RedGearUpgradeAdapter redGearUpgradeAdapter) {
-        this.openCvService = openCvService;
-        this.purpleGearUpgradeAdapter = purpleGearUpgradeAdapter;
-        this.redGearUpgradeAdapter = redGearUpgradeAdapter;
+    public GearScript(AdbServer adbServer) {
+        this.adbServer = adbServer;
+        this.openCvService = adbServer.getOpenCvService();
+        this.purpleGearUpgradeAdapter = new PurpleGearUpgradeAdapter();
+        this.redGearUpgradeAdapter = new RedGearUpgradeAdapter();
 
         // Initialize OCR configurations
         // Main and Sub-properties values

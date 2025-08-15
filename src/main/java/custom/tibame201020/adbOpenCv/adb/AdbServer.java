@@ -26,6 +26,10 @@ public class AdbServer {
         this.openCvService = openCvService;
     }
 
+    public OpenCvService getOpenCvService() {
+        return openCvService;
+    }
+
     /**
      * restart adb daemon server
      *

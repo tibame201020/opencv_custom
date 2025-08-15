@@ -1,13 +1,8 @@
 package custom.tibame201020.adbOpenCv.script.gearScript.gear;
 
-import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Service;
-
 import java.util.ArrayList;
 import java.util.List;
 
-@Service
-@Lazy
 public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
 
     @Override
