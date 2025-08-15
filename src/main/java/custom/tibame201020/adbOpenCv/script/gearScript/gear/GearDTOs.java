@@ -274,7 +274,7 @@ public class GearDTOs {
         /**
          * 翠取
          */
-        EXTRACTION;
+        EXTRACTION
     }
 
 }

@@ -16,7 +16,6 @@ public class AdbServer {
 
     private static final Adb adb = new Adb();
     private static final OpenCvService OPEN_CV_SERVICE = new OpenCvService();
-    private static final String IMG_DIR = "img/";
 
     /**
      * restart adb daemon server
@@ -124,13 +123,13 @@ public class AdbServer {
     /**
      * find image on device screen
      *
-     * @param fileName image file name
-     * @param deviceId device id
+     * @param imagePath image file path
+     * @param deviceId  device id
      * @return point
      */
-    public static Point findImage(String fileName, String deviceId) {
+    public static Point findImage(String imagePath, String deviceId) {
         Mat src = MatUtility.convertBytesToMat(adb.getSnapshot(deviceId));
-        Mat target = MatUtility.getMatFromFile(IMG_DIR + fileName);
+        Mat target = MatUtility.getMatFromFile(imagePath);
         OpenCvDTOs.MatchPattern pattern = OPEN_CV_SERVICE.findMatch(src, target);
 
         if (pattern.getSimilar() > 0.99) {
@@ -151,7 +150,7 @@ public class AdbServer {
      */
     public static Point findImage(String fileName, double similar, String deviceId) {
         Mat src = MatUtility.convertBytesToMat(adb.getSnapshot(deviceId));
-        Mat target = MatUtility.getMatFromFile(IMG_DIR + fileName);
+        Mat target = MatUtility.getMatFromFile(fileName);
         OpenCvDTOs.MatchPattern pattern = OPEN_CV_SERVICE.findMatch(src, target);
 
         if (pattern.getSimilar() > similar) {
@@ -165,13 +164,13 @@ public class AdbServer {
     /**
      * click image on device
      *
-     * @param fileName image file name
-     * @param deviceId device id
+     * @param imagePath image file path
+     * @param deviceId  device id
      * @return bool status
      */
-    public static boolean clickImage(String fileName, String deviceId) {
+    public static boolean clickImage(String imagePath, String deviceId) {
         Mat src = MatUtility.convertBytesToMat(adb.getSnapshot(deviceId));
-        Mat target = MatUtility.getMatFromFile(IMG_DIR + fileName);
+        Mat target = MatUtility.getMatFromFile(imagePath);
         OpenCvDTOs.MatchPattern pattern = OPEN_CV_SERVICE.findMatch(src, target);
 
         if (!(pattern.getSimilar() > 0.99)) {
@@ -184,16 +183,16 @@ public class AdbServer {
     }
 
     /**
-     * click image on device, , with similar arg
+     * click image on device, with similar arg
      *
-     * @param fileName image file name
-     * @param similar  similar
-     * @param deviceId device id
+     * @param imagePath image file path
+     * @param similar   similar
+     * @param deviceId  device id
      * @return bool status
      */
-    public static boolean clickImage(String fileName, double similar, String deviceId) {
+    public static boolean clickImage(String imagePath, double similar, String deviceId) {
         Mat src = MatUtility.convertBytesToMat(adb.getSnapshot(deviceId));
-        Mat target = MatUtility.getMatFromFile(IMG_DIR + fileName);
+        Mat target = MatUtility.getMatFromFile(imagePath);
         OpenCvDTOs.MatchPattern pattern = OPEN_CV_SERVICE.findMatch(src, target);
 
         if (!(pattern.getSimilar() > similar)) {

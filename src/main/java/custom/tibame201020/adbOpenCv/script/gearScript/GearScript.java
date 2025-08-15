@@ -24,30 +24,30 @@ public class GearScript {
     public GearScript() {
         // Initialize OCR configurations
         // Main and Sub-properties values
-        ocrConfigs.put("mainProp", new GearImageDTOs.GearOcr("img/gear/number-ocr/main-ocr", new GearImageDTOs.GearRegion(1160, 330, 70, 30), 0.8));
-        ocrConfigs.put("1stProp", new GearImageDTOs.GearOcr("img/gear/number-ocr/ocr", new GearImageDTOs.GearRegion(1160, 370, 70, 25), 0.8));
-        ocrConfigs.put("2ndProp", new GearImageDTOs.GearOcr("img/gear/number-ocr/ocr", new GearImageDTOs.GearRegion(1160, 390, 70, 25), 0.8));
-        ocrConfigs.put("3rdProp", new GearImageDTOs.GearOcr("img/gear/number-ocr/ocr", new GearImageDTOs.GearRegion(1160, 415, 70, 25), 0.8));
-        ocrConfigs.put("4thProp", new GearImageDTOs.GearOcr("img/gear/number-ocr/ocr", new GearImageDTOs.GearRegion(1160, 435, 70, 25), 0.8));
-        ocrConfigs.put("score", new GearImageDTOs.GearOcr("img/gear/number-ocr/score-ocr", new GearImageDTOs.GearRegion(1160, 470, 70, 30), 0.85));
+        ocrConfigs.put("mainProp", new GearImageDTOs.GearOcr("images/gear/number-ocr/main-ocr", new GearImageDTOs.GearRegion(1160, 330, 70, 30), 0.8));
+        ocrConfigs.put("1stProp", new GearImageDTOs.GearOcr("images/gear/number-ocr/ocr", new GearImageDTOs.GearRegion(1160, 370, 70, 25), 0.8));
+        ocrConfigs.put("2ndProp", new GearImageDTOs.GearOcr("images/gear/number-ocr/ocr", new GearImageDTOs.GearRegion(1160, 390, 70, 25), 0.8));
+        ocrConfigs.put("3rdProp", new GearImageDTOs.GearOcr("images/gear/number-ocr/ocr", new GearImageDTOs.GearRegion(1160, 415, 70, 25), 0.8));
+        ocrConfigs.put("4thProp", new GearImageDTOs.GearOcr("images/gear/number-ocr/ocr", new GearImageDTOs.GearRegion(1160, 435, 70, 25), 0.8));
+        ocrConfigs.put("score", new GearImageDTOs.GearOcr("images/gear/number-ocr/score-ocr", new GearImageDTOs.GearRegion(1160, 470, 70, 30), 0.85));
 
         // Gear metadata
-        ocrConfigs.put("gearSet", new GearImageDTOs.GearOcr("img/gear/gear-set-ocr", new GearImageDTOs.GearRegion(900, 550, 100, 40), 0.95));
-        ocrConfigs.put("gearRarity", new GearImageDTOs.GearOcr("img/gear/gear-rarity-ocr", new GearImageDTOs.GearRegion(972, 180, 35, 23), 0.85));
-        ocrConfigs.put("gearType", new GearImageDTOs.GearOcr("img/gear/gear-type-ocr", new GearImageDTOs.GearRegion(1007, 180, 35, 23), 0.85));
-        ocrConfigs.put("gearLevel", new GearImageDTOs.GearOcr("img/gear/gear-level-ocr", new GearImageDTOs.GearRegion(935, 167, 35, 25), 0.99));
+        ocrConfigs.put("gearSet", new GearImageDTOs.GearOcr("images/gear/gear-set-ocr", new GearImageDTOs.GearRegion(900, 550, 100, 40), 0.95));
+        ocrConfigs.put("gearRarity", new GearImageDTOs.GearOcr("images/gear/gear-rarity-ocr", new GearImageDTOs.GearRegion(972, 180, 35, 23), 0.85));
+        ocrConfigs.put("gearType", new GearImageDTOs.GearOcr("images/gear/gear-type-ocr", new GearImageDTOs.GearRegion(1007, 180, 35, 23), 0.85));
+        ocrConfigs.put("gearLevel", new GearImageDTOs.GearOcr("images/gear/gear-level-ocr", new GearImageDTOs.GearRegion(935, 167, 35, 25), 0.99));
 
         // Main and Sub-properties types
-        ocrConfigs.put("mainPropType", new GearImageDTOs.GearOcr("img/gear/main-prop-type-ocr", new GearImageDTOs.GearRegion(880, 327, 120, 35), 0.85));
-        ocrConfigs.put("1stPropType", new GearImageDTOs.GearOcr("img/gear/prop-type-ocr", new GearImageDTOs.GearRegion(875, 369, 120, 30), 0.85));
-        ocrConfigs.put("2ndPropType", new GearImageDTOs.GearOcr("img/gear/prop-type-ocr", new GearImageDTOs.GearRegion(875, 389, 120, 30), 0.85));
-        ocrConfigs.put("3rdPropType", new GearImageDTOs.GearOcr("img/gear/prop-type-ocr", new GearImageDTOs.GearRegion(875, 410, 120, 30), 0.85));
-        ocrConfigs.put("4thPropType", new GearImageDTOs.GearOcr("img/gear/prop-type-ocr", new GearImageDTOs.GearRegion(875, 435, 120, 30), 0.85));
+        ocrConfigs.put("mainPropType", new GearImageDTOs.GearOcr("images/gear/main-prop-type-ocr", new GearImageDTOs.GearRegion(880, 327, 120, 35), 0.85));
+        ocrConfigs.put("1stPropType", new GearImageDTOs.GearOcr("images/gear/prop-type-ocr", new GearImageDTOs.GearRegion(875, 369, 120, 30), 0.85));
+        ocrConfigs.put("2ndPropType", new GearImageDTOs.GearOcr("images/gear/prop-type-ocr", new GearImageDTOs.GearRegion(875, 389, 120, 30), 0.85));
+        ocrConfigs.put("3rdPropType", new GearImageDTOs.GearOcr("images/gear/prop-type-ocr", new GearImageDTOs.GearRegion(875, 410, 120, 30), 0.85));
+        ocrConfigs.put("4thPropType", new GearImageDTOs.GearOcr("images/gear/prop-type-ocr", new GearImageDTOs.GearRegion(875, 435, 120, 30), 0.85));
     }
 
     public void execute() throws Exception {
 
-        var testPath = "img/gear/test-mapping";
+        var testPath = "images/gear/test-mapping";
 
         try (var paths = Files.walk(Path.of(testPath))) {
             paths.forEach(path -> {
@@ -73,7 +73,7 @@ public class GearScript {
         }
 
 
-//        var snapshotPath = "img/gear/snapshots";
+//        var snapshotPath = "images/gear/snapshots";
 //        try (var paths = Files.walk(Path.of(snapshotPath))) {
 //            AtomicInteger i = new AtomicInteger(0);
 //            paths.forEach(path -> {

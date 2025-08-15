@@ -1,6 +1,5 @@
 package custom.tibame201020.adbOpenCv;
 
-import custom.tibame201020.adbOpenCv.adb.AdbPlatform;
 import custom.tibame201020.adbOpenCv.script.MainScript;
 import nu.pattern.OpenCV;
 import org.springframework.boot.SpringApplication;
@@ -16,9 +15,6 @@ public class AdbOpenCvApplication {
     }
 
     static void initialIntegrations() {
-        AdbPlatform adbPlatform = new AdbPlatform();
-        adbPlatform.initial();
-
         OpenCV.loadLocally();
     }
 
