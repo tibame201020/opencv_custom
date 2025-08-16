@@ -325,6 +325,10 @@ public class GearScript implements Script {
                         }
                         break;
                     case "speed":
+                        // ocr bug: 3 recognize 83
+                        if (parsedValue == 83) {
+                            parsedValue = 3;
+                        }
                         this.speed = parsedValue;
                         break;
                     case "cri-rate":
@@ -375,20 +379,20 @@ public class GearScript implements Script {
     String ocrPattern(GearImageDTOs.GearOcr gearOcr, Mat source) throws Exception {
         var result = openCvService.ocrPattern(gearOcr.ocrTemplatesPath(), source, convert2OcrRegion(gearOcr.gearRegion()), gearOcr.threshold());
 
-//        if (result.isBlank()) {
-//            var count = counter.incrementAndGet();
-//            var imageName = "unknown-" + count + ".png";
-//
-//            var newRegion = new GearImageDTOs.GearRegion(
-//                    gearOcr.gearRegion().x() + 7,
-//                    gearOcr.gearRegion().y() + 2,
-//                    gearOcr.gearRegion().width() - 11,
-//                    gearOcr.gearRegion().height() - 7
-//            );
-//
-//            var sliceRegionMat = MatUtility.sliceRegionMat(source, convert2OcrRegion(newRegion));
-//            MatUtility.writeToFile(imageName, sliceRegionMat);
-//        }
+        if (result.isBlank()) {
+            var count = counter.incrementAndGet();
+            var imageName = "unknown-" + count + ".png";
+
+            var newRegion = new GearImageDTOs.GearRegion(
+                    gearOcr.gearRegion().x() + 7,
+                    gearOcr.gearRegion().y() + 2,
+                    gearOcr.gearRegion().width() - 11,
+                    gearOcr.gearRegion().height() - 7
+            );
+
+            var sliceRegionMat = MatUtility.sliceRegionMat(source, convert2OcrRegion(newRegion));
+            MatUtility.writeToFile(imageName, sliceRegionMat);
+        }
 
         return result;
     }

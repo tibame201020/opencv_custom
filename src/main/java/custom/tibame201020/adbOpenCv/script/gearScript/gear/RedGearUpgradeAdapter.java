@@ -77,7 +77,7 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
             return score >= 70;
         }
 
-        return score >= 85;
+        return score >= 85 || calcScore >= 70;
     }
 
 
@@ -107,7 +107,7 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
         var calcScore = gearProp.reduceMainProp(gearMainProp).calcScore();
         System.err.println("score: " + score + ", calcScore: " + calcScore);
 
-        return score >= 85;
+        return score >= 85 || calcScore >= 70;
     }
 
     boolean mainPropRequired(GearDTOs.GearSet gearSet, GearDTOs.GearType gearType, GearDTOs.GearMainProp mainProp) {

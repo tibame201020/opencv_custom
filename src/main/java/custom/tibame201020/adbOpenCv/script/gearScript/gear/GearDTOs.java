@@ -367,6 +367,21 @@ public class GearDTOs {
         }
     }
 
+    static int flatPropCount(GearProp gearProp) {
+        int flatCount = 0;
+
+        if (gearProp.flatAttack() > 0) {
+            flatCount = flatCount + 1;
+        }
+        if (gearProp.flatLife() > 0) {
+            flatCount = flatCount + 1;
+        }
+        if (gearProp.flatDefense() > 0) {
+            flatCount = flatCount + 1;
+        }
+        return flatCount;
+    }
+
     /**
      * gear belong role type
      */
@@ -374,6 +389,12 @@ public class GearDTOs {
         DAMAGE("打手") {
             @Override
             public boolean isGearPropBelong(GearProp gearProp) {
+                int flatCount = flatPropCount(gearProp);
+
+                if (flatCount >= 2) {
+                    return false;
+                }
+
                 int validProps = 0;
 
                 if (gearProp.attackPercent() > 0) {
@@ -392,12 +413,18 @@ public class GearDTOs {
                     validProps = validProps + 1;
                 }
 
-                return validProps >= 3;
+                return validProps >= 4;
             }
         },
         TANK_DAMAGE("坦打") {
             @Override
             public boolean isGearPropBelong(GearProp gearProp) {
+                int flatCount = flatPropCount(gearProp);
+
+                if (flatCount >= 2) {
+                    return false;
+                }
+
                 int validProps = 0;
 
                 if (gearProp.attackPercent() > 0) {
@@ -431,6 +458,12 @@ public class GearDTOs {
         TANK("坦克") {
             @Override
             public boolean isGearPropBelong(GearProp gearProp) {
+                int flatCount = flatPropCount(gearProp);
+
+                if (flatCount >= 2) {
+                    return false;
+                }
+
                 int validProps = 0;
 
                 if (gearProp.speed() > 0) {
@@ -455,12 +488,18 @@ public class GearDTOs {
                     validProps = validProps + 1;
                 }
 
-                return validProps >= 3;
+                return validProps >= 4;
             }
         },
         SUPPORT("輔助") {
             @Override
             public boolean isGearPropBelong(GearProp gearProp) {
+                int flatCount = flatPropCount(gearProp);
+
+                if (flatCount >= 2) {
+                    return false;
+                }
+
                 int validProps = 0;
 
                 if (gearProp.speed() > 0) {
@@ -479,7 +518,7 @@ public class GearDTOs {
                     validProps = validProps + 1;
                 }
 
-                return validProps >= 3;
+                return validProps >= 4;
             }
         };
 
