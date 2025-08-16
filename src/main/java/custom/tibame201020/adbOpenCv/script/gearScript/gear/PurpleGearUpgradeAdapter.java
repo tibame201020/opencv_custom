@@ -12,7 +12,7 @@ public class PurpleGearUpgradeAdapter implements GearUpgradeAdapter {
             return false;
         }
         GearDTOs.GearSetType gearSetType = gearSetType(gearSet);
-        if (!gearSet.equals(GearDTOs.GearSet.SPEED) || gearSetType.equals(GearDTOs.GearSetType.FOUR)) {
+        if (!gearSet.equals(GearDTOs.GearSet.SPEED) && gearSetType.equals(GearDTOs.GearSetType.FOUR)) {
             return false;
         }
 
@@ -23,7 +23,7 @@ public class PurpleGearUpgradeAdapter implements GearUpgradeAdapter {
             return speed >= 2;
         }
         if (gearLevel >= 3 && gearLevel < 6) {
-            return speed >= 3;
+            return speed >= 5;
         }
         if (gearLevel >= 6 && gearLevel < 9) {
             return speed >= 8;

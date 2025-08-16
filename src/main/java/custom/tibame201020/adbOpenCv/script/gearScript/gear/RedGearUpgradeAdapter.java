@@ -11,35 +11,85 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
         GearDTOs.GearType gearType = gear.metadata().type();
         GearDTOs.GearProp gearProp = gear.prop();
         GearDTOs.GearMainProp gearMainProp = gear.metadata().mainProp();
+        int gearLevel = gear.metadata().level();
+
+        var speed = gear.prop().speed();
+
+        if (!gear.metadata().type().equals(GearDTOs.GearType.SHOES)) {
+            if ((gearLevel >= 0 && gearLevel < 9) && speed >= 5) {
+                System.err.println("--- 速度足夠: " + speed);
+                return true;
+            }
+
+            if ((gearLevel >= 9 && gearLevel < 12) && speed >= 10) {
+                System.err.println("--- 速度足夠: " + speed);
+                return true;
+            }
+
+            if ((gearLevel >= 12) && speed >= 15) {
+                System.err.println("--- 速度足夠: " + speed);
+                return true;
+            }
+        }
+
 
         boolean mainPropRequired = mainPropRequired(gearSet, gearType, gearMainProp);
         if (!mainPropRequired) {
-            System.err.println("--- main prop not required");
+            System.err.println("--- 裝備主屬性不符合: " + gearMainProp + ", 部位: " + gearType + ", 套裝: " + gearSet);
             return false;
         }
-        boolean gearPropNeeded = gearPropNeeded(gearSet, gearProp);
+        boolean gearPropNeeded = gearPropNeeded(gearSet, gearProp, gearMainProp);
         if (!gearPropNeeded) {
-            System.err.println("--- gear prop not needed");
+            System.err.println("--- 裝備屬性不符合需求");
             return false;
         }
 
         int score = gear.metadata().score();
-        var calcScore = gearProp.calcScore();
-        int gearLevel = gear.metadata().level();
+        var calcScore = gearProp.reduceMainProp(gearMainProp).calcScore();
 
-        if (gearLevel >= 0 && gearLevel < 9) {
-            return score >= 25;
+        System.err.println("score: " + score + ", calcScore: " + calcScore);
+
+        if (gearLevel >= 0 && gearLevel < 3) {
+            var result = score >= 22;
+            if (!result) {
+                System.err.println("--- 裝備評分不足: " + score + ", 強化等級: " + gearLevel);
+            }
+            return result;
+        }
+
+        if (gearLevel >= 3 && gearLevel < 6) {
+            var result = score >= 32;
+            if (!result) {
+                System.err.println("--- 裝備評分不足: " + score + ", 強化等級: " + gearLevel);
+            }
+            return result;
+        }
+
+        if (gearLevel >= 6 && gearLevel < 9) {
+            var result = score >= 45;
+            if (!result) {
+                System.err.println("--- 裝備評分不足: " + score + ", 強化等級: " + gearLevel);
+            }
+            return result;
         }
 
         if (gearLevel >= 9 && gearLevel < 12) {
-            return score >= 60;
+            var result = score >= 60;
+            if (!result) {
+                System.err.println("--- 裝備評分不足: " + score + ", 強化等級: " + gearLevel);
+            }
+            return result;
         }
 
         if (gearLevel >= 12) {
-            return score >= 70;
+            var result = score >= 70;
+            if (!result) {
+                System.err.println("--- 裝備評分不足: " + score + ", 強化等級: " + gearLevel);
+            }
+            return result;
         }
 
-        return score >= 85 || calcScore >= 70;
+        return score >= 85;
     }
 
 
@@ -52,7 +102,7 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
 
         var speed = gear.prop().speed();
         if (speed >= 20 && !gear.metadata().type().equals(GearDTOs.GearType.SHOES)) {
-            System.err.println("--- speed enough");
+            System.err.println("--- 速度足夠");
             return true;
         }
 
@@ -60,21 +110,16 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
         if (!mainPropRequired) {
             return false;
         }
-        boolean gearPropNeeded = gearPropNeeded(gearSet, gearProp);
+        boolean gearPropNeeded = gearPropNeeded(gearSet, gearProp, gearMainProp);
         if (!gearPropNeeded) {
             return false;
         }
 
         int score = gear.metadata().score();
-        var calcScore = gearProp.calcScore();
+        var calcScore = gearProp.reduceMainProp(gearMainProp).calcScore();
         System.err.println("score: " + score + ", calcScore: " + calcScore);
 
-        var type = gear.metadata().type();
-        if (type.equals(GearDTOs.GearType.SHOES) || type.equals(GearDTOs.GearType.NECKLACE) || type.equals(GearDTOs.GearType.RING)) {
-            return score >= 85;
-        }
-
-        return score >= 85 || calcScore >= 70;
+        return score >= 85;
     }
 
     boolean mainPropRequired(GearDTOs.GearSet gearSet, GearDTOs.GearType gearType, GearDTOs.GearMainProp mainProp) {
@@ -96,32 +141,51 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
         return false;
     }
 
-    boolean gearPropNeeded(GearDTOs.GearSet gearSet, GearDTOs.GearProp gearProp) {
-        List<GearDTOs.GearPropBelong> belongs = detectGearBelong(gearProp);
-        System.err.println("belongs: " + belongs);
+    boolean gearPropNeeded(GearDTOs.GearSet gearSet, GearDTOs.GearProp gearProp, GearDTOs.GearMainProp mainProp) {
+        List<GearDTOs.GearPropBelong> belongs = detectGearBelong(gearProp, mainProp);
+        System.err.println("裝備適性: " + belongs);
+
+        if (belongs.isEmpty()) {
+            return false;
+        }
 
         return switch (gearSet) {
-            case ATTACK, RAGE, TORRENT -> belongs.contains(GearDTOs.GearPropBelong.DAMAGE);
+            case ATTACK, RAGE, TORRENT, LIFE_STEAL, DUAL_ATTACK -> {
+                System.err.println("打手 套裝: " + gearSet);
+                yield belongs.contains(GearDTOs.GearPropBelong.DAMAGE);
+            }
+            case HEALTH, DEFENSE -> {
+                System.err.println("坦打/坦克/輔助 套裝: " + gearSet);
+                yield !belongs.contains(GearDTOs.GearPropBelong.DAMAGE);
+            }
             case DESTRUCTION, CRITICAL, COUNTER, PENETRATION, INJURY ->
-                    belongs.contains(GearDTOs.GearPropBelong.DAMAGE) || belongs.contains(GearDTOs.GearPropBelong.TANK_DAMAGE);
-            case PROTECTION -> belongs.contains(GearDTOs.GearPropBelong.TANK);
-            case DEFENSE, HEALTH, HIT, RESISTANCE, SPEED, REVENGE, LIFE_STEAL, DUAL_ATTACK, IMMUNITY ->
-                    !belongs.isEmpty();
+            {
+                System.err.println("打手/坦打 套裝: " + gearSet);
+                yield belongs.contains(GearDTOs.GearPropBelong.DAMAGE) || belongs.contains(GearDTOs.GearPropBelong.TANK_DAMAGE);
+            }
+            case PROTECTION -> {
+                System.err.println("坦克 套裝: " + gearSet);
+                yield belongs.contains(GearDTOs.GearPropBelong.TANK);
+            }
+            case HIT, RESISTANCE, SPEED, REVENGE, IMMUNITY -> {
+                System.err.println("通用 套裝: " + gearSet);
+                yield true;
+            }
         };
     }
 
-    List<GearDTOs.GearPropBelong> detectGearBelong(GearDTOs.GearProp gearProp) {
+    List<GearDTOs.GearPropBelong> detectGearBelong(GearDTOs.GearProp gearProp, GearDTOs.GearMainProp mainProp) {
         List<GearDTOs.GearPropBelong> belongs = new ArrayList<>();
-        if (GearDTOs.GearPropBelong.DAMAGE.isGearPropBelong(gearProp)) {
+        if (GearDTOs.GearPropBelong.DAMAGE.isGearPropBelong(gearProp.reduceMainProp(mainProp))) {
             belongs.add(GearDTOs.GearPropBelong.DAMAGE);
         }
-        if (GearDTOs.GearPropBelong.TANK_DAMAGE.isGearPropBelong(gearProp)) {
+        if (GearDTOs.GearPropBelong.TANK_DAMAGE.isGearPropBelong(gearProp.reduceMainProp(mainProp))) {
             belongs.add(GearDTOs.GearPropBelong.TANK_DAMAGE);
         }
-        if (GearDTOs.GearPropBelong.TANK.isGearPropBelong(gearProp)) {
+        if (GearDTOs.GearPropBelong.TANK.isGearPropBelong(gearProp.reduceMainProp(mainProp))) {
             belongs.add(GearDTOs.GearPropBelong.TANK);
         }
-        if (GearDTOs.GearPropBelong.SUPPORT.isGearPropBelong(gearProp)) {
+        if (GearDTOs.GearPropBelong.SUPPORT.isGearPropBelong(gearProp.reduceMainProp(mainProp))) {
             belongs.add(GearDTOs.GearPropBelong.SUPPORT);
         }
         return belongs;

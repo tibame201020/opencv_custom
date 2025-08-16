@@ -1,5 +1,6 @@
 package custom.tibame201020.adbOpenCv.script.gearScript;
 
+import custom.tibame201020.adbOpenCv.service.core.opencv.MatUtility;
 import custom.tibame201020.adbOpenCv.service.platform.adb.Adb;
 import custom.tibame201020.adbOpenCv.service.platform.adb.AdbPlatform;
 import custom.tibame201020.adbOpenCv.service.core.opencv.OpenCvService;
@@ -56,7 +57,7 @@ class GearScriptTest {
                 0  // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGear(MatUtility.getMatFromFile(testOcr));
         var metadata = result.metadata();
         var prop = result.prop();
 
@@ -95,7 +96,7 @@ class GearScriptTest {
                 0  // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGear(MatUtility.getMatFromFile(testOcr));
         var metadata = result.metadata();
         var prop = result.prop();
 
@@ -134,7 +135,7 @@ class GearScriptTest {
                 8  // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGear(MatUtility.getMatFromFile(testOcr));
         var metadata = result.metadata();
         var prop = result.prop();
 
@@ -173,7 +174,7 @@ class GearScriptTest {
                 8  // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGear(MatUtility.getMatFromFile(testOcr));
         var metadata = result.metadata();
         var prop = result.prop();
 
@@ -212,7 +213,7 @@ class GearScriptTest {
                 0  // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGear(MatUtility.getMatFromFile(testOcr));
         var metadata = result.metadata();
         var prop = result.prop();
 
@@ -251,7 +252,7 @@ class GearScriptTest {
                 0  // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGear(MatUtility.getMatFromFile(testOcr));
         var metadata = result.metadata();
         var prop = result.prop();
 
@@ -290,7 +291,7 @@ class GearScriptTest {
                 6    // effectivenessT
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGear(MatUtility.getMatFromFile(testOcr));
         var metadata = result.metadata();
         var prop = result.prop();
 
@@ -329,7 +330,7 @@ class GearScriptTest {
                 25 // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGear(MatUtility.getMatFromFile(testOcr));
         var metadata = result.metadata();
         var prop = result.prop();
 
@@ -368,7 +369,7 @@ class GearScriptTest {
                 0   // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGear(MatUtility.getMatFromFile(testOcr));
         var metadata = result.metadata();
         var prop = result.prop();
 
@@ -407,7 +408,7 @@ class GearScriptTest {
                 0  // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGear(MatUtility.getMatFromFile(testOcr));
         var metadata = result.metadata();
         var prop = result.prop();
 
@@ -446,7 +447,7 @@ class GearScriptTest {
                 8  // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGear(MatUtility.getMatFromFile(testOcr));
         var metadata = result.metadata();
         var prop = result.prop();
 
@@ -485,7 +486,7 @@ class GearScriptTest {
                 0  // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGear(MatUtility.getMatFromFile(testOcr));
         var metadata = result.metadata();
         var prop = result.prop();
 
@@ -524,7 +525,7 @@ class GearScriptTest {
                 0  // effectivenessT
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGear(MatUtility.getMatFromFile(testOcr));
         var metadata = result.metadata();
         var prop = result.prop();
 
@@ -563,7 +564,7 @@ class GearScriptTest {
                 8  // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGear(MatUtility.getMatFromFile(testOcr));
         var metadata = result.metadata();
         var prop = result.prop();
 
@@ -602,7 +603,7 @@ class GearScriptTest {
                 8  // effectiveness
         );
 
-        var result = gearScript.detectGear(testOcr, title);
+        var result = gearScript.detectGear(MatUtility.getMatFromFile(testOcr));
         var metadata = result.metadata();
         var prop = result.prop();
 

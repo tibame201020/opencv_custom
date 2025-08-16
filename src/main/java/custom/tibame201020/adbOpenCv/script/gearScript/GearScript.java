@@ -26,7 +26,6 @@ public class GearScript implements Script {
     private final OpenCvService openCvService;
     private final PurpleGearUpgradeAdapter purpleGearUpgradeAdapter;
     private final RedGearUpgradeAdapter redGearUpgradeAdapter;
-
     private final Map<String, GearImageDTOs.GearOcr> ocrConfigs = new HashMap<>();
 
     public GearScript(AdbPlatform adbPlatform) {
@@ -47,8 +46,8 @@ public class GearScript implements Script {
         // Gear metadata
         ocrConfigs.put("gearSet", new GearImageDTOs.GearOcr("images/gear/gear-set-ocr", new GearImageDTOs.GearRegion(900, 550, 100, 40), 0.95));
         ocrConfigs.put("gearRarity", new GearImageDTOs.GearOcr("images/gear/gear-rarity-ocr", new GearImageDTOs.GearRegion(972, 180, 35, 23), 0.85));
-        ocrConfigs.put("gearType", new GearImageDTOs.GearOcr("images/gear/gear-type-ocr", new GearImageDTOs.GearRegion(1007, 180, 35, 23), 0.85));
-        ocrConfigs.put("gearLevel", new GearImageDTOs.GearOcr("images/gear/gear-level-ocr", new GearImageDTOs.GearRegion(935, 168, 35, 25), 0.95));
+        ocrConfigs.put("gearType", new GearImageDTOs.GearOcr("images/gear/gear-type-ocr", new GearImageDTOs.GearRegion(1007, 180, 35, 23), 0.80));
+        ocrConfigs.put("gearLevel", new GearImageDTOs.GearOcr("images/gear/gear-level-ocr", new GearImageDTOs.GearRegion(935, 168, 35, 25), 0.98));
 
         // Main and Sub-properties types
         ocrConfigs.put("mainPropType", new GearImageDTOs.GearOcr("images/gear/main-prop-type-ocr", new GearImageDTOs.GearRegion(880, 327, 120, 35), 0.85));
@@ -68,7 +67,7 @@ public class GearScript implements Script {
         adbPlatform.clickImage("images/gear/action/upgrade-3.png", region, deviceId);
 
         var level = gear.metadata().level();
-        var upgradeLevelOptions = List.of(6, 9, 12, 15);
+        var upgradeLevelOptions = List.of(3, 6, 9, 12, 15);
         var closetUpgradeLevel = upgradeLevelOptions.stream().filter(option -> option > level).min(Integer::compareTo).orElse(15);
         var upgradeOptionImage = "images/gear/action/plus-" + closetUpgradeLevel + ".png";
         region = new OpenCvDTOs.OcrRegion(950, 315, 1190, 625);
@@ -101,21 +100,21 @@ public class GearScript implements Script {
 
     void sellGear(String deviceId) throws Exception {
         adbPlatform.click(918, 617, deviceId);
-        adbPlatform.sleep(1);
+        adbPlatform.sleep(2);
         adbPlatform.click(750, 530, deviceId);
         adbPlatform.sleep(3);
     }
 
     void extractGear(String deviceId) throws Exception {
         adbPlatform.click(985, 620, deviceId);
-        adbPlatform.sleep(1);
+        adbPlatform.sleep(2);
         adbPlatform.click(750, 530, deviceId);
         adbPlatform.sleep(3);
     }
 
     void storeGear(String deviceId) throws Exception {
         adbPlatform.click(1045, 620, deviceId);
-        adbPlatform.sleep(1);
+        adbPlatform.sleep(2);
         adbPlatform.click(755, 455, deviceId);
         adbPlatform.sleep(3);
     }
@@ -143,17 +142,19 @@ public class GearScript implements Script {
 
     @Override
     public void execute() throws Exception {
-        Scanner scanner = new Scanner(System.in);
+//        Scanner scanner = new Scanner(System.in);
+//
+//        var devices = adbPlatform.getDevices();
+//        System.out.println("Please input device id: " + devices);
+//
+//        var deviceId = scanner.nextLine();
 
-        var devices = adbPlatform.getDevices();
-        System.out.println("Please input device id: " + devices);
+        var deviceId = "emulator-5554";
 
-        var deviceId = scanner.nextLine();
-
-        if (!devices.contains(deviceId)) {
-            System.err.println("Invalid device id: " + deviceId);
-            return;
-        }
+//        if (!devices.contains(deviceId)) {
+//            System.err.println("Invalid device id: " + deviceId);
+//            return;
+//        }
 
         adbPlatform.connect(deviceId);
 
@@ -370,8 +371,26 @@ public class GearScript implements Script {
         );
     }
 
+    AtomicInteger counter = new AtomicInteger(0);
     String ocrPattern(GearImageDTOs.GearOcr gearOcr, Mat source) throws Exception {
-        return openCvService.ocrPattern(gearOcr.ocrTemplatesPath(), source, convert2OcrRegion(gearOcr.gearRegion()), gearOcr.threshold());
+        var result = openCvService.ocrPattern(gearOcr.ocrTemplatesPath(), source, convert2OcrRegion(gearOcr.gearRegion()), gearOcr.threshold());
+
+        if (result.isBlank()) {
+            var count = counter.incrementAndGet();
+            var imageName = "unknown-" + count + ".png";
+
+            var newRegion = new GearImageDTOs.GearRegion(
+                    gearOcr.gearRegion().x() + 5,
+                    gearOcr.gearRegion().y() + 2,
+                    gearOcr.gearRegion().width() - 7,
+                    gearOcr.gearRegion().height() - 7
+            );
+
+            var sliceRegionMat = MatUtility.sliceRegionMat(source, convert2OcrRegion(newRegion));
+            MatUtility.writeToFile(imageName, sliceRegionMat);
+        }
+
+        return result;
     }
 
     String ocrCharacter(GearImageDTOs.GearOcr gearOcr, Mat source) throws Exception {

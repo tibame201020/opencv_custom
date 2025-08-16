@@ -1,5 +1,6 @@
 package custom.tibame201020.adbOpenCv.script;
 
+import custom.tibame201020.adbOpenCv.script.evilHunter.EvilHunterScript;
 import custom.tibame201020.adbOpenCv.script.gearScript.GearScript;
 import custom.tibame201020.adbOpenCv.script.robot.RobotScript;
 import custom.tibame201020.adbOpenCv.service.platform.adb.AdbPlatform;
@@ -21,27 +22,35 @@ public class MainScript {
     }
 
     public void execute() throws Exception {
-        Scanner scanner = new Scanner(System.in);
 
-        var scripts = List.of("gear", "robot");
+        Script script = new GearScript(adbPlatform);
+        script.execute();
 
-        System.out.println("choose script: " + scripts);
-        var chosenScript = scanner.nextLine();
-        switch (chosenScript) {
-            case "gear" -> {
-                Script gearScript = new GearScript(adbPlatform);
-                gearScript.execute();
-            }
-            case "robot" -> {
-                RobotScript robotScript = new RobotScript(robotPlatform);
-                robotScript.execute();
-            }
-            default -> {
-                System.out.println("invalid script");
-            }
-        }
-
-        scanner.close();
+//        Scanner scanner = new Scanner(System.in);
+//
+//        var scripts = List.of("gear", "robot", "evil-hunter");
+//
+//        System.out.println("choose script: " + scripts);
+//        var chosenScript = scanner.nextLine();
+//        switch (chosenScript) {
+//            case "gear" -> {
+//                Script script = new GearScript(adbPlatform);
+//                script.execute();
+//            }
+//            case "robot" -> {
+//                Script script = new RobotScript(robotPlatform);
+//                script.execute();
+//            }
+//            case "evil-hunter" -> {
+//                Script script = new EvilHunterScript(adbPlatform);
+//                script.execute();
+//            }
+//            default -> {
+//                System.out.println("invalid script");
+//            }
+//        }
+//
+//        scanner.close();
     }
 
 }

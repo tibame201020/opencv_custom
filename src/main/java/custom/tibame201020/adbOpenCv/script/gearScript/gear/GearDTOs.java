@@ -72,6 +72,168 @@ public class GearDTOs {
         public double calcScore() {
             return attackPercent + defensePercent + lifePercent + effectiveness + effectResist + speed * 2 + criticalRate * 1.5 + criticalDamage * 1.125;
         }
+
+        public GearProp reduceMainProp(GearMainProp mainProp) {
+            switch (mainProp) {
+                case ATK_PERCENT:
+                    return new GearProp(
+                            0,
+                            flatAttack,
+                            lifePercent,
+                            flatLife,
+                            defensePercent,
+                            flatDefense,
+                            criticalRate,
+                            criticalDamage,
+                            speed,
+                            effectResist,
+                            effectiveness
+                    );
+                case LIFE_PERCENT:
+                    return new GearProp(
+                            attackPercent,
+                            flatAttack,
+                            0,
+                            flatLife,
+                            defensePercent,
+                            flatDefense,
+                            criticalRate,
+                            criticalDamage,
+                            speed,
+                            effectResist,
+                            effectiveness
+                    );
+                case DEF_PERCENT:
+                    return new GearProp(
+                            attackPercent,
+                            flatAttack,
+                            lifePercent,
+                            flatLife,
+                            0,
+                            flatDefense,
+                            criticalRate,
+                            criticalDamage,
+                            speed,
+                            effectResist,
+                            effectiveness
+                    );
+                case CRI_RATE:
+                    return new GearProp(
+                            attackPercent,
+                            flatAttack,
+                            lifePercent,
+                            flatLife,
+                            defensePercent,
+                            flatDefense,
+                            0,
+                            criticalDamage,
+                            speed,
+                            effectResist,
+                            effectiveness
+                    );
+                case CRI_DMG:
+                    return new GearProp(
+                            attackPercent,
+                            flatAttack,
+                            lifePercent,
+                            flatLife,
+                            defensePercent,
+                            flatDefense,
+                            criticalRate,
+                            0,
+                            speed,
+                            effectResist,
+                            effectiveness
+                    );
+                case SPEED:
+                    return new GearProp(
+                            attackPercent,
+                            flatAttack,
+                            lifePercent,
+                            flatLife,
+                            defensePercent,
+                            flatDefense,
+                            criticalRate,
+                            criticalDamage,
+                            0,
+                            effectResist,
+                            effectiveness
+                    );
+                case EFFECT_RESISTANCE:
+                    return new GearProp(
+                            attackPercent,
+                            flatAttack,
+                            lifePercent,
+                            flatLife,
+                            defensePercent,
+                            flatDefense,
+                            criticalRate,
+                            criticalDamage,
+                            speed,
+                            0,
+                            effectiveness
+                    );
+                case EFFECT_HIT:
+                    return new GearProp(
+                            attackPercent,
+                            flatAttack,
+                            lifePercent,
+                            flatLife,
+                            defensePercent,
+                            flatDefense,
+                            criticalRate,
+                            criticalDamage,
+                            speed,
+                            effectResist,
+                            0
+                    );
+                case ATK_FLAT:
+                    return new GearProp(
+                            attackPercent,
+                            0,
+                            lifePercent,
+                            flatLife,
+                            defensePercent,
+                            flatDefense,
+                            criticalRate,
+                            criticalDamage,
+                            speed,
+                            effectResist,
+                            effectiveness
+                    );
+                case LIFE_FLAT:
+                    return new GearProp(
+                            attackPercent,
+                            flatAttack,
+                            lifePercent,
+                            0,
+                            defensePercent,
+                            flatDefense,
+                            criticalRate,
+                            criticalDamage,
+                            speed,
+                            effectResist,
+                            effectiveness
+                    );
+                case DEF_FLAT:
+                    return new GearProp(
+                            attackPercent,
+                            flatAttack,
+                            lifePercent,
+                            flatLife,
+                            defensePercent,
+                            0,
+                            criticalRate,
+                            criticalDamage,
+                            speed,
+                            effectResist,
+                            effectiveness
+                    );
+                default:
+                    throw new RuntimeException("not valid main prop: " + mainProp);
+            }
+
+        }
     }
 
     /**
@@ -168,7 +330,7 @@ public class GearDTOs {
                     validProps = validProps + 1;
                 }
 
-                return validProps >= 4;
+                return validProps >= 3;
             }
         },
         TANK_DAMAGE {
@@ -201,7 +363,7 @@ public class GearDTOs {
                     validProps = validProps + 1;
                 }
 
-                return validProps >= 4;
+                return validProps >= 3;
             }
         },
         TANK {
@@ -231,7 +393,7 @@ public class GearDTOs {
                     validProps = validProps + 1;
                 }
 
-                return validProps >= 4;
+                return validProps >= 3;
             }
         },
         SUPPORT {
@@ -255,7 +417,7 @@ public class GearDTOs {
                     validProps = validProps + 1;
                 }
 
-                return validProps >= 4;
+                return validProps >= 3;
             }
         };
 
@@ -275,6 +437,9 @@ public class GearDTOs {
          * 翠取
          */
         EXTRACTION,
+        /**
+         * STORE
+         */
         STORE
     }
 
