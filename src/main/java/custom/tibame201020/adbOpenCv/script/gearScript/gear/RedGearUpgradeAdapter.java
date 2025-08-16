@@ -17,17 +17,17 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
 
         if (!gear.metadata().type().equals(GearDTOs.GearType.SHOES)) {
             if ((gearLevel >= 0 && gearLevel < 9) && speed >= 5) {
-                System.err.println("--- 速度足夠: " + speed);
+                System.err.println("--- 速度足夠: " + speed + ", 強化等級: " + gearLevel + ", 需求: 5");
                 return true;
             }
 
             if ((gearLevel >= 9 && gearLevel < 12) && speed >= 10) {
-                System.err.println("--- 速度足夠: " + speed);
+                System.err.println("--- 速度足夠: " + speed + ", 強化等級: " + gearLevel + ", 需求: 10");
                 return true;
             }
 
             if ((gearLevel >= 12) && speed >= 15) {
-                System.err.println("--- 速度足夠: " + speed);
+                System.err.println("--- 速度足夠: " + speed + ", 強化等級: " + gearLevel + ", 需求: 15");
                 return true;
             }
         }
@@ -35,7 +35,7 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
 
         boolean mainPropRequired = mainPropRequired(gearSet, gearType, gearMainProp);
         if (!mainPropRequired) {
-            System.err.println("--- 裝備主屬性不符合: " + gearMainProp + ", 部位: " + gearType + ", 套裝: " + gearSet);
+            System.err.println("--- 裝備主屬性不符合: " + gearMainProp.text + ", 部位: " + gearType.text + ", 套裝: " + gearSet.text);
             return false;
         }
         boolean gearPropNeeded = gearPropNeeded(gearSet, gearProp, gearMainProp);
@@ -50,43 +50,31 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
         System.err.println("score: " + score + ", calcScore: " + calcScore);
 
         if (gearLevel >= 0 && gearLevel < 3) {
-            var result = score >= 22;
-            if (!result) {
-                System.err.println("--- 裝備評分不足: " + score + ", 強化等級: " + gearLevel);
-            }
-            return result;
+            System.err.println("--- 裝備評分: " + score + ", 強化等級: " + gearLevel + ", 評分需求: 22");
+            return score >= 22;
+
         }
 
         if (gearLevel >= 3 && gearLevel < 6) {
-            var result = score >= 32;
-            if (!result) {
-                System.err.println("--- 裝備評分不足: " + score + ", 強化等級: " + gearLevel);
-            }
-            return result;
+            System.err.println("--- 裝備評分: " + score + ", 強化等級: " + gearLevel + ", 評分需求: 32");
+            return score >= 32;
+
         }
 
         if (gearLevel >= 6 && gearLevel < 9) {
-            var result = score >= 45;
-            if (!result) {
-                System.err.println("--- 裝備評分不足: " + score + ", 強化等級: " + gearLevel);
-            }
-            return result;
+            System.err.println("--- 裝備評分: " + score + ", 強化等級: " + gearLevel + ", 評分需求: 45");
+            return score >= 45;
+
         }
 
         if (gearLevel >= 9 && gearLevel < 12) {
-            var result = score >= 60;
-            if (!result) {
-                System.err.println("--- 裝備評分不足: " + score + ", 強化等級: " + gearLevel);
-            }
-            return result;
+            System.err.println("--- 裝備評分: " + score + ", 強化等級: " + gearLevel + ", 評分需求: 60");
+            return score >= 60;
         }
 
         if (gearLevel >= 12) {
-            var result = score >= 70;
-            if (!result) {
-                System.err.println("--- 裝備評分不足: " + score + ", 強化等級: " + gearLevel);
-            }
-            return result;
+            System.err.println("--- 裝備評分: " + score + ", 強化等級: " + gearLevel + ", 評分需求: 70");
+            return score >= 70;
         }
 
         return score >= 85;
@@ -143,7 +131,7 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
 
     boolean gearPropNeeded(GearDTOs.GearSet gearSet, GearDTOs.GearProp gearProp, GearDTOs.GearMainProp mainProp) {
         List<GearDTOs.GearPropBelong> belongs = detectGearBelong(gearProp, mainProp);
-        System.err.println("裝備適性: " + belongs);
+        System.err.println("裝備適性: " + belongs.stream().map(belong -> belong.text).toList());
 
         if (belongs.isEmpty()) {
             return false;
@@ -151,24 +139,23 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
 
         return switch (gearSet) {
             case ATTACK, RAGE, TORRENT, LIFE_STEAL, DUAL_ATTACK -> {
-                System.err.println("打手 套裝: " + gearSet);
+                System.err.println(gearSet.text + " -> 打手套裝");
                 yield belongs.contains(GearDTOs.GearPropBelong.DAMAGE);
             }
             case HEALTH, DEFENSE -> {
-                System.err.println("坦打/坦克/輔助 套裝: " + gearSet);
+                System.err.println(gearSet.text + " -> 坦打/坦克/輔助套裝");
                 yield !belongs.contains(GearDTOs.GearPropBelong.DAMAGE);
             }
-            case DESTRUCTION, CRITICAL, COUNTER, PENETRATION, INJURY ->
-            {
-                System.err.println("打手/坦打 套裝: " + gearSet);
+            case DESTRUCTION, CRITICAL, COUNTER, PENETRATION, INJURY -> {
+                System.err.println(gearSet.text + " -> 打手/坦打套裝");
                 yield belongs.contains(GearDTOs.GearPropBelong.DAMAGE) || belongs.contains(GearDTOs.GearPropBelong.TANK_DAMAGE);
             }
             case PROTECTION -> {
-                System.err.println("坦克 套裝: " + gearSet);
+                System.err.println(gearSet.text + " -> 坦克套裝");
                 yield belongs.contains(GearDTOs.GearPropBelong.TANK);
             }
             case HIT, RESISTANCE, SPEED, REVENGE, IMMUNITY -> {
-                System.err.println("通用 套裝: " + gearSet);
+                System.err.println(gearSet.text + " -> 通用套裝");
                 yield true;
             }
         };

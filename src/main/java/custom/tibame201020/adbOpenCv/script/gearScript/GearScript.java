@@ -128,8 +128,8 @@ public class GearScript implements Script {
 
         var gear = detectGear(snapshotMat);
         var action = judgmentGear(gear);
-        System.err.println(gear.metadata());
-        System.err.println(gear.prop());
+        System.err.println(gear.metadata().getMetadataInfo());
+        System.err.println(gear.prop().getPropInfo());
         System.err.println(action);
 
         switch (action) {
@@ -375,20 +375,20 @@ public class GearScript implements Script {
     String ocrPattern(GearImageDTOs.GearOcr gearOcr, Mat source) throws Exception {
         var result = openCvService.ocrPattern(gearOcr.ocrTemplatesPath(), source, convert2OcrRegion(gearOcr.gearRegion()), gearOcr.threshold());
 
-        if (result.isBlank()) {
-            var count = counter.incrementAndGet();
-            var imageName = "unknown-" + count + ".png";
-
-            var newRegion = new GearImageDTOs.GearRegion(
-                    gearOcr.gearRegion().x() + 5,
-                    gearOcr.gearRegion().y() + 2,
-                    gearOcr.gearRegion().width() - 7,
-                    gearOcr.gearRegion().height() - 7
-            );
-
-            var sliceRegionMat = MatUtility.sliceRegionMat(source, convert2OcrRegion(newRegion));
-            MatUtility.writeToFile(imageName, sliceRegionMat);
-        }
+//        if (result.isBlank()) {
+//            var count = counter.incrementAndGet();
+//            var imageName = "unknown-" + count + ".png";
+//
+//            var newRegion = new GearImageDTOs.GearRegion(
+//                    gearOcr.gearRegion().x() + 7,
+//                    gearOcr.gearRegion().y() + 2,
+//                    gearOcr.gearRegion().width() - 11,
+//                    gearOcr.gearRegion().height() - 7
+//            );
+//
+//            var sliceRegionMat = MatUtility.sliceRegionMat(source, convert2OcrRegion(newRegion));
+//            MatUtility.writeToFile(imageName, sliceRegionMat);
+//        }
 
         return result;
     }
