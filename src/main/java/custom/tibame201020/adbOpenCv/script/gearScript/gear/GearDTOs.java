@@ -413,7 +413,7 @@ public class GearDTOs {
                     validProps = validProps + 1;
                 }
 
-                return validProps >= 4;
+                return validProps >= 3;
             }
         },
         TANK_DAMAGE("坦打") {
@@ -452,7 +452,7 @@ public class GearDTOs {
                     validProps = validProps + 1;
                 }
 
-                return validProps >= 3;
+                return validProps >= 4;
             }
         },
         TANK("坦克") {

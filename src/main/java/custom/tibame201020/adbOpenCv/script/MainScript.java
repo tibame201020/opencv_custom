@@ -22,10 +22,13 @@ public class MainScript {
     }
 
     public void execute() throws Exception {
-
 //        Script script = new GearScript(adbPlatform);
 //        script.execute();
 
+        askForScript();
+    }
+
+    void askForScript() throws Exception {
         Scanner scanner = new Scanner(System.in);
         var scripts = List.of("gear", "robot", "evil-hunter");
 

@@ -57,29 +57,29 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
 
         if (gearLevel >= 3 && gearLevel < 6) {
             System.err.println("--- 裝備評分: " + score + ", 強化等級: " + gearLevel + ", 評分需求: 32");
-            return score >= 32;
+            return score >= 30;
 
         }
 
         if (gearLevel >= 6 && gearLevel < 9) {
             System.err.println("--- 裝備評分: " + score + ", 強化等級: " + gearLevel + ", 評分需求: 45");
-            return score >= 45;
+            return score >= 40;
 
         }
 
         if (gearLevel >= 9 && gearLevel < 12) {
             System.err.println("--- 裝備評分: " + score + ", 強化等級: " + gearLevel + ", 評分需求: 60");
-            return score >= 60;
+            return score >= 55;
         }
 
         if (gearLevel >= 12) {
             System.err.println("--- 裝備評分: " + score + ", 強化等級: " + gearLevel + ", 評分需求: 70");
-            return score >= 70;
+            return score >= 65;
         }
 
         System.err.println("--- 裝備評分: " + score + ", 強化等級: " + gearLevel + ", 評分需求: 85 || calcScore: 70");
 
-        return score >= 85 || calcScore >= 70;
+        return score >= 80 || calcScore >= 70;
     }
 
 
@@ -110,7 +110,7 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
         System.err.println("score: " + score + ", calcScore: " + calcScore);
         System.err.println("--- 裝備評分: " + score + ", 強化等級: 15, 評分需求: 85 || calcScore: 70");
 
-        return score >= 85 || calcScore >= 70;
+        return score >= 80 || calcScore >= 70;
     }
 
     boolean mainPropRequired(GearDTOs.GearSet gearSet, GearDTOs.GearType gearType, GearDTOs.GearMainProp mainProp) {

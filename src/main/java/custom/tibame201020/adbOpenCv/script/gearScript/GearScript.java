@@ -142,8 +142,8 @@ public class GearScript implements Script {
 
     @Override
     public void execute() throws Exception {
-//        var deviceId = fetchDeviceId();
-        var deviceId = "emulator-5554";
+        var deviceId = fetchDeviceId();
+//        var deviceId = "emulator-5554";
         adbPlatform.connect(deviceId);
 
         while (true) {
