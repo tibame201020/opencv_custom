@@ -7,6 +7,7 @@ import custom.tibame201020.adbOpenCv.service.platform.adb.AdbPlatform;
 import org.opencv.core.Mat;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -53,10 +54,11 @@ public class EvilHunterScript implements Script {
         }
 
         System.out.println("Please input enable character match: Y/N");
-        var enableCharacterMatch = scanner.nextLine();
-        if (!enableCharacterMatch.equalsIgnoreCase("N") || !enableCharacterMatch.equalsIgnoreCase("Y")) {
-            throw new IllegalArgumentException("Invalid enable character match: " + enableCharacterMatch);
-        }
+        var enableCharacterMatch = scanner.nextLine().toUpperCase();
+        var validEnableCharacterMatch = List.of("Y", "N");
+         if (!validEnableCharacterMatch.contains(enableCharacterMatch)) {
+             throw new IllegalArgumentException("Invalid enable character match: " + enableCharacterMatch);
+         }
         this.enableCharacterMatch = enableCharacterMatch.equalsIgnoreCase("Y");
 
         scanner.close();
