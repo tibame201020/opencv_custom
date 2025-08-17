@@ -1,8 +1,6 @@
 package custom.tibame201020.adbOpenCv.script.evilHunter;
 
 import custom.tibame201020.adbOpenCv.script.Script;
-import custom.tibame201020.adbOpenCv.script.gearScript.GearImageDTOs;
-import custom.tibame201020.adbOpenCv.service.core.opencv.MatUtility;
 import custom.tibame201020.adbOpenCv.service.core.opencv.OpenCvDTOs;
 import custom.tibame201020.adbOpenCv.service.core.opencv.OpenCvService;
 import custom.tibame201020.adbOpenCv.service.platform.adb.AdbPlatform;
@@ -17,6 +15,8 @@ import static custom.tibame201020.adbOpenCv.script.evilHunter.EvilHunterConfig.*
 public class EvilHunterScript implements Script {
     private final AdbPlatform adbPlatform;
     private final OpenCvService openCvService;
+
+    private boolean enableCharacterMatch = false;
 
     public EvilHunterScript(AdbPlatform adbPlatform) {
         this.adbPlatform = adbPlatform;
@@ -51,6 +51,13 @@ public class EvilHunterScript implements Script {
         if (!devices.contains(deviceId)) {
             throw new IllegalArgumentException("Invalid device id: " + deviceId);
         }
+
+        System.out.println("Please input enable character match: Y/N");
+        var enableCharacterMatch = scanner.nextLine();
+        if (!enableCharacterMatch.equalsIgnoreCase("N") || !enableCharacterMatch.equalsIgnoreCase("Y")) {
+            throw new IllegalArgumentException("Invalid enable character match: " + enableCharacterMatch);
+        }
+        this.enableCharacterMatch = enableCharacterMatch.equalsIgnoreCase("Y");
 
         scanner.close();
 
@@ -89,11 +96,13 @@ public class EvilHunterScript implements Script {
         var characterMatch = TARGET_CHARACTERS.contains(character);
         var rarityMatch = TARGET_RARITIES.contains(rarity);
 
+        characterMatch = !enableCharacterMatch || characterMatch;
+
         if (characterMatch && rarityMatch) {
-            System.err.println("[stop] Hunter: [ character:" + character + ", rarity:" + rarity + "] found " + LocalDateTime.now());
+            System.err.println("[match] Hunter: [ character:" + character + ", rarity:" + rarity + "] " + LocalDateTime.now());
             return;
         }
-        System.err.println("[continue] Hunter: [ character:" + character + ", rarity:" + rarity + "] not match " + LocalDateTime.now());
+        System.err.println("[not match] Hunter: [ character:" + character + ", rarity:" + rarity + "] " + LocalDateTime.now());
 
         adbPlatform.click(360, 1100, deviceId);
         expelHunter(deviceId);
