@@ -22,7 +22,7 @@ public class EvilHunterConfig {
     public static final double LOCK_Y = 1130;
 
     // Script Interval
-    public static final int LOOP_INTERVAL_SECONDS = 60 * 3;
+    public static final int LOOP_INTERVAL_SECONDS = 60 * 2;
 
     // Image Paths and OCR Thresholds
     public static final String PER_SECOND_DAMAGE_IMAGE_PATH = "images/evil-hunter/perSecondDamage.png";

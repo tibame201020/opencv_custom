@@ -1,6 +1,8 @@
 package custom.tibame201020.adbOpenCv.script.evilHunter;
 
 import custom.tibame201020.adbOpenCv.script.Script;
+import custom.tibame201020.adbOpenCv.script.gearScript.GearImageDTOs;
+import custom.tibame201020.adbOpenCv.service.core.opencv.MatUtility;
 import custom.tibame201020.adbOpenCv.service.core.opencv.OpenCvDTOs;
 import custom.tibame201020.adbOpenCv.service.core.opencv.OpenCvService;
 import custom.tibame201020.adbOpenCv.service.platform.adb.AdbPlatform;
@@ -8,6 +10,7 @@ import org.opencv.core.Mat;
 
 import java.time.LocalDateTime;
 import java.util.Scanner;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static custom.tibame201020.adbOpenCv.script.evilHunter.EvilHunterConfig.*;
 
@@ -33,6 +36,7 @@ public class EvilHunterScript implements Script {
 
     void loopScript(String deviceId) throws Exception {
         toHunterBox(deviceId);
+        adbPlatform.sleep(1);
         checkHunter(deviceId);
     }
 
@@ -70,7 +74,6 @@ public class EvilHunterScript implements Script {
 
         var point = adbPlatform.findImage(PER_SECOND_DAMAGE_IMAGE_PATH, deviceId);
         if (point == null) {
-            System.err.println("no hunter at this moment, " + LocalDateTime.now());
             adbPlatform.click(TO_HUNTER_BOX_CLICK_X, TO_HUNTER_BOX_CLICK_Y, deviceId);
             return;
         }
@@ -78,7 +81,6 @@ public class EvilHunterScript implements Script {
         Mat snapshotMat = adbPlatform.takeSnapshot(deviceId);
 
         OpenCvDTOs.OcrRegion characterRegion = new OpenCvDTOs.OcrRegion(CHARACTER_REGION_X1, CHARACTER_REGION_Y1, CHARACTER_REGION_X2, CHARACTER_REGION_Y2);
-
         String character = openCvService.ocrPattern(CHARACTER_OCR_PATH, snapshotMat, characterRegion, CHARACTER_THRESHOLD);
 
         OpenCvDTOs.OcrRegion rarityRegion = new OpenCvDTOs.OcrRegion(RARITY_REGION_X1, RARITY_REGION_Y1, RARITY_REGION_X2, RARITY_REGION_Y2);
@@ -88,14 +90,16 @@ public class EvilHunterScript implements Script {
         var rarityMatch = TARGET_RARITIES.contains(rarity);
 
         if (characterMatch && rarityMatch) {
-            System.err.println("Hunter: [ character:" + character + ", rarity:" + rarity + "] found " + LocalDateTime.now());
+            System.err.println("[stop] Hunter: [ character:" + character + ", rarity:" + rarity + "] found " + LocalDateTime.now());
             return;
         }
-        System.err.println("Hunter: [ character:" + character + ", rarity:" + rarity + "] not match " + LocalDateTime.now());
+        System.err.println("[continue] Hunter: [ character:" + character + ", rarity:" + rarity + "] not match " + LocalDateTime.now());
 
         adbPlatform.click(360, 1100, deviceId);
         expelHunter(deviceId);
     }
+
+    AtomicInteger counter = new AtomicInteger(0);
 
     void expelHunter(String deviceId) throws Exception {
         adbPlatform.click(THIRD_LOCK_X, LOCK_Y, deviceId);

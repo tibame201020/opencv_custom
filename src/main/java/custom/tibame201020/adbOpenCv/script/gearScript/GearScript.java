@@ -142,26 +142,31 @@ public class GearScript implements Script {
 
     @Override
     public void execute() throws Exception {
-//        Scanner scanner = new Scanner(System.in);
-//
-//        var devices = adbPlatform.getDevices();
-//        System.out.println("Please input device id: " + devices);
-//
-//        var deviceId = scanner.nextLine();
-
+//        var deviceId = fetchDeviceId();
         var deviceId = "emulator-5554";
-
-//        if (!devices.contains(deviceId)) {
-//            System.err.println("Invalid device id: " + deviceId);
-//            return;
-//        }
-
         adbPlatform.connect(deviceId);
 
         while (true) {
             gearLoop(deviceId);
         }
 
+    }
+
+    String fetchDeviceId() {
+        Scanner scanner = new Scanner(System.in);
+
+        var devices = adbPlatform.getDevices();
+        System.out.println("Please input device id: " + devices);
+
+        var deviceId = scanner.nextLine();
+
+        if (!devices.contains(deviceId)) {
+            throw new IllegalArgumentException("Invalid device id: " + deviceId);
+        }
+
+        scanner.close();
+
+        return deviceId;
     }
 
     GearDTOs.GearAction judgmentGear(GearDTOs.Gear gear) {
@@ -379,20 +384,20 @@ public class GearScript implements Script {
     String ocrPattern(GearImageDTOs.GearOcr gearOcr, Mat source) throws Exception {
         var result = openCvService.ocrPattern(gearOcr.ocrTemplatesPath(), source, convert2OcrRegion(gearOcr.gearRegion()), gearOcr.threshold());
 
-        if (result.isBlank()) {
-            var count = counter.incrementAndGet();
-            var imageName = "unknown-" + count + ".png";
-
-            var newRegion = new GearImageDTOs.GearRegion(
-                    gearOcr.gearRegion().x() + 7,
-                    gearOcr.gearRegion().y() + 2,
-                    gearOcr.gearRegion().width() - 11,
-                    gearOcr.gearRegion().height() - 7
-            );
-
-            var sliceRegionMat = MatUtility.sliceRegionMat(source, convert2OcrRegion(newRegion));
-            MatUtility.writeToFile(imageName, sliceRegionMat);
-        }
+//        if (result.isBlank()) {
+//            var count = counter.incrementAndGet();
+//            var imageName = "unknown-" + count + ".png";
+//
+//            var newRegion = new GearImageDTOs.GearRegion(
+//                    gearOcr.gearRegion().x() + 7,
+//                    gearOcr.gearRegion().y() + 2,
+//                    gearOcr.gearRegion().width() - 11,
+//                    gearOcr.gearRegion().height() - 7
+//            );
+//
+//            var sliceRegionMat = MatUtility.sliceRegionMat(source, convert2OcrRegion(newRegion));
+//            MatUtility.writeToFile(imageName, sliceRegionMat);
+//        }
 
         return result;
     }

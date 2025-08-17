@@ -77,6 +77,8 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
             return score >= 70;
         }
 
+        System.err.println("--- 裝備評分: " + score + ", 強化等級: " + gearLevel + ", 評分需求: 85 || calcScore: 70");
+
         return score >= 85 || calcScore >= 70;
     }
 
@@ -106,6 +108,7 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
         int score = gear.metadata().score();
         var calcScore = gearProp.reduceMainProp(gearMainProp).calcScore();
         System.err.println("score: " + score + ", calcScore: " + calcScore);
+        System.err.println("--- 裝備評分: " + score + ", 強化等級: 15, 評分需求: 85 || calcScore: 70");
 
         return score >= 85 || calcScore >= 70;
     }
