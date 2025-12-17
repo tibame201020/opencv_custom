@@ -412,8 +412,17 @@ public class GearDTOs {
                 if (gearProp.flatAttack() > 0) {
                     validProps = validProps + 1;
                 }
+                if (gearProp.lifePercent() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.defensePercent() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.effectResist() > 0) {
+                    validProps = validProps + 1;
+                }
 
-                return validProps >= 3;
+                return validProps >= 4;
             }
         },
         TANK_DAMAGE("坦打") {
@@ -449,6 +458,12 @@ public class GearDTOs {
                     validProps = validProps + 1;
                 }
                 if (gearProp.flatDefense() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.effectiveness() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.effectResist() > 0) {
                     validProps = validProps + 1;
                 }
 
@@ -508,7 +523,13 @@ public class GearDTOs {
                 if (gearProp.lifePercent() > 0) {
                     validProps = validProps + 1;
                 }
+                if (gearProp.flatLife() > 0) {
+                    validProps = validProps + 1;
+                }
                 if (gearProp.defensePercent() > 0) {
+                    validProps = validProps + 1;
+                }
+                if (gearProp.flatDefense() > 0) {
                     validProps = validProps + 1;
                 }
                 if (gearProp.effectiveness() > 0) {

@@ -50,34 +50,34 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
         System.err.println("score: " + score + ", calcScore: " + calcScore);
 
         if (gearLevel >= 0 && gearLevel < 3) {
-            System.err.println("--- 裝備評分: " + score + ", 強化等級: " + gearLevel + ", 評分需求: 22");
-            return score >= 22;
+            System.err.println("--- 裝備評分: " + score + ", 強化等級: " + gearLevel + ", 評分需求: 20");
+            return score >= 20;
 
         }
 
         if (gearLevel >= 3 && gearLevel < 6) {
-            System.err.println("--- 裝備評分: " + score + ", 強化等級: " + gearLevel + ", 評分需求: 32");
+            System.err.println("--- 裝備評分: " + score + ", 強化等級: " + gearLevel + ", 評分需求: 30");
             return score >= 30;
 
         }
 
         if (gearLevel >= 6 && gearLevel < 9) {
-            System.err.println("--- 裝備評分: " + score + ", 強化等級: " + gearLevel + ", 評分需求: 45");
+            System.err.println("--- 裝備評分: " + score + ", 強化等級: " + gearLevel + ", 評分需求: 40");
             return score >= 40;
 
         }
 
         if (gearLevel >= 9 && gearLevel < 12) {
-            System.err.println("--- 裝備評分: " + score + ", 強化等級: " + gearLevel + ", 評分需求: 60");
+            System.err.println("--- 裝備評分: " + score + ", 強化等級: " + gearLevel + ", 評分需求: 55");
             return score >= 55;
         }
 
         if (gearLevel >= 12) {
-            System.err.println("--- 裝備評分: " + score + ", 強化等級: " + gearLevel + ", 評分需求: 70");
+            System.err.println("--- 裝備評分: " + score + ", 強化等級: " + gearLevel + ", 評分需求: 65");
             return score >= 65;
         }
 
-        System.err.println("--- 裝備評分: " + score + ", 強化等級: " + gearLevel + ", 評分需求: 85 || calcScore: 70");
+        System.err.println("--- 裝備評分: " + score + ", 強化等級: " + gearLevel + ", 評分需求: 80 || calcScore: 70");
 
         return score >= 80 || calcScore >= 70;
     }
@@ -85,32 +85,35 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
 
     @Override
     public boolean isOkToStore(GearDTOs.Gear gear) {
-        GearDTOs.GearSet gearSet = gear.metadata().set();
-        GearDTOs.GearType gearType = gear.metadata().type();
-        GearDTOs.GearProp gearProp = gear.prop();
-        GearDTOs.GearMainProp gearMainProp = gear.metadata().mainProp();
-
-        var speed = gear.prop().speed();
-        if (speed >= 20 && !gear.metadata().type().equals(GearDTOs.GearType.SHOES)) {
-            System.err.println("--- 速度足夠");
-            return true;
-        }
-
-        boolean mainPropRequired = mainPropRequired(gearSet, gearType, gearMainProp);
-        if (!mainPropRequired) {
-            return false;
-        }
-        boolean gearPropNeeded = gearPropNeeded(gearSet, gearProp, gearMainProp);
-        if (!gearPropNeeded) {
-            return false;
-        }
-
-        int score = gear.metadata().score();
-        var calcScore = gearProp.reduceMainProp(gearMainProp).calcScore();
-        System.err.println("score: " + score + ", calcScore: " + calcScore);
-        System.err.println("--- 裝備評分: " + score + ", 強化等級: 15, 評分需求: 85 || calcScore: 70");
-
-        return score >= 80 || calcScore >= 70;
+        return isOkToUpgrade(gear);
+//        GearDTOs.GearSet gearSet = gear.metadata().set();
+//        GearDTOs.GearType gearType = gear.metadata().type();
+//        GearDTOs.GearProp gearProp = gear.prop();
+//        GearDTOs.GearMainProp gearMainProp = gear.metadata().mainProp();
+//
+//        var speed = gear.prop().speed();
+//        if (speed >= 20 && !gear.metadata().type().equals(GearDTOs.GearType.SHOES)) {
+//            System.err.println("--- 速度足夠");
+//            return true;
+//        }
+//
+//        boolean mainPropRequired = mainPropRequired(gearSet, gearType, gearMainProp);
+//        if (!mainPropRequired) {
+//            System.err.println("--- 裝備主屬性不符合: " + gearMainProp.text + ", 部位: " + gearType.text + ", 套裝: " + gearSet.text);
+//            return false;
+//        }
+//        boolean gearPropNeeded = gearPropNeeded(gearSet, gearProp, gearMainProp);
+//        if (!gearPropNeeded) {
+//            System.err.println("--- 裝備屬性不符合需求");
+//            return false;
+//        }
+//
+//        int score = gear.metadata().score();
+//        var calcScore = gearProp.reduceMainProp(gearMainProp).calcScore();
+//        System.err.println("score: " + score + ", calcScore: " + calcScore);
+//        System.err.println("--- 裝備評分: " + score + ", 強化等級: 15, 評分需求: 80 || calcScore: 70");
+//
+//        return score >= 80 || calcScore >= 70;
     }
 
     boolean mainPropRequired(GearDTOs.GearSet gearSet, GearDTOs.GearType gearType, GearDTOs.GearMainProp mainProp) {
@@ -147,7 +150,8 @@ public class RedGearUpgradeAdapter implements GearUpgradeAdapter {
             }
             case HEALTH, DEFENSE -> {
                 System.err.println(gearSet.text + " -> 坦打/坦克/輔助套裝");
-                yield !belongs.contains(GearDTOs.GearPropBelong.DAMAGE);
+                yield belongs.contains(GearDTOs.GearPropBelong.SUPPORT) || belongs.contains(GearDTOs.GearPropBelong.TANK) || belongs.contains(GearDTOs.GearPropBelong.TANK_DAMAGE);
+
             }
             case DESTRUCTION, CRITICAL, COUNTER, PENETRATION, INJURY -> {
                 System.err.println(gearSet.text + " -> 打手/坦打套裝");

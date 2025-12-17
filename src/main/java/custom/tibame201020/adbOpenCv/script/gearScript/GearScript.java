@@ -46,7 +46,7 @@ public class GearScript implements Script {
         // Gear metadata
         ocrConfigs.put("gearSet", new GearImageDTOs.GearOcr("images/gear/gear-set-ocr", new GearImageDTOs.GearRegion(900, 550, 100, 40), 0.95));
         ocrConfigs.put("gearRarity", new GearImageDTOs.GearOcr("images/gear/gear-rarity-ocr", new GearImageDTOs.GearRegion(972, 180, 35, 23), 0.85));
-        ocrConfigs.put("gearType", new GearImageDTOs.GearOcr("images/gear/gear-type-ocr", new GearImageDTOs.GearRegion(1007, 180, 35, 23), 0.80));
+        ocrConfigs.put("gearType", new GearImageDTOs.GearOcr("images/gear/gear-type-ocr", new GearImageDTOs.GearRegion(1007, 180, 35, 23), 0.75));
         ocrConfigs.put("gearLevel", new GearImageDTOs.GearOcr("images/gear/gear-level-ocr", new GearImageDTOs.GearRegion(935, 168, 35, 25), 0.98));
 
         // Main and Sub-properties types
@@ -127,6 +127,7 @@ public class GearScript implements Script {
         var snapshotMat = adbPlatform.takeSnapshot(deviceId);
 
         var gear = detectGear(snapshotMat);
+        System.err.println(gear);
         var action = judgmentGear(gear);
         System.err.println(gear.metadata().getMetadataInfo());
         System.err.println(gear.prop().getPropInfo());
@@ -142,8 +143,8 @@ public class GearScript implements Script {
 
     @Override
     public void execute() throws Exception {
-        var deviceId = fetchDeviceId();
-//        var deviceId = "emulator-5554";
+//        var deviceId = fetchDeviceId();
+        var deviceId = "emulator-5554";
         adbPlatform.connect(deviceId);
 
         while (true) {
@@ -389,10 +390,10 @@ public class GearScript implements Script {
 //            var imageName = "unknown-" + count + ".png";
 //
 //            var newRegion = new GearImageDTOs.GearRegion(
-//                    gearOcr.gearRegion().x() + 7,
+//                    gearOcr.gearRegion().x() + 2,
 //                    gearOcr.gearRegion().y() + 2,
-//                    gearOcr.gearRegion().width() - 11,
-//                    gearOcr.gearRegion().height() - 7
+//                    gearOcr.gearRegion().width() - 2,
+//                    gearOcr.gearRegion().height() - 2
 //            );
 //
 //            var sliceRegionMat = MatUtility.sliceRegionMat(source, convert2OcrRegion(newRegion));

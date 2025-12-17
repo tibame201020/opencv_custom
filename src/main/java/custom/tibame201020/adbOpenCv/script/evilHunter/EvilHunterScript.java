@@ -39,6 +39,10 @@ public class EvilHunterScript implements Script {
         toHunterBox(deviceId);
         adbPlatform.sleep(1);
         checkHunter(deviceId);
+        adbPlatform.sleep(1);
+        checkBoss(deviceId);
+        adbPlatform.sleep(1);
+        checkDungeon(deviceId);
     }
 
     String fetchDeviceId() {
@@ -65,7 +69,6 @@ public class EvilHunterScript implements Script {
 
         return deviceId;
     }
-
     void toHunterBox(String deviceId) throws Exception {
         adbPlatform.click(TO_SOUL_SHOP_CLICK_X, TO_SOUL_SHOP_CLICK_Y, deviceId);
         adbPlatform.sleep(1);
@@ -76,7 +79,6 @@ public class EvilHunterScript implements Script {
         adbPlatform.swipe(THIRD_X, 1088, THIRD_X, 500, 300, deviceId);
         adbPlatform.swipe(THIRD_X, 1088, THIRD_X, 500, 300, deviceId);
     }
-
     void checkHunter(String deviceId) throws Exception {
         adbPlatform.click(THIRD_X, Y_COORDINATE, deviceId);
         adbPlatform.sleep(2);
@@ -102,6 +104,8 @@ public class EvilHunterScript implements Script {
 
         if (characterMatch && rarityMatch) {
             System.err.println("[match] Hunter: [ character:" + character + ", rarity:" + rarity + "] " + LocalDateTime.now());
+            adbPlatform.click(360, 1100, deviceId);
+            adbPlatform.click(TO_HUNTER_BOX_CLICK_X, TO_HUNTER_BOX_CLICK_Y, deviceId);
             return;
         }
         System.err.println("[not match] Hunter: [ character:" + character + ", rarity:" + rarity + "] " + LocalDateTime.now());
@@ -109,9 +113,7 @@ public class EvilHunterScript implements Script {
         adbPlatform.click(360, 1100, deviceId);
         expelHunter(deviceId);
     }
-
     AtomicInteger counter = new AtomicInteger(0);
-
     void expelHunter(String deviceId) throws Exception {
         adbPlatform.click(THIRD_LOCK_X, LOCK_Y, deviceId);
         adbPlatform.sleep(1);
@@ -122,6 +124,44 @@ public class EvilHunterScript implements Script {
         adbPlatform.click(EXPEL_HUNTER_CLICK_X2, EXPEL_HUNTER_CLICK_Y2, deviceId);
         adbPlatform.click(EXPEL_HUNTER_CLICK_X3, EXPEL_HUNTER_CLICK_Y3, deviceId);
         adbPlatform.click(EXPEL_HUNTER_CLICK_X4, EXPEL_HUNTER_CLICK_Y4, deviceId);
+    }
+
+    void checkBoss(String deviceId) throws Exception {
+        adbPlatform.click(TO_SOUL_SHOP_CLICK_X, TO_SOUL_SHOP_CLICK_Y, deviceId);
+        adbPlatform.sleep(1);
+        adbPlatform.click(TO_HUNTER_BOX_CLICK_X, TO_HUNTER_BOX_CLICK_Y, deviceId);
+        adbPlatform.sleep(1);
+        adbPlatform.click(TO_HUNTER_BOX_CLICK_X, TO_HUNTER_BOX_CLICK_Y, deviceId);
+        adbPlatform.sleep(1);
+        adbPlatform.click(669, 1083, deviceId);
+        adbPlatform.sleep(1);
+
+        adbPlatform.click(671, 166, deviceId);
+        adbPlatform.sleep(5);
+
+        var region = new OpenCvDTOs.OcrRegion(100, 410, 600, 865);
+        var endBossPointpoint = adbPlatform.findImage("images/evil-hunter/boss/boss_2.png", region, deviceId);
+        if (endBossPointpoint != null) {
+            adbPlatform.click(455, 757, deviceId);
+            adbPlatform.sleep(1);
+            return;
+        }
+
+        var startBossPoint = adbPlatform.findImage("images/evil-hunter/boss/boss_1.png", region, deviceId);
+        if (startBossPoint == null) {
+            return;
+        }
+        adbPlatform.click(260, 760, deviceId);
+        adbPlatform.sleep(3);
+        adbPlatform.click(669, 1083, deviceId);
+        adbPlatform.sleep(1);
+    }
+
+    void checkDungeon(String deviceId) throws Exception {
+//        adbPlatform.click(TO_SOUL_SHOP_CLICK_X, TO_SOUL_SHOP_CLICK_Y, deviceId);
+//        adbPlatform.sleep(1);
+//        adbPlatform.click(215, 1208, deviceId);
+
     }
 
 }

@@ -18,6 +18,12 @@ public class PurpleGearUpgradeAdapter implements GearUpgradeAdapter {
             return false;
         }
 
+        var score = gear.metadata().score();
+        if (score < 20) {
+            System.err.println("[紫裝] 評分: " + score + ", 需求評分: 20");
+            return false;
+        }
+
         int gearLevel = gear.metadata().level();
         int speed = gearProp.speed();
 
@@ -47,17 +53,18 @@ public class PurpleGearUpgradeAdapter implements GearUpgradeAdapter {
 
     @Override
     public boolean isOkToStore(GearDTOs.Gear gear) {
-        GearDTOs.GearSet gearSet = gear.metadata().set();
-        GearDTOs.GearProp gearProp = gear.prop();
-
-        GearDTOs.GearSetType gearSetType = gearSetType(gearSet);
-        if (!gearSet.equals(GearDTOs.GearSet.SPEED) || gearSetType.equals(GearDTOs.GearSetType.FOUR)) {
-            return false;
-        }
-        int speed = gearProp.speed();
-
-        System.err.println("[紫裝] 速度: " + speed + ", 需求速度: 18");
-        return speed >= 18;
+//        GearDTOs.GearSet gearSet = gear.metadata().set();
+//        GearDTOs.GearProp gearProp = gear.prop();
+//
+//        GearDTOs.GearSetType gearSetType = gearSetType(gearSet);
+//        if (!gearSet.equals(GearDTOs.GearSet.SPEED) || gearSetType.equals(GearDTOs.GearSetType.FOUR)) {
+//            return false;
+//        }
+//        int speed = gearProp.speed();
+//
+//        System.err.println("[紫裝] 速度: " + speed + ", 需求速度: 18");
+//        return speed >= 18;
+        return isOkToUpgrade(gear);
     }
 
 }

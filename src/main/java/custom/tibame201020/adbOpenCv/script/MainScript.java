@@ -22,10 +22,10 @@ public class MainScript {
     }
 
     public void execute() throws Exception {
-//        Script script = new GearScript(adbPlatform);
-//        script.execute();
+        Script script = new GearScript(adbPlatform);
+        script.execute();
 
-        askForScript();
+//        askForScript();
     }
 
     void askForScript() throws Exception {
