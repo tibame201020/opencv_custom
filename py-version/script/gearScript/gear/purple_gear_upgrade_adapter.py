@@ -53,3 +53,4 @@ class PurpleGearUpgradeAdapter(GearUpgradeAdapter):
         """判斷紫裝是否可以儲存"""
         return self.is_ok_to_upgrade(gear)
 
+

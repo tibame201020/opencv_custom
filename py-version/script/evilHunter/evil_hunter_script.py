@@ -156,3 +156,4 @@ class EvilHunterScript:
         # 目前未實作
         pass
 
+

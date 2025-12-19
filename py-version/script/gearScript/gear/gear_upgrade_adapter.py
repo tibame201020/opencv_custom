@@ -39,3 +39,4 @@ class GearUpgradeAdapter(ABC):
             return GearSetType.TWO
         raise RuntimeError("un caught gear set type")
 
+

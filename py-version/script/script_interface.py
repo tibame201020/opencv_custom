@@ -2,6 +2,7 @@
 Script Interface - 腳本介面
 """
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Optional
 
 
@@ -10,7 +11,9 @@ class ScriptInterface(ABC):
     
     def __init__(self):
         # 預設設定，可由子類 override
-        self.image_root: str = "images"  # 圖片根目錄，相對於 script 目錄
+        # 計算 script 目錄的絕對路徑，然後指向 script/images
+        script_dir = Path(__file__).parent.resolve()  # py-version/script
+        self.image_root: str = str(script_dir / "images")  # 圖片根目錄，相對於 script 目錄
         self.default_threshold: float = 0.8  # 預設辨識度閾值
     
     @abstractmethod

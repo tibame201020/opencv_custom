@@ -2,6 +2,7 @@
 Gear 腳本 - 裝備自動化處理
 """
 import numpy as np
+from pathlib import Path
 from typing import Dict, Optional
 from service.platform.adb.adb_platform import AdbPlatform
 from service.core.opencv.open_cv_service import OpenCvService
@@ -32,8 +33,9 @@ class GearScript(ScriptInterface):
     
     def configure(self) -> None:
         """配置設定"""
-        # 可 override 預設設定
-        self.image_root = "images"  # 相對於 gearScript 目錄
+        # 覆蓋預設設定，指向 gearScript/images 目錄
+        gear_script_dir = Path(__file__).parent.resolve()  # py-version/script/gearScript
+        self.image_root = str(gear_script_dir / "images")  # py-version/script/gearScript/images
         self.default_threshold = 0.8
     
     def _init_ocr_configs(self):
