@@ -17,6 +17,7 @@ class AdbPlatform(PlatformService):
     """ADB 平台服務類別"""
     
     def __init__(self, adb: Adb, open_cv_service: OpenCvService):
+        super().__init__()
         self.adb = adb
         self.open_cv_service = open_cv_service
     

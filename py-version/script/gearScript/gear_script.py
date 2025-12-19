@@ -7,6 +7,7 @@ from service.platform.adb.adb_platform import AdbPlatform
 from service.core.opencv.open_cv_service import OpenCvService
 from service.core.opencv.mat_utility import MatUtility
 from service.core.opencv.dto import OcrRegion
+from ..script_interface import ScriptInterface
 from .gear_image_dtos import GearOcr, GearRegion
 from .gear.gear_dtos import (
     Gear, GearMetadata, GearProp, GearSet, GearRarity, GearType,
@@ -16,96 +17,104 @@ from .gear.purple_gear_upgrade_adapter import PurpleGearUpgradeAdapter
 from .gear.red_gear_upgrade_adapter import RedGearUpgradeAdapter
 
 
-class GearScript:
+class GearScript(ScriptInterface):
     """裝備腳本"""
     
     def __init__(self, adb_platform: AdbPlatform):
+        super().__init__()
         self.adb_platform = adb_platform
         self.open_cv_service = adb_platform.get_open_cv_service()
         self.purple_gear_upgrade_adapter = PurpleGearUpgradeAdapter()
         self.red_gear_upgrade_adapter = RedGearUpgradeAdapter()
+        self.configure()  # 配置設定
         self.ocr_configs: Dict[str, GearOcr] = {}
         self._init_ocr_configs()
+    
+    def configure(self) -> None:
+        """配置設定"""
+        # 可 override 預設設定
+        self.image_root = "images"  # 相對於 gearScript 目錄
+        self.default_threshold = 0.8
     
     def _init_ocr_configs(self):
         """初始化 OCR 配置"""
         # Main and Sub-properties values
         self.ocr_configs["mainProp"] = GearOcr(
-            "images/gear/number-ocr/main-ocr",
+            f"{self.image_root}/number-ocr/main-ocr",
             GearRegion(1160, 330, 70, 30),
             0.8
         )
         self.ocr_configs["1stProp"] = GearOcr(
-            "images/gear/number-ocr/ocr",
+            f"{self.image_root}/number-ocr/ocr",
             GearRegion(1160, 370, 70, 25),
             0.8
         )
         self.ocr_configs["2ndProp"] = GearOcr(
-            "images/gear/number-ocr/ocr",
+            f"{self.image_root}/number-ocr/ocr",
             GearRegion(1160, 390, 70, 25),
             0.8
         )
         self.ocr_configs["3rdProp"] = GearOcr(
-            "images/gear/number-ocr/ocr",
+            f"{self.image_root}/number-ocr/ocr",
             GearRegion(1160, 415, 70, 25),
             0.8
         )
         self.ocr_configs["4thProp"] = GearOcr(
-            "images/gear/number-ocr/ocr",
+            f"{self.image_root}/number-ocr/ocr",
             GearRegion(1160, 435, 70, 25),
             0.8
         )
         self.ocr_configs["score"] = GearOcr(
-            "images/gear/number-ocr/score-ocr",
+            f"{self.image_root}/number-ocr/score-ocr",
             GearRegion(1160, 470, 70, 30),
             0.84
         )
         
         # Gear metadata
         self.ocr_configs["gearSet"] = GearOcr(
-            "images/gear/gear-set-ocr",
+            f"{self.image_root}/gear-set-ocr",
             GearRegion(900, 550, 100, 40),
             0.95
         )
         self.ocr_configs["gearRarity"] = GearOcr(
-            "images/gear/gear-rarity-ocr",
+            f"{self.image_root}/gear-rarity-ocr",
             GearRegion(972, 180, 35, 23),
             0.85
         )
         self.ocr_configs["gearType"] = GearOcr(
-            "images/gear/gear-type-ocr",
+            f"{self.image_root}/gear-type-ocr",
             GearRegion(1007, 180, 35, 23),
             0.75
         )
         self.ocr_configs["gearLevel"] = GearOcr(
-            "images/gear/gear-level-ocr",
+            f"{self.image_root}/gear-level-ocr",
             GearRegion(935, 168, 35, 25),
             0.98
         )
         
         # Main and Sub-properties types
         self.ocr_configs["mainPropType"] = GearOcr(
-            "images/gear/main-prop-type-ocr",
+            f"{self.image_root}/main-prop-type-ocr",
             GearRegion(880, 327, 120, 35),
             0.85
         )
         self.ocr_configs["1stPropType"] = GearOcr(
-            "images/gear/prop-type-ocr",
+            f"{self.image_root}/prop-type-ocr",
             GearRegion(875, 365, 120, 30),
             0.85
         )
         self.ocr_configs["2ndPropType"] = GearOcr(
-            "images/gear/prop-type-ocr",
+            f"{self.image_root}/prop-type-ocr",
             GearRegion(875, 389, 120, 30),
             0.85
         )
         self.ocr_configs["3rdPropType"] = GearOcr(
-            "images/gear/prop-type-ocr",
+            f"{self.image_root}/prop-type-ocr",
             GearRegion(875, 410, 120, 30),
             0.85
         )
         self.ocr_configs["4thPropType"] = GearOcr(
-            "images/gear/prop-type-ocr",
+            f"{self.image_root}/prop-type-ocr",
             GearRegion(875, 435, 120, 30),
             0.85
         )
@@ -113,6 +122,7 @@ class GearScript:
     def execute(self) -> None:
         """執行腳本"""
         device_id = "emulator-5554"  # 或使用 fetch_device_id()
+        self.adb_platform.set_device_id(device_id)
         self.adb_platform.connect(device_id)
         
         while True:
@@ -366,17 +376,17 @@ class GearScript:
     def upgrade_gear(self, device_id: str, gear: Gear) -> None:
         """升級裝備"""
         region = OcrRegion(1077, 640, 1225, 707)
-        self.adb_platform.click_image("images/gear/action/upgrade-1.png", region, device_id)
-        self.adb_platform.wait_image("images/gear/action/upgrade-2.png", 5000, 100, device_id)
+        self.adb_platform.click_image(f"{self.image_root}/action/upgrade-1.png", region, device_id)
+        self.adb_platform.wait_image(f"{self.image_root}/action/upgrade-2.png", 5000, 100, device_id)
         self.adb_platform.sleep(1)
         
         region = OcrRegion(925, 620, 1230, 700)
-        self.adb_platform.click_image("images/gear/action/upgrade-3.png", region, device_id)
+        self.adb_platform.click_image(f"{self.image_root}/action/upgrade-3.png", region, device_id)
         
         level = gear.metadata.level
         upgrade_level_options = [3, 6, 9, 12, 15]
         closest_upgrade_level = next((opt for opt in upgrade_level_options if opt > level), 15)
-        upgrade_option_image = f"images/gear/action/plus-{closest_upgrade_level}.png"
+        upgrade_option_image = f"{self.image_root}/action/plus-{closest_upgrade_level}.png"
         
         region = OcrRegion(950, 315, 1190, 625)
         self.adb_platform.sleep(1)
@@ -384,17 +394,17 @@ class GearScript:
         self.adb_platform.sleep(1)
         
         region = OcrRegion(725, 640, 810, 680)
-        self.adb_platform.click_image("images/gear/action/upgrade-4.png", region, device_id)
+        self.adb_platform.click_image(f"{self.image_root}/action/upgrade-4.png", region, device_id)
         
         self.adb_platform.sleep(3)
         self.adb_platform.click(640, 520, device_id)
         self.adb_platform.click(640, 520, device_id)
         self.adb_platform.click(640, 520, device_id)
         
-        self.adb_platform.wait_image("images/gear/action/upgrade-2.png", 7000, 100, device_id)
+        self.adb_platform.wait_image(f"{self.image_root}/action/upgrade-2.png", 7000, 100, device_id)
         
         region = OcrRegion(0, 0, 65, 55)
-        self.adb_platform.click_image("images/gear/action/upgrade-5.png", region, device_id)
+        self.adb_platform.click_image(f"{self.image_root}/action/upgrade-5.png", region, device_id)
     
     def sell_gear(self, device_id: str) -> None:
         """販賣裝備"""

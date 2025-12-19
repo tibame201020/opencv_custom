@@ -18,6 +18,7 @@ class RobotPlatform(PlatformService):
     """Robot 平台服務類別"""
     
     def __init__(self, open_cv_service: OpenCvService):
+        super().__init__()
         self.open_cv_service = open_cv_service
     
     def get_open_cv_service(self) -> OpenCvService:
