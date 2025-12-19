@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MdPlayArrow, MdStop } from 'react-icons/md'
 import { ScriptParameter } from '../types'
-import { scriptService } from '../services/mockService'
+import { apiService } from '../services/apiService'
 
 interface ControlBlockProps {
   scriptId: string
@@ -26,25 +26,39 @@ const ControlBlock = ({
   }, [scriptId])
 
   const loadParameters = async () => {
-    const params = await scriptService.getScriptParameters(scriptId)
-    setParameters(params)
-    
-    // 初始化參數預設值
-    const defaultValues: Record<string, string> = {}
-    params.forEach((param) => {
-      defaultValues[param.id] = param.defaultValue || ''
-    })
-    setParamValues(defaultValues)
+    try {
+      const params = await apiService.getScriptParameters(scriptId)
+      setParameters(params)
+      
+      // 初始化參數預設值
+      const defaultValues: Record<string, string> = {}
+      params.forEach((param) => {
+        defaultValues[param.id] = param.defaultValue || ''
+      })
+      setParamValues(defaultValues)
+    } catch (error) {
+      console.error('Failed to load parameters:', error)
+    }
   }
 
   const handleStart = async () => {
-    await scriptService.startScript(scriptId, paramValues)
-    onStatusChange(true)
+    try {
+      await apiService.startScript(scriptId, paramValues)
+      onStatusChange(true)
+    } catch (error) {
+      console.error('Failed to start script:', error)
+      alert(`Failed to start script: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
   }
 
   const handleStop = async () => {
-    await scriptService.stopScript(scriptId)
-    onStatusChange(false)
+    try {
+      await apiService.stopScript(scriptId)
+      onStatusChange(false)
+    } catch (error) {
+      console.error('Failed to stop script:', error)
+      alert(`Failed to stop script: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
   }
 
   const handleParamChange = (paramId: string, value: string) => {
@@ -108,50 +122,44 @@ const ControlBlock = ({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-2">
       {/* Control Buttons */}
-      <fieldset className="border border-base-300 rounded-lg p-6">
-        <legend className="text-lg font-semibold px-2">
-          {t('ui.execution.control')}
-        </legend>
+      <div className="flex gap-4 items-center">
+        <button
+          className={`btn btn-success flex-1 ${isRunning ? 'btn-disabled' : ''}`}
+          onClick={handleStart}
+          disabled={isRunning}
+        >
+          <MdPlayArrow className="text-xl" />
+          {t('ui.execution.start')}
+        </button>
         
-        <div className="flex gap-4 items-center">
-          <button
-            className={`btn btn-success flex-1 ${isRunning ? 'btn-disabled' : ''}`}
-            onClick={handleStart}
-            disabled={isRunning}
-          >
-            <MdPlayArrow className="text-xl" />
-            {t('ui.execution.start')}
-          </button>
-          
-          <button
-            className={`btn btn-error flex-1 ${!isRunning ? 'btn-disabled' : ''}`}
-            onClick={handleStop}
-            disabled={!isRunning}
-          >
-            <MdStop className="text-xl" />
-            {t('ui.execution.stop')}
-          </button>
-          
-          <div className="badge badge-lg">
-            {isRunning ? (
-              <>
-                <span className="animate-pulse mr-2">●</span>
-                {t('ui.execution.running')}
-              </>
-            ) : (
-              t('ui.execution.idle')
-            )}
-          </div>
+        <button
+          className={`btn btn-error flex-1 ${!isRunning ? 'btn-disabled' : ''}`}
+          onClick={handleStop}
+          disabled={!isRunning}
+        >
+          <MdStop className="text-xl" />
+          {t('ui.execution.stop')}
+        </button>
+        
+        <div className="badge badge-lg">
+          {isRunning ? (
+            <>
+              <span className="animate-pulse mr-2">●</span>
+              {t('ui.execution.running')}
+            </>
+          ) : (
+            t('ui.execution.idle')
+          )}
         </div>
-      </fieldset>
+      </div>
 
       {/* Parameters */}
-      <fieldset className="border border-base-300 rounded-lg p-6">
-        <legend className="text-lg font-semibold px-2">
+      <div>
+        <h3 className="text-md font-semibold mb-4">
           {t('ui.control.parameters')}
-        </legend>
+        </h3>
         
         {parameters.length > 0 ? (
           <div className="space-y-4">
@@ -169,7 +177,7 @@ const ControlBlock = ({
             {t('ui.control.noParameters')}
           </div>
         )}
-      </fieldset>
+      </div>
     </div>
   )
 }

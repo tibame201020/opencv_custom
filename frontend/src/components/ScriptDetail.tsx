@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import ControlBlock from './ControlBlock'
 import LogBlock from './LogBlock'
 
@@ -14,18 +15,40 @@ const ScriptDetail = ({
   isRunning,
   onStatusChange
 }: ScriptDetailProps) => {
-  return (
-    <div className="flex flex-col h-full overflow-y-auto p-6 gap-6">
-      {/* Control Block Fieldset */}
-      <ControlBlock
-        scriptId={scriptId}
-        scriptName={scriptName}
-        isRunning={isRunning}
-        onStatusChange={onStatusChange}
-      />
+  const { t } = useTranslation()
 
-      {/* Log Block Fieldset */}
-      <LogBlock scriptId={scriptId} scriptName={scriptName} isRunning={isRunning} />
+  return (
+    <div className="flex flex-col h-full overflow-y-auto p-6 gap-4">
+      {/* Control Block Collapse */}
+      <details 
+        className="collapse bg-base-100 border-base-300 border collapse-arrow"
+        open={!isRunning}
+      >
+        <summary className="collapse-title font-semibold text-lg">
+          {t('ui.execution.control')}
+        </summary>
+        <div className="collapse-content">
+          <ControlBlock
+            scriptId={scriptId}
+            scriptName={scriptName}
+            isRunning={isRunning}
+            onStatusChange={onStatusChange}
+          />
+        </div>
+      </details>
+
+      {/* Log Block Collapse */}
+      <details 
+        className="collapse bg-base-100 border-base-300 border collapse-arrow"
+        open={isRunning}
+      >
+        <summary className="collapse-title font-semibold text-lg">
+          {t('ui.log.title')}
+        </summary>
+        <div className="collapse-content">
+          <LogBlock scriptId={scriptId} scriptName={scriptName} isRunning={isRunning} />
+        </div>
+      </details>
     </div>
   )
 }
