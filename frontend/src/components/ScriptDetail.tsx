@@ -45,8 +45,13 @@ const ScriptDetail = ({
         <summary className="collapse-title font-semibold text-lg">
           {t('ui.log.title')}
         </summary>
-        <div className="collapse-content">
-          <LogBlock scriptId={scriptId} scriptName={scriptName} isRunning={isRunning} />
+        <div className="collapse-content flex flex-col min-h-0">
+          <LogBlock 
+            scriptId={scriptId} 
+            scriptName={scriptName} 
+            isRunning={isRunning}
+            onStatusChange={onStatusChange}
+          />
         </div>
       </details>
     </div>
