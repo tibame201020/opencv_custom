@@ -114,8 +114,11 @@ func stopScript(c *gin.Context) {
 }
 
 func listDevices(c *gin.Context) {
-	// Execute 'adb devices'
-	cmd := exec.Command("adb", "devices")
+	// Execute 'adb devices' using relative path
+	cwd, _ := os.Getwd()
+	adbPath := filepath.Join(cwd, "..", "platform-tools", "adb.exe")
+
+	cmd := exec.Command(adbPath, "devices")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to execute adb: " + err.Error()})
