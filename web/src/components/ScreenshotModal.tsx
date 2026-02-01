@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { RefreshCw, Download, Save, MousePointer, X, Copy } from 'lucide-react';
+import { RefreshCw, Download, Save, MousePointer, X, Copy, RotateCcw } from 'lucide-react';
 import clsx from 'clsx';
 
 const API_Base = 'http://localhost:8080/api';
@@ -47,6 +47,12 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
     const showToast = (message: string, type: 'success' | 'error' = 'success') => {
         setToast({ message, type });
+    };
+
+    const resetSelection = () => {
+        setSelection({ start: null, end: null });
+        setIsSelecting(false);
+        setFilename(`screenshot_${new Date().getTime()}.png`);
     };
 
     const fetchScreenshot = async () => {
@@ -254,6 +260,17 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2">
+                        {/* Reset Selection Button */}
+                        {(selection.start && selection.end) && (
+                            <button
+                                className="btn btn-sm btn-ghost"
+                                onClick={resetSelection}
+                            >
+                                <RotateCcw size={16} />
+                                Reset
+                            </button>
+                        )}
+
                         <button
                             className="btn btn-sm btn-ghost"
                             onClick={fetchScreenshot}
