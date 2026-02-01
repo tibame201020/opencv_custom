@@ -14,6 +14,7 @@ interface ScreenshotModalProps {
 export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
     isOpen, onClose, deviceId
 }) => {
+    // Core State
     const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -24,6 +25,30 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
     const [isSaving, setIsSaving] = useState(false);
     const [filename, setFilename] = useState(`screenshot_${new Date().getTime()}.png`);
 
+    // UI/UX State
+    const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+
+    // Resizing State
+    const [size, setSize] = useState({ width: 1280, height: 800 });
+    const isResizing = useRef(false);
+    const lastMousePos = useRef({ x: 0, y: 0 });
+
+    // Selection / Cropping State
+    const [selection, setSelection] = useState<{ start: { x: number, y: number } | null, end: { x: number, y: number } | null }>({ start: null, end: null });
+    const [isSelecting, setIsSelecting] = useState(false);
+
+    // Auto-dismiss toast
+    useEffect(() => {
+        if (toast) {
+            const timer = setTimeout(() => setToast(null), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [toast]);
+
+    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+        setToast({ message, type });
+    };
+
     const fetchScreenshot = async () => {
         if (!deviceId) return;
         setLoading(true);
@@ -33,6 +58,7 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
             const url = `${API_Base}/devices/${deviceId}/screenshot?t=${new Date().getTime()}`;
             // Preload image to ensure it's valid
             const img = new Image();
+            img.crossOrigin = "anonymous"; // Enable CORS
             img.src = url;
             img.onload = () => {
                 setImageUrl(url);
@@ -56,18 +82,7 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
         }
     }, [isOpen, deviceId]);
 
-
-
-    const [size, setSize] = useState({ width: 1280, height: 800 });
-    const isResizing = useRef(false);
-    const lastMousePos = useRef({ x: 0, y: 0 });
-
-    // Selection / Cropping State
-    const [selection, setSelection] = useState<{ start: { x: number, y: number } | null, end: { x: number, y: number } | null }>({ start: null, end: null });
-    const [isSelecting, setIsSelecting] = useState(false);
-
     useEffect(() => {
-        // ... resizing logic ...
         const handleMouseMove = (e: MouseEvent) => {
             if (isResizing.current) {
                 const dx = e.clientX - lastMousePos.current.x;
@@ -158,7 +173,13 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
         if (!rect || rect.w < 5 || rect.h < 5) return null; // Too small
 
         const canvas = document.createElement('canvas');
-        const img = imageRef.current;
+        const img = imageRef.current; // imageRef is NOT tainted if loaded with CORS
+
+        // Double check crossOrigin attr on imageRef
+        if (!img.crossOrigin) {
+            console.warn("Image missing crossOrigin attribute");
+        }
+
         const scaleX = img.naturalWidth / img.getBoundingClientRect().width;
         const scaleY = img.naturalHeight / img.getBoundingClientRect().height;
 
@@ -203,9 +224,15 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
-            alert(`Saved to ${res.data.path}`);
+            showToast(`Saved to ${res.data.path}`, 'success');
         } catch (err: any) {
-            alert("Failed to save: " + (err.response?.data?.error || err.message));
+            console.error(err);
+            // Handle tainted canvas error specifically if it happens despite fixes
+            if (err.message && err.message.includes("Tainted")) {
+                showToast("Failed: Canvas is tainted (CORS issue). Check server headers.", 'error');
+            } else {
+                showToast("Failed to save: " + (err.response?.data?.error || err.message), 'error');
+            }
         } finally {
             setIsSaving(false);
         }
@@ -258,6 +285,7 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                     ref={imageRef}
                                     src={imageUrl}
                                     alt="Screenshot"
+                                    crossOrigin="anonymous"
                                     className={clsx("max-h-full object-contain cursor-crosshair", isSelecting && "cursor-crosshair")}
                                     onMouseMove={handleImageMouseMove}
                                     onMouseDown={handleImageMouseDown}
@@ -400,6 +428,15 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                     </div>
                 </div>
             </div>
+
+            {/* Toast Notification */}
+            {toast && (
+                <div className="toast toast-end z-[100]">
+                    <div className={clsx("alert", toast.type === 'success' ? "alert-success" : "alert-error")}>
+                        <span>{toast.message}</span>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
