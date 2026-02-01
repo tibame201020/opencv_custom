@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import Editor, { type OnMount } from '@monaco-editor/react';
 import axios from 'axios';
 import { useAppStore } from '../store';
-import { Save, Play, FileCode, Plus } from 'lucide-react';
+import { Save, Play, FileCode, Plus, Trash2 } from 'lucide-react';
 
 const API_Base = "http://localhost:8080/api";
 
@@ -67,6 +67,25 @@ export const EditorView: React.FC = () => {
         } catch (err) {
             console.error("Failed to save", err);
             alert("Failed to save script");
+        }
+    };
+
+    const handleDeleteScript = async () => {
+        if (!selectedScriptId) return;
+        if (!confirm(`Are you sure you want to delete script '${selectedScriptId}'? This cannot be undone.`)) return;
+
+        try {
+            await axios.delete(`${API_Base}/scripts/${selectedScriptId}`);
+
+            // Success
+            setSelectedScriptId(null);
+            setCode("");
+            setOriginalCode("");
+            setIsDirty(false);
+            fetchScripts();
+        } catch (err: any) {
+            console.error("Failed to delete", err);
+            alert("Failed to delete script: " + (err.response?.data?.error || err.message));
         }
     };
 
@@ -166,6 +185,14 @@ export const EditorView: React.FC = () => {
                             >
                                 <Play size={16} /> Run
                             </button>
+                            <button
+                                className="btn btn-sm btn-ghost gap-2 text-error"
+                                onClick={handleDeleteScript}
+                                title="Delete Script"
+                            >
+                                <Trash2 size={16} />
+                            </button>
+
                         </>
                     ) : (
                         <div className="text-base-content/50 italic">Select a script to edit</div>

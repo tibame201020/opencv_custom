@@ -289,3 +289,31 @@ class %s(ScriptInterface):
 
 	return os.WriteFile(fullPath, []byte(template), 0644)
 }
+
+func (sm *ScriptManager) DeleteScript(scriptID string) error {
+	scripts, err := sm.ListScripts()
+	if err != nil {
+		return err
+	}
+
+	var scriptPath string
+	for _, s := range scripts {
+		if s["id"] == scriptID {
+			scriptPath = s["path"]
+			break
+		}
+	}
+
+	if scriptPath == "" {
+		return fmt.Errorf("script not found")
+	}
+
+	// Safety: Only delete files in script/custom
+	// script/custom/foo.py
+	if !strings.HasPrefix(filepath.ToSlash(scriptPath), "script/custom/") {
+		return fmt.Errorf("cannot delete built-in or non-custom scripts")
+	}
+
+	fullPath := filepath.Join(sm.CorePath, scriptPath)
+	return os.Remove(fullPath)
+}

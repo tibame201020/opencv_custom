@@ -6,9 +6,18 @@ from typing import Optional
 from .adb_command import AdbCommand
 
 
+
 class Adb:
     """ADB 處理器類別"""
-    
+
+    def __init__(self, device_id: str = None):
+        self.device_id = device_id
+
+    def connect(self):
+        """嘗試連線至裝置 (如果是 IP)"""
+        if self.device_id and ":" in self.device_id:
+             self.exec(f"adb connect {self.device_id}")
+
     def exec(self, command: str) -> str:
         """
         執行 ADB 命令
@@ -19,6 +28,14 @@ class Adb:
         Returns:
             標準輸出字串
         """
+        # Inject Device ID if present and command is adb command
+        if self.device_id and command.strip().startswith("adb "):
+             # Check if -s is already present?
+             if " -s " not in command:
+                 parts = command.strip().split(" ", 1)
+                 if len(parts) == 2:
+                     command = f"adb -s {self.device_id} {parts[1]}"
+        
         try:
             result = subprocess.run(
                 command,

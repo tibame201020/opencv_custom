@@ -247,9 +247,24 @@ def cmd_run(args):
                             robot_platform = RobotPlatform(open_cv_service)
                             script_instance = script_class(robot_platform)
                         else:
-                            adb = Adb()
+                            # Parse params to get device_id
+                            import json
+                            params_dict = {}
+                            try:
+                                params_dict = json.loads(args.params)
+                            except:
+                                pass
+                            
+                            device_id = params_dict.get("deviceId")
+                            adb = Adb(device_id)
+                            if device_id:
+                                print(f"Connecting to device: {device_id}")
+                                adb.connect()
+                                
                             adb_platform = AdbPlatform(adb, open_cv_service)
                             script_instance = script_class(adb_platform)
+                            
+                        script_instance.execute()
                             
                         script_instance.execute()
                         return

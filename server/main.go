@@ -58,6 +58,7 @@ func main() {
 		api.GET("/devices", listDevices)
 		api.GET("/scripts/:id/content", getScriptContent)
 		api.POST("/scripts/:id/content", saveScriptContent)
+		api.DELETE("/scripts/:id", deleteScript)
 	}
 
 	r.GET("/ws/logs/:id", streamLogs)
@@ -225,4 +226,19 @@ func createScript(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{"status": "created", "name": req.Name})
+}
+
+func deleteScript(c *gin.Context) {
+	scriptID := c.Param("id")
+	if err := manager.DeleteScript(scriptID); err != nil {
+		status := 500
+		if strings.Contains(err.Error(), "cannot delete") {
+			status = 403
+		} else if strings.Contains(err.Error(), "not found") {
+			status = 404
+		}
+		c.JSON(status, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"status": "deleted"})
 }
