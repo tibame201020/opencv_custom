@@ -132,8 +132,18 @@ export const ExecutionView: React.FC = () => {
     };
 
     const handleStop = async (tabId: string) => {
+        // Optimistic update
         updateScriptStatus(tabId, 'stopped');
-        // In real app, call API to kill process using runId
+
+        // Find runId from store if available
+        const tab = scriptTabs.find(t => t.tabId === tabId);
+        if (tab?.runId) {
+            try {
+                await axios.post(`${API_Base}/stop`, { runId: tab.runId });
+            } catch (err) {
+                console.error("Failed to stop script", err);
+            }
+        }
     };
 
     return (
@@ -223,8 +233,8 @@ export const ExecutionView: React.FC = () => {
                                 className={clsx(
                                     "flex items-center gap-2 px-4 py-2.5 rounded-t-lg border-t border-x border-b-0 text-sm font-medium cursor-pointer select-none transition-colors min-w-[160px] max-w-[240px] group",
                                     isActive
-                                        ? "bg-base-200/30 border-base-200 text-base-content relative top-[1px]"
-                                        : "bg-base-100 border-transparent text-base-content/50 hover:bg-base-200/50 hover:text-base-content/80"
+                                        ? "bg-base-100 border-base-200 text-base-content relative top-[1px] shadow-sm"
+                                        : "bg-base-200/50 border-transparent text-base-content/50 hover:bg-base-200 hover:text-base-content/80"
                                 )}
                                 onClick={() => setActiveScriptTab(tab.tabId)}
                                 onDoubleClick={(e) => { e.stopPropagation(); startEditing(tab.tabId, tab.label); }}
@@ -250,7 +260,7 @@ export const ExecutionView: React.FC = () => {
                                 )}
 
                                 <button
-                                    className="opacity-80 group-hover:opacity-100 hover:bg-base-content/10 rounded-full p-0.5 transition-all"
+                                    className="opacity-0 group-hover:opacity-100 hover:bg-base-content/10 rounded-full p-0.5 transition-all"
                                     onClick={(e) => { e.stopPropagation(); closeScriptTab(tab.tabId); }}
                                 >
                                     <X size={12} />
@@ -333,21 +343,29 @@ export const ExecutionView: React.FC = () => {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="h-full flex flex-col font-mono text-sm">
-                                        <div className="flex-1 p-4 space-y-1 overflow-y-auto">
+                                    <div className="h-full flex flex-col font-mono text-sm bg-[#1e1e1e] text-gray-300">
+                                        <div className="flex-1 p-4 space-y-0.5 overflow-y-auto font-mono text-xs md:text-sm">
                                             {activeTab.logs.map((log, i) => (
-                                                <div key={i} className="flex gap-2 hover:bg-base-200/50 -mx-2 px-2 py-0.5 rounded">
-                                                    <span className="opacity-30 select-none text-xs w-20 shrink-0 text-right">{log.timestamp.split('T')[1].split('.')[0]}</span>
+                                                <div key={i} className="flex gap-3 hover:bg-white/5 -mx-2 px-2 py-0.5 rounded-sm">
+                                                    <span className="opacity-40 select-none w-24 shrink-0 text-right font-light">{log.timestamp.split('T')[1].split('.')[0]}</span>
                                                     <span className={clsx(
-                                                        log.type === 'error' ? "text-error font-bold" :
-                                                            log.type === 'status' ? "text-info" : ""
+                                                        "break-all",
+                                                        log.type === 'error' ? "text-red-400 font-bold" :
+                                                            log.type === 'status' ? "text-blue-400 font-bold" :
+                                                                log.type === 'success' ? "text-green-400 font-bold" :
+                                                                    log.type === 'warning' ? "text-yellow-400" :
+                                                                        "text-gray-300"
                                                     )}>{log.message}</span>
                                                 </div>
                                             ))}
                                             {activeTab.logs.length === 0 && (
-                                                <div className="h-full flex items-center justify-center opacity-20">
-                                                    No logs available
+                                                <div className="h-full flex flex-col items-center justify-center opacity-30 select-none gap-2">
+                                                    <Terminal size={32} />
+                                                    <div>Ready for output</div>
                                                 </div>
+                                            )}
+                                            {activeTab.status === 'running' && (
+                                                <div className="animate-pulse text-green-500 font-bold mt-2">_</div>
                                             )}
                                             <div ref={logEndRef} />
                                         </div>

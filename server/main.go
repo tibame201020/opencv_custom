@@ -36,7 +36,14 @@ func main() {
 	// Enable CORS
 	r.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Origin, X-Requested-With")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
 		c.Next()
 	})
 
@@ -84,9 +91,23 @@ func runScript(c *gin.Context) {
 	c.JSON(200, gin.H{"runId": runID})
 }
 
+type StopRequest struct {
+	RunID string `json:"runId"`
+}
+
 func stopScript(c *gin.Context) {
-	// TODO: Implement
-	c.JSON(501, gin.H{"error": "Not implemented"})
+	var req StopRequest
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := manager.StopScript(req.RunID); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"status": "stopped"})
 }
 
 func streamLogs(c *gin.Context) {

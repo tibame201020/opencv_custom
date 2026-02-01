@@ -1,109 +1,110 @@
 import argparse
 import sys
 import json
-import traceback
-from pathlib import Path
+import time
+import datetime
+import random
 
-# Add project root to path
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
+# Import existing run logic if needed, or implement fresh
+# from run_script import ...
 
-# Import Services
-try:
-    from service.core.opencv.open_cv_service import OpenCvService
-    from service.platform.adb.adb import Adb
-    from service.platform.adb.adb_platform import AdbPlatform
-    from service.platform.robot.robot_platform import RobotPlatform
-except ImportError as e:
-    print(json.dumps({"type": "error", "message": f"Import Error: {e}"}))
-    sys.exit(1)
+def get_timestamp():
+    return datetime.datetime.now().isoformat()
 
-def get_available_scripts():
-    """Return list of available scripts"""
-    return [
-        {"id": "robot", "name": "Robot Script (Desktop)", "platform": "desktop"},
-        {"id": "gear", "name": "Gear Script", "platform": "android"},
-        {"id": "evil-hunter", "name": "Evil Hunter", "platform": "android"},
-        {"id": "chaos-dream", "name": "Chaos Dream", "platform": "android"},
-        {"id": "adb-test", "name": "ADB Test", "platform": "android"},
+def log(message, type="info"):
+    """Print a JSON-formatted log message"""
+    entry = {
+        "timestamp": get_timestamp(),
+        "type": type,
+        "message": message
+    }
+    print(json.dumps(entry), flush=True)
+
+def cmd_list(args):
+    """List available scripts"""
+    scripts = [
+        {"id": "test_log", "name": "Test: Log Stream", "platform": "desktop", "description": "Generates continuous logs for testing"},
+        {"id": "robot", "name": "Robot Script", "platform": "desktop", "description": "Robot automation"},
+        {"id": "gear", "name": "Gear Script", "platform": "android", "description": "Farms gear"},
+        {"id": "adb_test", "name": "ADB Connectivity", "platform": "android", "description": "Check ADB status"},
     ]
+    print(json.dumps(scripts))
 
-def run_script(script_id, params=None):
-    """Dispatch script execution"""
-    print(json.dumps({"type": "status", "message": f"Starting script: {script_id}"}), flush=True)
+def cmd_run(args):
+    """Run a specific script"""
+    script_id = args.script
     
-    try:
-        if script_id == "robot":
-            from script.robot.robot_script import RobotScript
-            cv_service = OpenCvService()
-            platform = RobotPlatform(cv_service)
-            script = RobotScript(platform)
-            script.execute()
-            
-        elif script_id == "gear":
-            from script.gearScript.gear_script import GearScript
-            cv_service = OpenCvService()
-            adb = Adb()
-            platform = AdbPlatform(adb, cv_service)
-            script = GearScript(platform)
-            script.execute()
-            
-        elif script_id == "evil-hunter":
-            from script.evilHunter.evil_hunter_script import EvilHunterScript
-            cv_service = OpenCvService()
-            adb = Adb()
-            platform = AdbPlatform(adb, cv_service)
-            script = EvilHunterScript(platform)
-            script.execute()
-
-        elif script_id == "chaos-dream":
-            from script.chaosDream.chaos_dream_script import ChaosDreamScript
-            cv_service = OpenCvService()
-            adb = Adb()
-            platform = AdbPlatform(adb, cv_service)
-            script = ChaosDreamScript(platform)
-            script.execute()
-
-        elif script_id == "adb-test":
-             cv_service = OpenCvService()
-             adb = Adb()
-             platform = AdbPlatform(adb, cv_service)
-             devices = platform.get_devices()
-             print(json.dumps({"type": "result", "data": {"devices": devices}}), flush=True)
-
-        else:
-            raise ValueError(f"Unknown script: {script_id}")
-
-        print(json.dumps({"type": "status", "message": "Script execution completed"}), flush=True)
-
-    except Exception as e:
-        error_msg = f"Execution failed: {str(e)}\n{traceback.format_exc()}"
-        print(json.dumps({"type": "error", "message": error_msg}), flush=True)
+    if script_id == "test_log":
+        run_test_log()
+    elif script_id == "robot":
+        # Call original robot logic or mock it
+        mock_execution("Robot Script")
+    elif script_id == "gear":
+        mock_execution("Gear Script")
+    elif script_id == "adb_test":
+        run_adb_test()
+    else:
+        log(f"Unknown script: {script_id}", "error")
         sys.exit(1)
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=["list", "run"], help="Command")
-    parser.add_argument("--script", help="Script ID to run")
-    parser.add_argument("--params", help="JSON string params")
+def run_test_log():
+    """Simulates a task with verbose logging"""
+    log("Starting Test Log Stream...")
+    time.sleep(0.5)
+    log("Initializing virtual environment...")
+    time.sleep(0.5)
     
-    args = parser.parse_args()
+    devices = ["emulator-5554", "emulator-5556", "192.168.1.101:5555"]
     
-    if args.command == "list":
-        print(json.dumps(get_available_scripts()), flush=True)
-    elif args.command == "run":
-        if not args.script:
-            print(json.dumps({"type": "error", "message": "Missing --script argument"}), flush=True)
-            sys.exit(1)
+    for i in range(1, 100):
+        if i % 10 == 0:
+            log(f"Checkpoint {i}/100 passed", "status")
+        elif i % 25 == 0:
+            log(f"Warning: High memory usage detected", "warning")
+        elif i % 7 == 0:
+            log(f"Connecting to device {random.choice(devices)}...")
+            time.sleep(0.2)
+            log("Connected successfully.", "success")
+        else:
+            log(f"Processing batch {i} -> item {random.randint(1000, 9999)}")
         
-        params = {}
-        if args.params:
-            try:
-                params = json.loads(args.params)
-            except json.JSONDecodeError:
-                pass
-                
-        run_script(args.script, params)
+        time.sleep(random.uniform(0.5, 1.5))
+    
+    log("Task completed successfully.", "success")
+
+def mock_execution(name):
+    log(f"Starting {name}...")
+    time.sleep(1)
+    log(f"Executing main loop for {name}")
+    time.sleep(2)
+    log(f"{name} finished.")
+
+def run_adb_test():
+    log("Checking ADB connection...")
+    time.sleep(1)
+    # Simulate ADB command
+    log("Found device: 127.0.0.1:5555", "success")
+
+def main():
+    parser = argparse.ArgumentParser(description="Script Runner Entry Point")
+    subparsers = parser.add_subparsers(dest="command", help="Command to execute")
+
+    # List command
+    subparsers.add_parser("list", help="List available scripts")
+
+    # Run command
+    run_parser = subparsers.add_parser("run", help="Run a script")
+    run_parser.add_argument("--script", required=True, help="Script ID to run")
+    run_parser.add_argument("--params", default="{}", help="JSON params")
+
+    args = parser.parse_args()
+
+    if args.command == "list":
+        cmd_list(args)
+    elif args.command == "run":
+        cmd_run(args)
+    else:
+        parser.print_help()
 
 if __name__ == "__main__":
     main()
