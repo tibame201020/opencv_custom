@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAppStore } from '../store';
-import { Check, Globe } from 'lucide-react';
+import { Check } from 'lucide-react';
 import clsx from 'clsx';
 
 const THEMES = [
@@ -15,6 +15,12 @@ export const SettingsView: React.FC = () => {
     const { t, i18n } = useTranslation();
     const { theme, setTheme, setLanguage } = useAppStore();
 
+    const toggleLanguage = () => {
+        const newLang = i18n.language === 'zh' ? 'en' : 'zh';
+        i18n.changeLanguage(newLang);
+        setLanguage(newLang);
+    };
+
     return (
         <div className="h-full w-full p-6 bg-base-100 overflow-y-auto">
             <div className="max-w-6xl mx-auto space-y-6 pb-12">
@@ -26,23 +32,15 @@ export const SettingsView: React.FC = () => {
                     </div>
 
                     {/* Compact Language Toggle */}
-                    <div className="flex items-center gap-3 bg-base-200/50 p-2 rounded-lg">
-                        <Globe size={16} className="opacity-60" />
-                        <span className="text-sm font-medium opacity-60 uppercase tracking-wider">{t('ui.setting.locale')}</span>
-                        <div className="join shadow-sm">
-                            <button
-                                className={clsx("join-item btn btn-xs px-3", i18n.language === 'zh' ? 'btn-primary' : 'btn-ghost bg-base-100')}
-                                onClick={() => { i18n.changeLanguage('zh'); setLanguage('zh'); }}
-                            >
-                                中文
-                            </button>
-                            <button
-                                className={clsx("join-item btn btn-xs px-3", i18n.language === 'en' ? 'btn-primary' : 'btn-ghost bg-base-100')}
-                                onClick={() => { i18n.changeLanguage('en'); setLanguage('en'); }}
-                            >
-                                EN
-                            </button>
-                        </div>
+                    <div className="flex items-center gap-3">
+                        <span className={clsx("text-sm font-bold", i18n.language === 'zh' ? 'text-primary' : 'opacity-40')}>中文</span>
+                        <input
+                            type="checkbox"
+                            className="toggle toggle-primary"
+                            checked={i18n.language === 'en'}
+                            onChange={toggleLanguage}
+                        />
+                        <span className={clsx("text-sm font-bold", i18n.language === 'en' ? 'text-primary' : 'opacity-40')}>EN</span>
                     </div>
                 </div>
 
