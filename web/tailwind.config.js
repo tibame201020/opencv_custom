@@ -7,7 +7,9 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Inter', 'system-ui', 'sans-serif'],
+                sans: ['var(--font-base)', 'Inter', 'system-ui', 'sans-serif'],
+                mono: ['Space Mono', 'monospace'],
+                serif: ['Playfair Display', 'serif'],
             },
             colors: {
                 // Custom premium palette extensions if needed
