@@ -250,20 +250,42 @@ func (sm *ScriptManager) CreateScript(name string, platform string) error {
 
 	// Template
 	className := strings.ToUpper(validName[:1]) + validName[1:] + "Script"
-	template := fmt.Sprintf(`from script.script_interface import ScriptInterface
+	var template string
+
+	if platform == "desktop" {
+		template = fmt.Sprintf(`from script.script_interface import ScriptInterface
+from service.platform.robot.robot_platform import RobotPlatform
+
+class %s(ScriptInterface):
+    def __init__(self, platform: RobotPlatform):
+        self.platform = platform
+        self.platform_type = "desktop"
+        super().__init__()
+
+    def execute(self):
+        print("Starting %s (Desktop)...")
+        # Your desktop automation code here
+        # self.platform.mouse_move(100, 100)
+        print("Done.")
+`, className, validName)
+	} else {
+		// Default to android
+		template = fmt.Sprintf(`from script.script_interface import ScriptInterface
 from service.platform.adb.adb_platform import AdbPlatform
 
 class %s(ScriptInterface):
     def __init__(self, platform: AdbPlatform):
         self.platform = platform
+        self.platform_type = "android"
         super().__init__()
 
     def execute(self):
-        print("Starting %s...")
-        # Your code here
+        print("Starting %s (Android)...")
+        # Your android automation code here
         # self.platform.click(100, 100)
         print("Done.")
 `, className, validName)
+	}
 
 	return os.WriteFile(fullPath, []byte(template), 0644)
 }

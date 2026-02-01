@@ -164,10 +164,19 @@ def cmd_list(args):
         for file in custom_dir.glob("*.py"):
             if file.name == "__init__.py": continue
             script_id = file.stem
+            # Determine platform by reading file content
+            platform = "android"
+            try:
+                content = file.read_text(encoding='utf-8')
+                if "RobotPlatform" in content:
+                    platform = "desktop"
+            except:
+                pass
+
             scripts.append({
                 "id": script_id,
                 "name": script_id.capitalize(),
-                "platform": "android", # Default to android for now
+                "platform": platform,
                 "description": "User custom script",
                 "path": f"script/custom/{file.name}"
             })
@@ -221,12 +230,27 @@ def cmd_run(args):
                                 break
                                 
                     if script_class:
-                        # Assume Android Platform for custom scripts for now
-                        print(f"Running custom script: {script_id}")
+                        # Determine platform based on imports or class attributes
+                        # Simple heuristic: Check if RobotPlatform is imported in the module
+                        is_desktop = False
+                        if "RobotPlatform" in dir(module):
+                            is_desktop = True
+                        
+                        # Or check source code text for robustness
+                        # (Since imports might be aliased)
+                        
+                        print(f"Running custom script: {script_id} (Platform: {'Desktop' if is_desktop else 'Android'})")
                         open_cv_service = OpenCvService()
-                        adb = Adb()
-                        adb_platform = AdbPlatform(adb, open_cv_service)
-                        script_instance = script_class(adb_platform)
+                        
+                        if is_desktop:
+                            from service.platform.robot.robot_platform import RobotPlatform
+                            robot_platform = RobotPlatform(open_cv_service)
+                            script_instance = script_class(robot_platform)
+                        else:
+                            adb = Adb()
+                            adb_platform = AdbPlatform(adb, open_cv_service)
+                            script_instance = script_class(adb_platform)
+                            
                         script_instance.execute()
                         return
 

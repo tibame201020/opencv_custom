@@ -19,6 +19,7 @@ export const EditorView: React.FC = () => {
     // Create Script Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newScriptName, setNewScriptName] = useState("");
+    const [newScriptPlatform, setNewScriptPlatform] = useState("android");
     const [isCreating, setIsCreating] = useState(false);
 
     const editorRef = useRef<any>(null);
@@ -75,11 +76,12 @@ export const EditorView: React.FC = () => {
         try {
             await axios.post(`${API_Base}/scripts`, {
                 name: newScriptName,
-                platform: 'android' // Default
+                platform: newScriptPlatform
             });
             await fetchScripts(); // Refresh list
             setIsModalOpen(false);
             setNewScriptName("");
+            setNewScriptPlatform("android");
         } catch (err: any) {
             console.error("Failed to create script", err);
             alert("Failed to create script: " + (err.response?.data?.error || err.message));
@@ -221,6 +223,17 @@ export const EditorView: React.FC = () => {
                                 value={newScriptName}
                                 onChange={e => setNewScriptName(e.target.value)}
                             />
+                            <label className="label">
+                                <span className="label-text">Platform</span>
+                            </label>
+                            <select
+                                className="select select-bordered w-full"
+                                value={newScriptPlatform}
+                                onChange={e => setNewScriptPlatform(e.target.value)}
+                            >
+                                <option value="android">Android (ADB)</option>
+                                <option value="desktop">Desktop (Robot)</option>
+                            </select>
                             <label className="label">
                                 <span className="label-text-alt">Only letters, numbers, hyphens, and underscores.</span>
                             </label>
