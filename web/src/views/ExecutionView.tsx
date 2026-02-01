@@ -566,7 +566,13 @@ const LogConsole: React.FC<{
 
                     <button
                         className={clsx("btn btn-xs btn-ghost btn-square rounded-sm h-7 min-h-0", isAutoScroll ? "text-success bg-success/10" : "opacity-50")}
-                        onClick={() => setIsAutoScroll(!isAutoScroll)}
+                        onClick={() => {
+                            const newState = !isAutoScroll;
+                            setIsAutoScroll(newState);
+                            if (newState) {
+                                virtuosoRef.current?.scrollToIndex({ index: displayLogs.length - 1, behavior: 'smooth' });
+                            }
+                        }}
                         title="Auto-scroll (Tail)"
                     >
                         <ArrowDown size={14} />
