@@ -2,7 +2,9 @@ import React, { useEffect, useState, useRef } from 'react';
 import Editor, { type OnMount } from '@monaco-editor/react';
 import axios from 'axios';
 import { useAppStore } from '../store';
-import { Save, Play, FileCode, Plus, Trash2 } from 'lucide-react';
+import { Save, Play, FileCode, Plus, Trash2, Camera } from 'lucide-react';
+import { ConfirmModal } from '../components/ConfirmModal';
+import { ScreenshotModal } from '../components/ScreenshotModal';
 
 const API_Base = "http://localhost:8080/api";
 
@@ -22,10 +24,19 @@ export const EditorView: React.FC = () => {
     const [newScriptPlatform, setNewScriptPlatform] = useState("android");
     const [isCreating, setIsCreating] = useState(false);
 
+    // Android Workflow State
+    const [devices, setDevices] = useState<string[]>([]);
+    const [selectedDevice, setSelectedDevice] = useState<string>("");
+    const [isScreenshotModalOpen, setIsScreenshotModalOpen] = useState(false);
+
+    // Confirmation State
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
     const editorRef = useRef<any>(null);
 
     useEffect(() => {
         fetchScripts();
+        fetchDevices();
     }, []);
 
     useEffect(() => {
@@ -40,6 +51,18 @@ export const EditorView: React.FC = () => {
             setScripts(res.data);
         } catch (err) {
             console.error("Failed to fetch scripts", err);
+        }
+    };
+
+    const fetchDevices = async () => {
+        try {
+            const res = await axios.get(`${API_Base}/devices`);
+            setDevices(res.data);
+            if (res.data.length > 0 && !selectedDevice) {
+                setSelectedDevice(res.data[0]);
+            }
+        } catch (err) {
+            console.error("Failed to fetch devices", err);
         }
     };
 
@@ -70,10 +93,13 @@ export const EditorView: React.FC = () => {
         }
     };
 
-    const handleDeleteScript = async () => {
+    const handleDeleteScript = () => {
         if (!selectedScriptId) return;
-        if (!confirm(`Are you sure you want to delete script '${selectedScriptId}'? This cannot be undone.`)) return;
+        setIsDeleteModalOpen(true);
+    };
 
+    const executeDeleteScript = async () => {
+        if (!selectedScriptId) return;
         try {
             await axios.delete(`${API_Base}/scripts/${selectedScriptId}`);
 
@@ -83,6 +109,7 @@ export const EditorView: React.FC = () => {
             setOriginalCode("");
             setIsDirty(false);
             fetchScripts();
+            setIsDeleteModalOpen(false);
         } catch (err: any) {
             console.error("Failed to delete", err);
             alert("Failed to delete script: " + (err.response?.data?.error || err.message));
@@ -185,6 +212,33 @@ export const EditorView: React.FC = () => {
                             >
                                 <Play size={16} /> Run
                             </button>
+
+                            {/* Android Tools */}
+                            {scripts.find(s => s.id === selectedScriptId)?.platform === 'android' && (
+                                <div className="join border border-base-300 rounded-lg">
+                                    <select
+                                        className="select select-sm join-item font-mono max-w-[150px] focus:outline-none"
+                                        value={selectedDevice}
+                                        onChange={(e) => setSelectedDevice(e.target.value)}
+                                        onClick={() => { if (devices.length === 0) fetchDevices(); }}
+                                        title="Select Target Device"
+                                    >
+                                        <option value="" disabled>Select Device</option>
+                                        {devices.map(d => <option key={d} value={d}>{d}</option>)}
+                                    </select>
+                                    <button
+                                        className="btn btn-sm join-item btn-ghost"
+                                        onClick={() => setIsScreenshotModalOpen(true)}
+                                        title="Take Screenshot"
+                                        disabled={!selectedDevice}
+                                    >
+                                        <Camera size={16} />
+                                    </button>
+                                </div>
+                            )}
+
+                            <div className="flex-1"></div> {/* Spacer to push Delete to right */}
+
                             <button
                                 className="btn btn-sm btn-ghost gap-2 text-error"
                                 onClick={handleDeleteScript}
@@ -279,6 +333,23 @@ export const EditorView: React.FC = () => {
                     </div>
                 </div>
             )}
+            {/* Confirmation Modal */}
+            <ConfirmModal
+                isOpen={isDeleteModalOpen}
+                title="Delete Script"
+                message={`Are you sure you want to delete script '${selectedScriptId}'? This action cannot be undone.`}
+                onConfirm={executeDeleteScript}
+                onCancel={() => setIsDeleteModalOpen(false)}
+                type="danger"
+                confirmText="Delete"
+            />
+
+            {/* Android Screenshot Modal */}
+            <ScreenshotModal
+                isOpen={isScreenshotModalOpen}
+                onClose={() => setIsScreenshotModalOpen(false)}
+                deviceId={selectedDevice}
+            />
         </div>
     );
 };

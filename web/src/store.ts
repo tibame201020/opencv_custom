@@ -38,6 +38,10 @@ interface AppState {
     activeMainTab: 'execution' | 'management' | 'setting' | 'editor';
     setActiveMainTab: (tab: 'execution' | 'management' | 'setting' | 'editor') => void;
 
+    // Global Data
+    devices: string[];
+    setDevices: (devices: string[]) => void;
+
     // Execution Module State
     scriptTabs: ScriptTabState[];
     activeTabId: string | null;
@@ -64,6 +68,10 @@ export const useAppStore = create<AppState>()(
             activeMainTab: 'execution',
             scriptTabs: [],
             activeTabId: null,
+
+            // State
+            devices: [],
+            setDevices: (devices) => set({ devices }),
 
             // Actions
             setTheme: (theme) => set({ theme }),

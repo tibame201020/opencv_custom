@@ -59,6 +59,8 @@ func main() {
 		api.GET("/scripts/:id/content", getScriptContent)
 		api.POST("/scripts/:id/content", saveScriptContent)
 		api.DELETE("/scripts/:id", deleteScript)
+		api.GET("/devices/:id/screenshot", getDeviceScreenshot)
+		api.POST("/assets", uploadAsset)
 	}
 
 	r.GET("/ws/logs/:id", streamLogs)
@@ -66,6 +68,50 @@ func main() {
 	port := ":8080"
 	fmt.Printf("Server starting on %s\n", port)
 	r.Run(port)
+}
+
+func getDeviceScreenshot(c *gin.Context) {
+	deviceID := c.Param("id")
+	cwd, _ := os.Getwd()
+	// Simple cross-platform check (though user is Windows)
+	adbName := "adb"
+	if os.PathSeparator == '\\' {
+		adbName = "adb.exe"
+	}
+	adbPath := filepath.Join(cwd, "..", "platform-tools", adbName)
+
+	cmd := exec.Command(adbPath, "-s", deviceID, "exec-out", "screencap", "-p")
+	output, err := cmd.Output()
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Screenshot failed: " + err.Error()})
+		return
+	}
+	c.Data(200, "image/png", output)
+}
+
+func uploadAsset(c *gin.Context) {
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(400, gin.H{"error": "No file uploaded"})
+		return
+	}
+
+	cwd, _ := os.Getwd()
+	assetsDir := filepath.Join(cwd, "..", "core", "assets")
+	if err := os.MkdirAll(assetsDir, 0755); err != nil {
+		c.JSON(500, gin.H{"error": "Failed to create assets directory"})
+		return
+	}
+
+	filename := filepath.Base(file.Filename)
+	targetPath := filepath.Join(assetsDir, filename)
+
+	if err := c.SaveUploadedFile(file, targetPath); err != nil {
+		c.JSON(500, gin.H{"error": "Failed to save file: " + err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"status": "uploaded", "path": "assets/" + filename})
 }
 
 func listScripts(c *gin.Context) {
