@@ -100,6 +100,7 @@ export const ExecutionView: React.FC = () => {
     // Run Script Logic
     const handleRun = async (tabId: string, scriptId: string) => {
         updateScriptStatus(tabId, 'running');
+        setSubTab(tabId, 'logs'); // Switch to console view automatically
         try {
             const res = await axios.post(`${API_Base}/run`, { scriptId: scriptId, params: "{}" });
             const runId = res.data.runId;
