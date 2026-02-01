@@ -385,12 +385,7 @@ export const ExecutionView: React.FC = () => {
                                                         <div className="text-sm opacity-50 italic px-1">Not required for Desktop platform</div>
                                                     )}
                                                 </div>
-                                                <div className="form-control w-52">
-                                                    <label className="label cursor-pointer justify-start gap-3">
-                                                        <input type="checkbox" className="toggle toggle-primary toggle-sm" defaultChecked />
-                                                        <span className="label-text">Enable Hardware Acceleration</span>
-                                                    </label>
-                                                </div>
+
                                             </div>
                                         </div>
                                     </div>
