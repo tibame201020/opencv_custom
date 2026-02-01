@@ -343,33 +343,14 @@ export const ExecutionView: React.FC = () => {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="h-full flex flex-col font-mono text-sm bg-[#1e1e1e] text-gray-300">
-                                        <div className="flex-1 p-4 space-y-0.5 overflow-y-auto font-mono text-xs md:text-sm">
-                                            {activeTab.logs.map((log, i) => (
-                                                <div key={i} className="flex gap-3 hover:bg-white/5 -mx-2 px-2 py-0.5 rounded-sm">
-                                                    <span className="opacity-40 select-none w-24 shrink-0 text-right font-light">{log.timestamp.split('T')[1].split('.')[0]}</span>
-                                                    <span className={clsx(
-                                                        "break-all",
-                                                        log.type === 'error' ? "text-red-400 font-bold" :
-                                                            log.type === 'status' ? "text-blue-400 font-bold" :
-                                                                log.type === 'success' ? "text-green-400 font-bold" :
-                                                                    log.type === 'warning' ? "text-yellow-400" :
-                                                                        "text-gray-300"
-                                                    )}>{log.message}</span>
-                                                </div>
-                                            ))}
-                                            {activeTab.logs.length === 0 && (
-                                                <div className="h-full flex flex-col items-center justify-center opacity-30 select-none gap-2">
-                                                    <Terminal size={32} />
-                                                    <div>Ready for output</div>
-                                                </div>
-                                            )}
-                                            {activeTab.status === 'running' && (
-                                                <div className="animate-pulse text-green-500 font-bold mt-2">_</div>
-                                            )}
-                                            <div ref={logEndRef} />
-                                        </div>
-                                    </div>
+                                    <LogConsole
+                                        logs={activeTab.logs}
+                                        status={activeTab.status}
+                                        onClear={() => {
+                                            // Call store action
+                                            useAppStore.getState().clearLogs(activeTab.tabId);
+                                        }}
+                                    />
                                 )}
                             </div>
                         </div>
@@ -383,6 +364,124 @@ export const ExecutionView: React.FC = () => {
                         </div>
                     )}
                 </div>
+            </div>
+        </div>
+    );
+};
+
+// Sub-component for performance and state isolation
+import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
+import { Trash2, ArrowDown, WrapText, Filter } from 'lucide-react';
+
+const LogConsole: React.FC<{
+    logs: any[],
+    status: string,
+    onClear: () => void
+}> = ({ logs, status, onClear }) => {
+    const [filterText, setFilterText] = useState('');
+    const [isAutoScroll, setIsAutoScroll] = useState(true);
+    const [isWrap, setIsWrap] = useState(true);
+    const virtuosoRef = useRef<VirtuosoHandle>(null);
+
+    // Filter logs
+    const filteredLogs = React.useMemo(() => {
+        if (!filterText) return logs;
+        const lower = filterText.toLowerCase();
+        return logs.filter(l =>
+            (l.message && l.message.toLowerCase().includes(lower)) ||
+            (l.type && l.type.includes(lower))
+        );
+    }, [logs, filterText]);
+
+    return (
+        <div className="h-full flex flex-col bg-[#1e1e1e] text-gray-300 font-mono text-sm relative">
+            {/* Console Toolbar */}
+            <div className="h-10 flex items-center justify-between px-2 border-b border-white/10 bg-[#2d2d2d] shrink-0 select-none">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <Filter size={14} className="opacity-50" />
+                    <input
+                        type="text"
+                        placeholder="Filter logs..."
+                        className="input input-xs input-ghost h-7 w-full max-w-[200px] bg-black/20 focus:bg-black/40 text-gray-300 placeholder:text-gray-600 focus:outline-none focus:text-white transition-colors rounded-sm"
+                        value={filterText}
+                        onChange={(e) => setFilterText(e.target.value)}
+                    />
+                    {filteredLogs.length !== logs.length && (
+                        <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded ml-2">
+                            {filteredLogs.length} / {logs.length}
+                        </span>
+                    )}
+                </div>
+
+                <div className="flex items-center gap-1">
+                    <div className="h-4 w-px bg-white/10 mx-1"></div>
+
+                    <button
+                        className={clsx("btn btn-xs btn-ghost btn-square rounded-sm", isWrap ? "text-primary bg-primary/10" : "opacity-50")}
+                        onClick={() => setIsWrap(!isWrap)}
+                        title="Toggle Word Wrap"
+                    >
+                        <WrapText size={14} />
+                    </button>
+
+                    <button
+                        className={clsx("btn btn-xs btn-ghost btn-square rounded-sm", isAutoScroll ? "text-success bg-success/10" : "opacity-50")}
+                        onClick={() => setIsAutoScroll(!isAutoScroll)}
+                        title="Auto-scroll (Tail)"
+                    >
+                        <ArrowDown size={14} />
+                    </button>
+
+                    <button
+                        className="btn btn-xs btn-ghost btn-square text-error hover:bg-error/10 rounded-sm opacity-60 hover:opacity-100"
+                        onClick={onClear}
+                        title="Clear Console"
+                    >
+                        <Trash2 size={14} />
+                    </button>
+                </div>
+            </div>
+
+            {/* Virtualized Log List */}
+            <div className="flex-1 min-h-0 relative">
+                <Virtuoso
+                    ref={virtuosoRef}
+                    data={filteredLogs}
+                    followOutput={isAutoScroll ? 'smooth' : false}
+                    initialTopMostItemIndex={filteredLogs.length - 1}
+                    itemContent={(_, log) => (
+                        <div className={clsx("px-4 py-0.5 hover:bg-white/5 flex gap-3 text-xs md:text-sm", isWrap ? "whitespace-pre-wrap break-all" : "whitespace-nowrap")}>
+                            <span className="opacity-30 select-none w-20 shrink-0 text-right font-light text-[11px] pt-[2px]">
+                                {log.timestamp ? log.timestamp.split('T')[1].split('.')[0] : ''}
+                            </span>
+                            <span className={clsx(
+                                "flex-1",
+                                log.type === 'error' ? "text-red-400 font-bold" :
+                                    log.type === 'status' ? "text-blue-400 font-bold" :
+                                        log.type === 'success' ? "text-emerald-400 font-bold" :
+                                            log.type === 'warning' ? "text-yellow-400" :
+                                                "text-gray-300"
+                            )}>
+                                {log.message}
+                            </span>
+                        </div>
+                    )}
+                    className="no-scrollbar"
+                />
+
+                {logs.length === 0 && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center opacity-10 pointer-events-none select-none gap-2">
+                        <Terminal size={48} />
+                        <div className="text-sm font-bold uppercase tracking-widest">Console Empty</div>
+                    </div>
+                )}
+
+                {/* Blinking Cursor Indicator when Running */}
+                {status === 'running' && isAutoScroll && (
+                    <div className="absolute bottom-2 left-6 animate-pulse text-emerald-500 font-bold bg-[#1e1e1e] px-1 pointer-events-none text-xs">
+                        _
+                    </div>
+                )}
             </div>
         </div>
     );
