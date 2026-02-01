@@ -347,7 +347,6 @@ export const ExecutionView: React.FC = () => {
                                 ) : (
                                     <LogConsole
                                         logs={activeTab.logs}
-                                        status={activeTab.status}
                                         onClear={() => {
                                             // Call store action
                                             useAppStore.getState().clearLogs(activeTab.tabId);
@@ -372,10 +371,8 @@ export const ExecutionView: React.FC = () => {
 };
 
 // Sub-component for performance and state isolation
-
 const LogConsole: React.FC<{
     logs: any[],
-    status: string,
     onClear: () => void
 }> = ({ logs, onClear }) => {
     // Search & Filter State
@@ -502,8 +499,8 @@ const LogConsole: React.FC<{
                             type="text"
                             placeholder={searchMode === 'find' ? "Find keyword..." : "Filter logs..."}
                             className={clsx(
-                                "input input-xs input-ghost h-7 w-full pl-2 pr-16 bg-black/20 focus:bg-black/40 text-gray-300 placeholder:text-gray-600 focus:outline-none transition-colors rounded-sm",
-                                searchText && "bg-black/40 text-white font-bold"
+                                "input input-xs input-ghost h-7 w-full pl-2 pr-16 bg-black/20 focus:bg-black/40 text-gray-200 placeholder:text-gray-500 focus:text-white focus:outline-none transition-colors rounded-sm",
+                                searchText && "bg-black/40 font-bold"
                             )}
                             value={searchText}
                             onChange={(e) => setSearchText(e.target.value)}
