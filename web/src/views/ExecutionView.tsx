@@ -40,6 +40,9 @@ export const ExecutionView: React.FC = () => {
     const [editName, setEditName] = useState('');
     const editInputRef = useRef<HTMLInputElement>(null);
 
+    // Close Confirmation State
+    const [confirmCloseTabId, setConfirmCloseTabId] = useState<string | null>(null);
+
     // Backend Connection Refs
     const wsMap = useRef<Map<string, WebSocket>>(new Map()); // Key is tabId now
     const logEndRef = useRef<HTMLDivElement>(null);
@@ -146,6 +149,24 @@ export const ExecutionView: React.FC = () => {
             } catch (err) {
                 console.error("Failed to stop script", err);
             }
+        }
+    };
+
+    // Handle Tab Close Request
+    const handleCloseTabRequest = (tabId: string) => {
+        const tab = scriptTabs.find(t => t.tabId === tabId);
+        if (tab?.status === 'running') {
+            setConfirmCloseTabId(tabId);
+        } else {
+            closeScriptTab(tabId);
+        }
+    };
+
+    const confirmCloseRunningTab = async () => {
+        if (confirmCloseTabId) {
+            await handleStop(confirmCloseTabId);
+            closeScriptTab(confirmCloseTabId);
+            setConfirmCloseTabId(null);
         }
     };
 
@@ -264,7 +285,7 @@ export const ExecutionView: React.FC = () => {
 
                                 <button
                                     className="opacity-0 group-hover:opacity-100 hover:bg-base-content/10 rounded-full p-0.5 transition-all"
-                                    onClick={(e) => { e.stopPropagation(); closeScriptTab(tab.tabId); }}
+                                    onClick={(e) => { e.stopPropagation(); handleCloseTabRequest(tab.tabId); }}
                                 >
                                     <X size={12} />
                                 </button>
@@ -368,6 +389,30 @@ export const ExecutionView: React.FC = () => {
                     )}
                 </div>
             </div>
+            {/* Close Confirmation Modal */}
+            {confirmCloseTabId && (
+                <div className="modal modal-open bg-black/50 backdrop-blur-sm z-[9999]">
+                    <div className="modal-box bg-base-100 border border-base-200 shadow-2xl">
+                        <h3 className="font-bold text-lg text-warning flex items-center gap-2">
+                            <Square size={20} fill="currentColor" />
+                            Stop & Close?
+                        </h3>
+                        <p className="py-4 text-sm text-base-content/80">
+                            The script <span className="font-mono font-bold text-base-content bg-base-200 px-1 rounded">{scriptTabs.find(t => t.tabId === confirmCloseTabId)?.label}</span> is currently running.
+                            <br /><br />
+                            Closing this tab will <b>terminate the process</b> immediately.
+                        </p>
+                        <div className="modal-action">
+                            <button className="btn btn-ghost" onClick={() => setConfirmCloseTabId(null)}>Cancel</button>
+                            <button className="btn btn-error" onClick={confirmCloseRunningTab}>Stop & Close</button>
+                        </div>
+                    </div>
+                    {/* Click outside to cancel */}
+                    <form method="dialog" className="modal-backdrop">
+                        <button onClick={() => setConfirmCloseTabId(null)}>close</button>
+                    </form>
+                </div>
+            )}
         </div>
     );
 };
