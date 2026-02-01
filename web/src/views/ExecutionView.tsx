@@ -1,13 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import axios from 'axios';
 import { useTranslation } from 'react-i18next';
-import { useAppStore } from '../store';
+import { useAppStore, type Script } from '../store';
 import {
     Play, Square, Search, X, Monitor, Smartphone,
     Terminal, Sliders, ChevronRight, ChevronLeft
 } from 'lucide-react';
 import clsx from 'clsx';
 
-// Mock Data
+const API_Base = 'http://localhost:8080/api';
+const WS_Base = 'ws://localhost:8080/ws/logs';
+
+// Mock Data (Fallback)
 const MOCK_SCRIPTS = [
     { id: 'robot', name: 'Robot Script (Desktop)', platform: 'desktop', description: 'Automates desktop GUI interactions' },
     { id: 'gear', name: 'Gear Script', platform: 'android', description: 'Farms gear in mobile game' },
@@ -19,19 +23,118 @@ const MOCK_SCRIPTS = [
 export const ExecutionView: React.FC = () => {
     const { t } = useTranslation();
     const {
-        scriptTabs, activeScriptTabId,
+        scriptTabs, activeTabId,
         openScriptTab, closeScriptTab, setActiveScriptTab, setSubTab,
-        updateScriptStatus
+        updateScriptStatus, appendLog, renameScriptTab
     } = useAppStore();
 
     // UI State
-    const [isDrawerOpen, setIsDrawerOpen] = useState(true);
+    const [scripts, setScripts] = useState<Script[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [scripts] = useState(MOCK_SCRIPTS);
+    const [isDrawerOpen, setIsDrawerOpen] = useState(true);
 
-    // Derived
+    // Renaming State
+    const [editingTabId, setEditingTabId] = useState<string | null>(null);
+    const [editName, setEditName] = useState('');
+    const editInputRef = useRef<HTMLInputElement>(null);
+
+    // Backend Connection Refs
+    const wsMap = useRef<Map<string, WebSocket>>(new Map()); // Key is tabId now
+    const logEndRef = useRef<HTMLDivElement>(null);
+
+    // Fetch scripts
+    useEffect(() => {
+        const fetchScripts = async () => {
+            try {
+                const res = await axios.get(`${API_Base}/scripts`);
+                setScripts(res.data);
+            } catch (err) {
+                console.error("Failed to fetch scripts", err);
+                setScripts(MOCK_SCRIPTS as any);
+            }
+        };
+        fetchScripts();
+    }, []);
+
+    // Helper: Find Script Definition
+    const getScriptDef = (scriptId: string) => scripts.find(s => s.id === scriptId);
+
+    // Open Tab Wrapper
+    const handleOpenTab = (scriptId: string) => {
+        const script = getScriptDef(scriptId);
+        openScriptTab(scriptId, script?.name || scriptId);
+    };
+
+    // Derived Data
     const filteredScripts = scripts.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    const activeTab = scriptTabs.find(t => t.id === activeScriptTabId);
+    const activeTab = scriptTabs.find(t => t.tabId === activeTabId);
+
+    // Auto-scroll Logs
+    useEffect(() => {
+        if (activeTab && activeTab.activeSubTab === 'logs' && logEndRef.current) {
+            logEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [activeTab?.logs.length, activeTab?.activeSubTab]);
+
+    // Handle Tab Renaming
+    const startEditing = (tabId: string, currentLabel: string) => {
+        setEditingTabId(tabId);
+        setEditName(currentLabel);
+        setTimeout(() => editInputRef.current?.focus(), 50);
+    };
+
+    const saveEditing = () => {
+        if (editingTabId && editName.trim()) {
+            renameScriptTab(editingTabId, editName.trim());
+        }
+        setEditingTabId(null);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') saveEditing();
+        if (e.key === 'Escape') setEditingTabId(null);
+    };
+
+    // Run Script Logic
+    const handleRun = async (tabId: string, scriptId: string) => {
+        updateScriptStatus(tabId, 'running');
+        try {
+            const res = await axios.post(`${API_Base}/run`, { scriptId: scriptId, params: "{}" });
+            const runId = res.data.runId;
+            updateScriptStatus(tabId, 'running', runId);
+
+            // Close existing WS for this TAB instance if any
+            if (wsMap.current.has(tabId)) {
+                wsMap.current.get(tabId)?.close();
+            }
+
+            const ws = new WebSocket(`${WS_Base}/${runId}`);
+            wsMap.current.set(tabId, ws);
+
+            ws.onmessage = (event) => {
+                try {
+                    const msg = JSON.parse(event.data);
+                    const parsed = typeof msg === 'string' ? JSON.parse(msg) : msg;
+                    const { timestamp, ...logData } = parsed;
+                    appendLog(tabId, logData);
+
+                    if (parsed.type === 'status' && parsed.message === 'Process exited') {
+                        updateScriptStatus(tabId, 'stopped');
+                    }
+                } catch (e) {
+                    appendLog(tabId, { type: 'stdout', message: event.data });
+                }
+            };
+        } catch (err) {
+            updateScriptStatus(tabId, 'error');
+            appendLog(tabId, { type: 'error', message: 'Failed to start: ' + err });
+        }
+    };
+
+    const handleStop = async (tabId: string) => {
+        updateScriptStatus(tabId, 'stopped');
+        // In real app, call API to kill process using runId
+    };
 
     return (
         <div className="flex h-full bg-base-100 overflow-hidden relative">
@@ -43,16 +146,26 @@ export const ExecutionView: React.FC = () => {
                     isDrawerOpen ? "w-64" : "w-16"
                 )}
             >
-                {/* Drawer Header */}
-                <div className={clsx("h-14 flex items-center border-b border-base-200 overflow-hidden", isDrawerOpen ? "px-4" : "justify-center px-0")}>
-                    {isDrawerOpen ? (
-                        <div className="font-bold text-xs uppercase opacity-50 tracking-wider">Script List</div>
-                    ) : (
-                        <div className="font-bold text-xs uppercase opacity-50">List</div>
+                {/* Drawer Header & Toggle (Clickable Row) */}
+                <div
+                    className={clsx(
+                        "h-14 flex items-center border-b border-base-200 shrink-0 cursor-pointer hover:bg-base-200/50 transition-colors select-none",
+                        isDrawerOpen ? "px-4 justify-between" : "justify-center px-0"
                     )}
+                    onClick={() => setIsDrawerOpen(!isDrawerOpen)}
+                    title={isDrawerOpen ? "Collapse List" : "Expand List"}
+                >
+                    {isDrawerOpen && (
+                        <div className="font-bold text-xs uppercase opacity-50 tracking-wider">Script List</div>
+                    )}
+                    <button
+                        className="btn btn-ghost btn-xs btn-square opacity-50 pointer-events-none"
+                    >
+                        {isDrawerOpen ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+                    </button>
                 </div>
 
-                {/* Search (Only visible when open) */}
+                {/* Search */}
                 {isDrawerOpen && (
                     <div className="p-3 border-b border-base-200/50">
                         <div className="relative">
@@ -68,7 +181,7 @@ export const ExecutionView: React.FC = () => {
                     </div>
                 )}
 
-                {/* List Items */}
+                {/* List Items (Templates) */}
                 <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-1">
                     {filteredScripts.map(script => (
                         <div
@@ -77,8 +190,8 @@ export const ExecutionView: React.FC = () => {
                                 "group flex items-center gap-3 rounded-lg cursor-pointer transition-all duration-200 border border-transparent select-none",
                                 isDrawerOpen ? "p-3 hover:bg-base-200" : "p-2 justify-center hover:bg-base-200 aspect-square"
                             )}
-                            onDoubleClick={() => openScriptTab(script.id)}
-                            title={!isDrawerOpen ? script.name : undefined}
+                            onDoubleClick={() => handleOpenTab(script.id)}
+                            title={!isDrawerOpen ? script.name : "Double-click to create instance"}
                         >
                             <div className={clsx(
                                 "w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors",
@@ -87,7 +200,6 @@ export const ExecutionView: React.FC = () => {
                                 {script.platform === 'android' ? <Smartphone size={18} /> : <Monitor size={18} />}
                             </div>
 
-                            {/* Text Content */}
                             <div className={clsx("flex-1 min-w-0 transition-opacity duration-200", isDrawerOpen ? "opacity-100" : "opacity-0 w-0 hidden")}>
                                 <div className="font-medium text-sm truncate leading-tight">{script.name}</div>
                                 <div className="text-[10px] opacity-50 uppercase font-bold mt-0.5">{script.platform}</div>
@@ -95,44 +207,51 @@ export const ExecutionView: React.FC = () => {
                         </div>
                     ))}
                 </div>
-
-                {/* Collapse Toggle (Bottom Full Width) */}
-                <div className="border-t border-base-200">
-                    <button
-                        onClick={() => setIsDrawerOpen(!isDrawerOpen)}
-                        className="w-full h-10 flex items-center justify-center opacity-50 hover:opacity-100 hover:bg-base-200 transition-all cursor-pointer"
-                        title={isDrawerOpen ? "Collapse List" : "Expand List"}
-                    >
-                        {isDrawerOpen ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
-                    </button>
-                </div>
             </div>
 
             {/* Workspace Area */}
             <div className="flex-1 flex flex-col min-w-0 bg-base-200/30">
-                {/* Tabs Header */}
+                {/* Tabs Header (Instances) */}
                 <div className="flex items-center gap-2 px-2 pt-2 bg-base-100 border-b border-base-200 overflow-x-auto no-scrollbar">
                     {scriptTabs.map(tab => {
-                        const script = scripts.find(s => s.id === tab.id);
-                        const isActive = activeScriptTabId === tab.id;
+                        const isActive = activeTabId === tab.tabId;
+                        const isEditing = editingTabId === tab.tabId;
+
                         return (
                             <div
-                                key={tab.id}
+                                key={tab.tabId}
                                 className={clsx(
-                                    "flex items-center gap-2 px-4 py-2.5 rounded-t-lg border-t border-x border-b-0 text-sm font-medium cursor-pointer select-none transition-colors min-w-[160px] max-w-[240px]",
+                                    "flex items-center gap-2 px-4 py-2.5 rounded-t-lg border-t border-x border-b-0 text-sm font-medium cursor-pointer select-none transition-colors min-w-[160px] max-w-[240px] group",
                                     isActive
                                         ? "bg-base-200/30 border-base-200 text-base-content relative top-[1px]"
                                         : "bg-base-100 border-transparent text-base-content/50 hover:bg-base-200/50 hover:text-base-content/80"
                                 )}
-                                onClick={() => setActiveScriptTab(tab.id)}
+                                onClick={() => setActiveScriptTab(tab.tabId)}
+                                onDoubleClick={(e) => { e.stopPropagation(); startEditing(tab.tabId, tab.label); }}
                             >
-                                <span className={clsx("w-2 h-2 rounded-full",
-                                    tab.status === 'running' ? "bg-success animate-pulse" : "bg-base-content/20"
+                                <span className={clsx("w-2 h-2 rounded-full shrink-0",
+                                    tab.status === 'running' ? "bg-success animate-pulse" :
+                                        tab.status === 'error' ? "bg-error" : "bg-base-content/20"
                                 )} />
-                                <span className="truncate flex-1">{script?.name || tab.id}</span>
+
+                                {isEditing ? (
+                                    <input
+                                        ref={editInputRef}
+                                        type="text"
+                                        className="input input-xs input-ghost h-auto p-0 flex-1 min-w-0 bg-transparent focus:outline-none font-medium"
+                                        value={editName}
+                                        onChange={(e) => setEditName(e.target.value)}
+                                        onBlur={saveEditing}
+                                        onKeyDown={handleKeyDown}
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                ) : (
+                                    <span className="truncate flex-1" title={tab.label}>{tab.label}</span>
+                                )}
+
                                 <button
                                     className="opacity-80 group-hover:opacity-100 hover:bg-base-content/10 rounded-full p-0.5 transition-all"
-                                    onClick={(e) => { e.stopPropagation(); closeScriptTab(tab.id); }}
+                                    onClick={(e) => { e.stopPropagation(); closeScriptTab(tab.tabId); }}
                                 >
                                     <X size={12} />
                                 </button>
@@ -151,13 +270,13 @@ export const ExecutionView: React.FC = () => {
                                     <div className="join bg-base-200/50 p-1 rounded-lg">
                                         <button
                                             className={clsx("btn btn-sm join-item border-none shadow-none", activeTab.activeSubTab === 'control' ? "btn-primary" : "btn-ghost")}
-                                            onClick={() => setSubTab(activeTab.id, 'control')}
+                                            onClick={() => setSubTab(activeTab.tabId, 'control')}
                                         >
                                             <Sliders size={14} /> <span className="hidden sm:inline">{t('ui.execution.params')}</span>
                                         </button>
                                         <button
                                             className={clsx("btn btn-sm join-item border-none shadow-none", activeTab.activeSubTab === 'logs' ? "btn-primary" : "btn-ghost")}
-                                            onClick={() => setSubTab(activeTab.id, 'logs')}
+                                            onClick={() => setSubTab(activeTab.tabId, 'logs')}
                                         >
                                             <Terminal size={14} /> <span className="hidden sm:inline">{t('ui.execution.console')}</span>
                                         </button>
@@ -171,10 +290,10 @@ export const ExecutionView: React.FC = () => {
                                         {activeTab.status}
                                     </div>
                                     <div className="h-6 w-px bg-base-300 mx-2"></div>
-                                    <button className="btn btn-sm btn-error" disabled={activeTab.status !== 'running'} onClick={() => updateScriptStatus(activeTab.id, 'stopped')}>
+                                    <button className="btn btn-sm btn-error" disabled={activeTab.status !== 'running'} onClick={() => handleStop(activeTab.tabId)}>
                                         <Square size={14} fill="currentColor" /> {t('ui.execution.stop')}
                                     </button>
-                                    <button className="btn btn-sm btn-success" disabled={activeTab.status === 'running'} onClick={() => updateScriptStatus(activeTab.id, 'running')}>
+                                    <button className="btn btn-sm btn-success" disabled={activeTab.status === 'running'} onClick={() => handleRun(activeTab.tabId, activeTab.scriptId)}>
                                         <Play size={14} fill="currentColor" /> {t('ui.execution.start')}
                                     </button>
                                 </div>
@@ -187,6 +306,17 @@ export const ExecutionView: React.FC = () => {
                                         <div>
                                             <h3 className="text-xs font-bold uppercase opacity-50 mb-4 tracking-widest">Configuration</h3>
                                             <div className="card bg-base-200/30 border border-base-200 rounded-xl p-6 space-y-4">
+                                                <div className="form-control">
+                                                    <label className="label cursor-pointer justify-start gap-4">
+                                                        <span className="font-bold">Instance Name (Label)</span>
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        className="input input-bordered w-full font-mono"
+                                                        value={activeTab.label}
+                                                        onChange={(e) => renameScriptTab(activeTab.tabId, e.target.value)}
+                                                    />
+                                                </div>
                                                 <div className="form-control">
                                                     <label className="label cursor-pointer justify-start gap-4">
                                                         <span className="font-bold">Target Device ID</span>
@@ -219,6 +349,7 @@ export const ExecutionView: React.FC = () => {
                                                     No logs available
                                                 </div>
                                             )}
+                                            <div ref={logEndRef} />
                                         </div>
                                     </div>
                                 )}
@@ -227,8 +358,10 @@ export const ExecutionView: React.FC = () => {
                     ) : (
                         <div className="h-full flex flex-col items-center justify-center opacity-30 select-none">
                             <Monitor size={48} className="mb-4" />
-                            <div className="font-bold text-lg">No Script Selected</div>
-                            <p className="text-sm">Select a script from the list to begin</p>
+                            <div className="font-bold text-lg">No Script Active</div>
+                            <p className="text-sm text-center max-w-xs leading-relaxed">
+                                Select a script template from the left to create a new execution instance.
+                            </p>
                         </div>
                     )}
                 </div>

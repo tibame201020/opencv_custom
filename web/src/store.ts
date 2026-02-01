@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface Script {
     id: string;
@@ -9,7 +10,9 @@ export interface Script {
 }
 
 export interface ScriptTabState {
-    id: string; // The script ID
+    tabId: string;   // Unique instance ID
+    scriptId: string; // The source script ID
+    label: string; // Editable tab name
     activeSubTab: 'control' | 'logs';
     status: 'idle' | 'running' | 'stopped' | 'error';
     logs: LogMessage[];
@@ -37,17 +40,18 @@ interface AppState {
 
     // Execution Module State
     scriptTabs: ScriptTabState[];
-    activeScriptTabId: string | null;
+    activeTabId: string | null;
 
-    openScriptTab: (scriptId: string) => void;
-    closeScriptTab: (scriptId: string) => void;
-    setActiveScriptTab: (scriptId: string) => void;
-    setSubTab: (scriptId: string, subTab: 'control' | 'logs') => void;
+    openScriptTab: (scriptId: string, defaultName?: string) => void;
+    closeScriptTab: (tabId: string) => void;
+    setActiveScriptTab: (tabId: string) => void;
+    renameScriptTab: (tabId: string, newLabel: string) => void;
+    setSubTab: (tabId: string, subTab: 'control' | 'logs') => void;
 
     // Execution Updates
-    updateScriptStatus: (scriptId: string, status: ScriptTabState['status'], runId?: string) => void;
-    appendLog: (scriptId: string, log: Omit<LogMessage, 'timestamp'>) => void;
-    clearLogs: (scriptId: string) => void;
+    updateScriptStatus: (tabId: string, status: ScriptTabState['status'], runId?: string) => void;
+    appendLog: (tabId: string, log: Omit<LogMessage, 'timestamp'>) => void;
+    clearLogs: (tabId: string) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -58,24 +62,21 @@ export const useAppStore = create<AppState>()(
             language: 'zh',
             activeMainTab: 'execution',
             scriptTabs: [],
-            activeScriptTabId: null,
+            activeTabId: null,
 
             // Actions
             setTheme: (theme) => set({ theme }),
             setLanguage: (language) => set({ language }),
             setActiveMainTab: (tab) => set({ activeMainTab: tab }),
 
-            openScriptTab: (scriptId) => {
+            openScriptTab: (scriptId, defaultName) => {
                 const { scriptTabs } = get();
-                const existing = scriptTabs.find(t => t.id === scriptId);
-
-                if (existing) {
-                    set({ activeScriptTabId: scriptId });
-                    return;
-                }
+                const tabId = uuidv4();
 
                 const newTab: ScriptTabState = {
-                    id: scriptId,
+                    tabId,
+                    scriptId,
+                    label: defaultName || scriptId, // Default label will be updated by view if needed
                     activeSubTab: 'control',
                     status: 'idle',
                     logs: [],
@@ -84,42 +85,46 @@ export const useAppStore = create<AppState>()(
 
                 set({
                     scriptTabs: [...scriptTabs, newTab],
-                    activeScriptTabId: scriptId
+                    activeTabId: tabId
                 });
             },
 
-            closeScriptTab: (scriptId) => {
-                const { scriptTabs, activeScriptTabId } = get();
-                const newTabs = scriptTabs.filter(t => t.id !== scriptId);
+            closeScriptTab: (tabId) => {
+                const { scriptTabs, activeTabId } = get();
+                const newTabs = scriptTabs.filter(t => t.tabId !== tabId);
 
-                let newActiveId = activeScriptTabId;
-                if (activeScriptTabId === scriptId) {
-                    newActiveId = newTabs.length > 0 ? newTabs[newTabs.length - 1].id : null;
+                let newActiveId = activeTabId;
+                if (activeTabId === tabId) {
+                    newActiveId = newTabs.length > 0 ? newTabs[newTabs.length - 1].tabId : null;
                 }
 
-                set({ scriptTabs: newTabs, activeScriptTabId: newActiveId });
+                set({ scriptTabs: newTabs, activeTabId: newActiveId });
             },
 
-            setActiveScriptTab: (id) => set({ activeScriptTabId: id }),
+            setActiveScriptTab: (id) => set({ activeTabId: id }),
 
-            setSubTab: (scriptId, subTab) => set(state => ({
-                scriptTabs: state.scriptTabs.map(t => t.id === scriptId ? { ...t, activeSubTab: subTab } : t)
+            renameScriptTab: (tabId, newLabel) => set(state => ({
+                scriptTabs: state.scriptTabs.map(t => t.tabId === tabId ? { ...t, label: newLabel } : t)
             })),
 
-            updateScriptStatus: (scriptId, status, runId) => set(state => ({
-                scriptTabs: state.scriptTabs.map(t => t.id === scriptId ? { ...t, status, runId: runId || t.runId } : t)
+            setSubTab: (tabId, subTab) => set(state => ({
+                scriptTabs: state.scriptTabs.map(t => t.tabId === tabId ? { ...t, activeSubTab: subTab } : t)
             })),
 
-            appendLog: (scriptId, log) => set(state => ({
+            updateScriptStatus: (tabId, status, runId) => set(state => ({
+                scriptTabs: state.scriptTabs.map(t => t.tabId === tabId ? { ...t, status, runId: runId || t.runId } : t)
+            })),
+
+            appendLog: (tabId, log) => set(state => ({
                 scriptTabs: state.scriptTabs.map(t =>
-                    t.id === scriptId
+                    t.tabId === tabId
                         ? { ...t, logs: [...t.logs, { ...log, timestamp: new Date().toISOString() }] }
                         : t
                 )
             })),
 
-            clearLogs: (scriptId) => set(state => ({
-                scriptTabs: state.scriptTabs.map(t => t.id === scriptId ? { ...t, logs: [] } : t)
+            clearLogs: (tabId) => set(state => ({
+                scriptTabs: state.scriptTabs.map(t => t.tabId === tabId ? { ...t, logs: [] } : t)
             })),
 
         }),
