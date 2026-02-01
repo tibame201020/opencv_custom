@@ -2,38 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --font-base: 'Inter', sans-serif;
-  }
-
-  [data-theme="cyberpunk"],
-  [data-theme="synthwave"],
-  [data-theme="black"],
-  [data-theme="night"] {
-    --font-base: 'Space Mono', monospace;
-  }
-
-  [data-theme="luxury"],
-  [data-theme="coffee"],
-  [data-theme="retro"],
-  [data-theme="halloween"],
-  [data-theme="dracula"] {
-    --font-base: 'Playfair Display', serif;
-  }
-
-  [data-theme="cupcake"],
-  [data-theme="valentine"],
-  [data-theme="lemonade"],
-  [data-theme="pastel"],
-  [data-theme="bumblebee"] {
-    --font-base: 'Quicksand', sans-serif;
-  }
-}
-
 html,
 body,
 #root {
   height: 100%;
-  font-family: var(--font-base);
 }

@@ -24,7 +24,7 @@ function App() {
   ] as const;
 
   return (
-    <div className="flex h-screen w-full bg-base-100 text-base-content font-sans overflow-hidden">
+    <div className="flex h-screen w-full bg-base-100 text-base-content overflow-hidden">
       {/* Left Sidebar Navigation */}
       <div
         className={clsx(
