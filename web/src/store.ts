@@ -35,8 +35,8 @@ interface AppState {
     setLanguage: (lang: string) => void;
 
     // Navigation
-    activeMainTab: 'execution' | 'management' | 'setting';
-    setActiveMainTab: (tab: 'execution' | 'management' | 'setting') => void;
+    activeMainTab: 'execution' | 'management' | 'setting' | 'editor';
+    setActiveMainTab: (tab: 'execution' | 'management' | 'setting' | 'editor') => void;
 
     // Execution Module State
     scriptTabs: ScriptTabState[];

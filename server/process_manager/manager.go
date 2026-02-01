@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"sync"
@@ -13,9 +14,9 @@ import (
 )
 
 type ScriptManager struct {
-	processes map[string]*ScriptProcess
-	mu        sync.RWMutex
-	CorePath  string // Path to core directory
+	processes  map[string]*ScriptProcess
+	mu         sync.RWMutex
+	CorePath   string // Path to core directory
 	PythonPath string // Path to python executable
 }
 
@@ -62,7 +63,7 @@ func (sm *ScriptManager) RunScript(scriptID string, params string) (string, erro
 	runID := fmt.Sprintf("%s-%d", scriptID, time.Now().Unix())
 
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	scriptPath := filepath.Join(sm.CorePath, "entry.py")
 	cmd := exec.CommandContext(ctx, sm.PythonPath, scriptPath, "run", "--script", scriptID)
 	if params != "" {
@@ -106,18 +107,18 @@ func (sm *ScriptManager) RunScript(scriptID string, params string) (string, erro
 
 func (sm *ScriptManager) monitorProcess(p *ScriptProcess, stdout, stderr io.ReadCloser) {
 	defer close(p.Logs)
-	
+
 	// Multi-reader scanner
 	// For simplicity, handle stdout only mostly, but stderr is important too
 	// We'll trust that entry.py flushes everything
-	
+
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			p.Logs <- scanner.Text()
 		}
 	}()
-	
+
 	go func() {
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
@@ -127,19 +128,19 @@ func (sm *ScriptManager) monitorProcess(p *ScriptProcess, stdout, stderr io.Read
 
 	err := p.Cmd.Wait()
 	p.Status = "finished"
-	
+
 	endMsg := map[string]string{
-		"type": "status",
+		"type":    "status",
 		"message": "Process exited",
 	}
 	if err != nil {
 		endMsg["message"] = fmt.Sprintf("Process exited with error: %v", err)
 		endMsg["type"] = "error"
 	}
-	
+
 	jsonMsg, _ := json.Marshal(endMsg)
 	p.Logs <- string(jsonMsg)
-	
+
 	// Cleanup happens in manager or via explicit delete
 }
 
@@ -164,6 +165,65 @@ func (sm *ScriptManager) GetLogChannel(runID string) (<-chan string, error) {
 	if !ok {
 		return nil, fmt.Errorf("process not found")
 	}
-	
+
 	return process.Logs, nil
+}
+
+func (sm *ScriptManager) GetScriptContent(scriptID string) (string, error) {
+	// Re-fetch scripts to get dynamic paths (or cache them)
+	scripts, err := sm.ListScripts()
+	if err != nil {
+		return "", err
+	}
+
+	var scriptPath string
+	for _, s := range scripts {
+		if s["id"] == scriptID {
+			scriptPath = s["path"]
+			break
+		}
+	}
+
+	if scriptPath == "" {
+		return "", fmt.Errorf("script not found")
+	}
+
+	fullPath := filepath.Join(sm.CorePath, scriptPath)
+	content, err := os.ReadFile(fullPath)
+	if err != nil {
+		return "", err
+	}
+
+	return string(content), nil
+}
+
+func (sm *ScriptManager) SaveScriptContent(scriptID string, content string) error {
+	scripts, err := sm.ListScripts()
+	if err != nil {
+		return err
+	}
+
+	var scriptPath string
+	for _, s := range scripts {
+		if s["id"] == scriptID {
+			scriptPath = s["path"]
+			break
+		}
+	}
+
+	if scriptPath == "" {
+		return fmt.Errorf("script path not found")
+	}
+
+	fullPath := filepath.Join(sm.CorePath, scriptPath)
+
+	// Security check: ensure path is within core directory
+	// (Simple check, can be improved)
+	if !filepath.IsAbs(fullPath) {
+		abs, _ := filepath.Abs(fullPath)
+		fullPath = abs
+	}
+
+	// Write file (0644 perms)
+	return os.WriteFile(fullPath, []byte(content), 0644)
 }

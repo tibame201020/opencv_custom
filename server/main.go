@@ -55,6 +55,8 @@ func main() {
 		api.POST("/run", runScript)
 		api.POST("/stop", stopScript)
 		api.GET("/devices", listDevices)
+		api.GET("/scripts/:id/content", getScriptContent)
+		api.POST("/scripts/:id/content", saveScriptContent)
 	}
 
 	r.GET("/ws/logs/:id", streamLogs)
@@ -163,4 +165,38 @@ func streamLogs(c *gin.Context) {
 			break
 		}
 	}
+}
+
+func getScriptContent(c *gin.Context) {
+	scriptID := c.Param("id")
+	content, err := manager.GetScriptContent(scriptID)
+	if err != nil {
+		status := 500
+		if err.Error() == "script not found" {
+			status = 404
+		}
+		c.JSON(status, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"content": content})
+}
+
+type SaveContentRequest struct {
+	Content string `json:"content"`
+}
+
+func saveScriptContent(c *gin.Context) {
+	scriptID := c.Param("id")
+	var req SaveContentRequest
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	if err := manager.SaveScriptContent(scriptID, req.Content); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"status": "saved"})
 }

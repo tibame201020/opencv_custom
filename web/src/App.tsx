@@ -4,7 +4,8 @@ import { useAppStore } from './store';
 import { ExecutionView } from './views/ExecutionView';
 import { SettingsView } from './views/SettingsView';
 import { ManagementView } from './views/ManagementView';
-import { Play, Settings as SettingsIcon, Database, ChevronLeft, ChevronRight } from 'lucide-react';
+import { EditorView } from './views/EditorView';
+import { Play, Settings as SettingsIcon, Database, ChevronLeft, ChevronRight, FileCode } from 'lucide-react';
 import clsx from 'clsx';
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
 
   const navItems = [
     { id: 'execution', label: t('ui.execution.title'), icon: Play },
+    { id: 'editor', label: 'Editor', icon: FileCode },
     { id: 'management', label: t('ui.management.title'), icon: Database },
     { id: 'setting', label: t('ui.setting.title'), icon: SettingsIcon },
   ] as const;
@@ -115,6 +117,7 @@ function App() {
       <div className="flex-1 flex flex-col min-w-0 bg-base-100 relative">
         <div className="flex-1 overflow-hidden relative">
           {activeMainTab === 'execution' && <ExecutionView />}
+          {activeMainTab === 'editor' && <EditorView />}
           {activeMainTab === 'management' && <ManagementView />}
           {activeMainTab === 'setting' && <SettingsView />}
         </div>

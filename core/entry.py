@@ -149,12 +149,12 @@ def run_test_log():
 
 def cmd_list(args):
     scripts = [
-        {"id": "test_log", "name": "Test: Log Stream", "platform": "desktop", "description": "Generates continuous logs for testing"},
-        {"id": "robot", "name": "Robot Script", "platform": "desktop", "description": "Robot automation"},
-        {"id": "gear", "name": "Gear Script", "platform": "android", "description": "Farms gear"},
-        {"id": "evil_hunter", "name": "Evil Hunter", "platform": "android", "description": "Auto-combat script"},
-        {"id": "chaos_dream", "name": "Chaos Dream", "platform": "android", "description": "Dungeon crawler"},
-        {"id": "adb_test", "name": "ADB Connectivity", "platform": "android", "description": "Check ADB status"},
+        {"id": "test_log", "name": "Test: Log Stream", "platform": "desktop", "description": "Generates continuous logs for testing", "path": "entry.py"}, 
+        {"id": "robot", "name": "Robot Script", "platform": "desktop", "description": "Robot automation", "path": "script/robot/robot_script.py"},
+        {"id": "gear", "name": "Gear Script", "platform": "android", "description": "Farms gear", "path": "script/gearScript/gear_script.py"},
+        {"id": "evil_hunter", "name": "Evil Hunter", "platform": "android", "description": "Auto-combat script", "path": "script/evilHunter/evil_hunter_script.py"},
+        {"id": "chaos_dream", "name": "Chaos Dream", "platform": "android", "description": "Dungeon crawler", "path": "script/chaosDream/chaos_dream_script.py"},
+        {"id": "adb_test", "name": "ADB Connectivity", "platform": "android", "description": "Check ADB status", "path": "script/script.py"},
     ]
     # We output the list raw JSON, NOT triggering the hook because LIST command result is parsed by backend
     # So we temporarily restore stdout or just use sys.__stdout__
