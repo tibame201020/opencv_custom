@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import Editor, { type OnMount } from '@monaco-editor/react';
 import axios from 'axios';
 import { useAppStore } from '../store';
-import { Save, Play, FileCode } from 'lucide-react';
+import { Save, Play, FileCode, Plus } from 'lucide-react';
 
 const API_Base = "http://localhost:8080/api";
 
@@ -15,6 +15,12 @@ export const EditorView: React.FC = () => {
     const [originalCode, setOriginalCode] = useState<string>("");
     const [isDirty, setIsDirty] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+
+    // Create Script Modal State
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [newScriptName, setNewScriptName] = useState("");
+    const [isCreating, setIsCreating] = useState(false);
+
     const editorRef = useRef<any>(null);
 
     useEffect(() => {
@@ -57,22 +63,36 @@ export const EditorView: React.FC = () => {
             await axios.post(`${API_Base}/scripts/${selectedScriptId}/content`, { content: code });
             setOriginalCode(code);
             setIsDirty(false);
-            // Show toast?
         } catch (err) {
             console.error("Failed to save", err);
             alert("Failed to save script");
         }
     };
 
+    const handleCreateScript = async () => {
+        if (!newScriptName.trim()) return;
+        setIsCreating(true);
+        try {
+            await axios.post(`${API_Base}/scripts`, {
+                name: newScriptName,
+                platform: 'android' // Default
+            });
+            await fetchScripts(); // Refresh list
+            setIsModalOpen(false);
+            setNewScriptName("");
+        } catch (err: any) {
+            console.error("Failed to create script", err);
+            alert("Failed to create script: " + (err.response?.data?.error || err.message));
+        } finally {
+            setIsCreating(false);
+        }
+    };
+
     const handleEditorMount: OnMount = (editor, monaco) => {
         editorRef.current = editor;
-        // Key binding for Save
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
             handleSave();
         });
-
-        // Initialize simple autocompletion for common keywords (Placeholder for now)
-        // detailed implementation can be added later
     };
 
     const handleRun = () => {
@@ -86,8 +106,17 @@ export const EditorView: React.FC = () => {
         <div className="flex h-full bg-base-100">
             {/* Sidebar - File Explorer */}
             <div className="w-64 border-r border-base-300 flex flex-col bg-base-200">
-                <div className="p-4 font-bold text-lg flex items-center gap-2">
-                    <FileCode size={20} /> Script Explorer
+                <div className="p-4 font-bold text-lg flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <FileCode size={20} /> Script Explorer
+                    </div>
+                    <button
+                        className="btn btn-xs btn-ghost btn-square"
+                        onClick={() => setIsModalOpen(true)}
+                        title="New Script"
+                    >
+                        <Plus size={16} />
+                    </button>
                 </div>
                 <div className="flex-1 overflow-y-auto">
                     <ul className="menu w-full p-2">
@@ -175,6 +204,41 @@ export const EditorView: React.FC = () => {
                     )}
                 </div>
             </div>
+
+            {/* Create Script Modal */}
+            {isModalOpen && (
+                <div className="modal modal-open">
+                    <div className="modal-box">
+                        <h3 className="font-bold text-lg">Create New Script</h3>
+                        <div className="form-control w-full mt-4">
+                            <label className="label">
+                                <span className="label-text">Script Name</span>
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="my-awesome-script"
+                                className="input input-bordered w-full"
+                                value={newScriptName}
+                                onChange={e => setNewScriptName(e.target.value)}
+                            />
+                            <label className="label">
+                                <span className="label-text-alt">Only letters, numbers, hyphens, and underscores.</span>
+                            </label>
+                        </div>
+
+                        <div className="modal-action">
+                            <button className="btn" onClick={() => setIsModalOpen(false)}>Cancel</button>
+                            <button
+                                className="btn btn-primary"
+                                onClick={handleCreateScript}
+                                disabled={isCreating || !newScriptName.trim()}
+                            >
+                                {isCreating ? "Creating..." : "Create"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

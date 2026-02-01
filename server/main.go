@@ -52,6 +52,7 @@ func main() {
 	api := r.Group("/api")
 	{
 		api.GET("/scripts", listScripts)
+		api.POST("/scripts", createScript)
 		api.POST("/run", runScript)
 		api.POST("/stop", stopScript)
 		api.GET("/devices", listDevices)
@@ -199,4 +200,29 @@ func saveScriptContent(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{"status": "saved"})
+}
+
+type CreateScriptRequest struct {
+	Name     string `json:"name"`
+	Platform string `json:"platform"`
+}
+
+func createScript(c *gin.Context) {
+	var req CreateScriptRequest
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	if req.Name == "" {
+		c.JSON(400, gin.H{"error": "Script name is required"})
+		return
+	}
+
+	if err := manager.CreateScript(req.Name, req.Platform); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"status": "created", "name": req.Name})
 }

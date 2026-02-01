@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -226,4 +227,43 @@ func (sm *ScriptManager) SaveScriptContent(scriptID string, content string) erro
 
 	// Write file (0644 perms)
 	return os.WriteFile(fullPath, []byte(content), 0644)
+}
+
+func (sm *ScriptManager) CreateScript(name string, platform string) error {
+	// Simple validation
+	// allow alnum,-,_
+
+	// Create Custom dir if not exists
+	customDir := filepath.Join(sm.CorePath, "script", "custom")
+	if err := os.MkdirAll(customDir, 0755); err != nil {
+		return err
+	}
+
+	validName := strings.ReplaceAll(name, " ", "_") // simple sanitize
+	filename := validName + ".py"
+	fullPath := filepath.Join(customDir, filename)
+
+	// check if exists
+	if _, err := os.Stat(fullPath); err == nil {
+		return fmt.Errorf("script already exists")
+	}
+
+	// Template
+	className := strings.ToUpper(validName[:1]) + validName[1:] + "Script"
+	template := fmt.Sprintf(`from script.script_interface import ScriptInterface
+from service.platform.adb.adb_platform import AdbPlatform
+
+class %s(ScriptInterface):
+    def __init__(self, platform: AdbPlatform):
+        self.platform = platform
+        super().__init__()
+
+    def execute(self):
+        print("Starting %s...")
+        # Your code here
+        # self.platform.click(100, 100)
+        print("Done.")
+`, className, validName)
+
+	return os.WriteFile(fullPath, []byte(template), 0644)
 }

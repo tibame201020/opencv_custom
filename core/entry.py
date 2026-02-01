@@ -5,6 +5,7 @@ import time
 import datetime
 import random
 import io
+import importlib
 from pathlib import Path
 
 # 添加專案根目錄到 Python 路徑
@@ -156,6 +157,20 @@ def cmd_list(args):
         {"id": "chaos_dream", "name": "Chaos Dream", "platform": "android", "description": "Dungeon crawler", "path": "script/chaosDream/chaos_dream_script.py"},
         {"id": "adb_test", "name": "ADB Connectivity", "platform": "android", "description": "Check ADB status", "path": "script/script.py"},
     ]
+
+    # Scan custom scripts
+    custom_dir = project_root / "script" / "custom"
+    if custom_dir.exists():
+        for file in custom_dir.glob("*.py"):
+            if file.name == "__init__.py": continue
+            script_id = file.stem
+            scripts.append({
+                "id": script_id,
+                "name": script_id.capitalize(),
+                "platform": "android", # Default to android for now
+                "description": "User custom script",
+                "path": f"script/custom/{file.name}"
+            })
     # We output the list raw JSON, NOT triggering the hook because LIST command result is parsed by backend
     # So we temporarily restore stdout or just use sys.__stdout__
     sys.stdout = sys.__stdout__
@@ -182,8 +197,46 @@ def cmd_run(args):
         elif script_id == "adb_test":
             run_adb_test()
         else:
-            print(f"Unknown script: {script_id}")
-            sys.exit(1)
+            # Try to load dynamic custom script
+            try:
+                # Check if script exists in custom folder
+                custom_path = project_root / "script" / "custom" / f"{script_id}.py"
+                if custom_path.exists():
+                    module_name = f"script.custom.{script_id}"
+                    module = importlib.import_module(module_name)
+                    
+                    # Find class that ends with 'Script'
+                    script_class = None
+                    for attr_name in dir(module):
+                        if attr_name.endswith("Script") and attr_name != "ScriptInterface":
+                            script_class = getattr(module, attr_name)
+                            break
+                    
+                    if not script_class:
+                        # Fallback: look for a class that has 'execute' method
+                        for attr_name in dir(module):
+                            attr = getattr(module, attr_name)
+                            if isinstance(attr, type) and hasattr(attr, 'execute'):
+                                script_class = attr
+                                break
+                                
+                    if script_class:
+                        # Assume Android Platform for custom scripts for now
+                        print(f"Running custom script: {script_id}")
+                        open_cv_service = OpenCvService()
+                        adb = Adb()
+                        adb_platform = AdbPlatform(adb, open_cv_service)
+                        script_instance = script_class(adb_platform)
+                        script_instance.execute()
+                        return
+
+                print(f"Unknown script: {script_id}")
+                sys.exit(1)
+            except ImportError as ie:
+                 print(f"Failed to import custom script {script_id}: {ie}")
+                 import traceback
+                 traceback.print_exc(file=sys.stdout)
+                 sys.exit(1)
     except KeyboardInterrupt:
         print("Script stopped by user.")
     except Exception as e:
