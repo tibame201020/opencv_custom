@@ -4,8 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { useAppStore, type Script } from '../store';
 import {
     Play, Square, Search, X, Monitor, Smartphone,
-    Terminal, Sliders, ChevronRight, ChevronLeft
+    Terminal, Sliders, ChevronRight, ChevronLeft,
+    Trash2, ArrowDown, ArrowUp, WrapText, Filter, XCircle
 } from 'lucide-react';
+import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import clsx from 'clsx';
 
 const API_Base = 'http://localhost:8080/api';
@@ -370,54 +372,195 @@ export const ExecutionView: React.FC = () => {
 };
 
 // Sub-component for performance and state isolation
-import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
-import { Trash2, ArrowDown, WrapText, Filter } from 'lucide-react';
 
 const LogConsole: React.FC<{
     logs: any[],
     status: string,
     onClear: () => void
-}> = ({ logs, status, onClear }) => {
-    const [filterText, setFilterText] = useState('');
+}> = ({ logs, onClear }) => {
+    // Search & Filter State
+    const [searchText, setSearchText] = useState('');
+    const [searchMode, setSearchMode] = useState<'filter' | 'find'>('find'); // 'find' = highlight & nav; 'filter' = show matching lines only
+    const [matches, setMatches] = useState<number[]>([]);
+    const [currentMatchIndex, setCurrentMatchIndex] = useState(-1); // Index in the 'matches' array
+
+    // Display State
     const [isAutoScroll, setIsAutoScroll] = useState(true);
     const [isWrap, setIsWrap] = useState(true);
+
     const virtuosoRef = useRef<VirtuosoHandle>(null);
 
-    // Filter logs
-    const filteredLogs = React.useMemo(() => {
-        if (!filterText) return logs;
-        const lower = filterText.toLowerCase();
-        return logs.filter(l =>
-            (l.message && l.message.toLowerCase().includes(lower)) ||
-            (l.type && l.type.includes(lower))
-        );
-    }, [logs, filterText]);
+    // Filter Logic (Derived)
+    const displayLogs = React.useMemo(() => {
+        if (searchMode === 'filter' && searchText) {
+            const lower = searchText.toLowerCase();
+            return logs.filter(l =>
+                (l.message && l.message.toLowerCase().includes(lower)) ||
+                (l.type && l.type.includes(lower))
+            );
+        }
+        return logs;
+    }, [logs, searchText, searchMode]);
+
+    // Find Logic (Highlight Matches)
+    useEffect(() => {
+        if (searchMode === 'find' && searchText) {
+            const lower = searchText.toLowerCase();
+            const newMatches: number[] = [];
+            logs.forEach((l, idx) => {
+                if ((l.message && l.message.toLowerCase().includes(lower)) || (l.type && l.type.includes(lower))) {
+                    newMatches.push(idx);
+                }
+            });
+            setMatches(newMatches);
+            // Reset current index if logs changed significantly or search changed
+            // If strictly appending logs, maybe keep index? For simplicity, jump to last match on new search
+            if (newMatches.length > 0) {
+                setCurrentMatchIndex(newMatches.length - 1); // Jump to latest match by default
+            } else {
+                setCurrentMatchIndex(-1);
+            }
+        } else {
+            setMatches([]);
+            setCurrentMatchIndex(-1);
+        }
+    }, [logs.length, searchText, searchMode]); // Re-run when logs grow
+
+    // Navigation Handlers
+    const scrollToIndex = (index: number) => {
+        setIsAutoScroll(false); // Disable auto-scroll when manually navigating
+        virtuosoRef.current?.scrollToIndex({ index, align: 'center', behavior: 'smooth' });
+    };
+
+    const nextMatch = () => {
+        if (matches.length === 0) return;
+        const next = (currentMatchIndex + 1) % matches.length;
+        setCurrentMatchIndex(next);
+        scrollToIndex(matches[next]);
+    };
+
+    const prevMatch = () => {
+        if (matches.length === 0) return;
+        const prev = (currentMatchIndex - 1 + matches.length) % matches.length;
+        setCurrentMatchIndex(prev);
+        scrollToIndex(matches[prev]);
+    };
+
+    // Helper to highlight text
+    const renderMessage = (msg: string, type: string) => {
+        // Base color class
+        const colorClass =
+            type === 'error' ? "text-red-400 font-bold" :
+                type === 'status' ? "text-blue-400 font-bold" :
+                    type === 'success' ? "text-emerald-400 font-bold" :
+                        type === 'warning' ? "text-yellow-400" :
+                            "text-gray-300";
+
+        if (searchMode === 'find' && searchText && msg.toLowerCase().includes(searchText.toLowerCase())) {
+            const parts = msg.split(new RegExp(`(${searchText})`, 'gi'));
+            return (
+                <span className={colorClass}>
+                    {parts.map((part, i) =>
+                        part.toLowerCase() === searchText.toLowerCase() ? (
+                            <mark key={i} className="bg-yellow-500/50 text-white rounded-[1px] px-0.5">{part}</mark>
+                        ) : (
+                            part
+                        )
+                    )}
+                </span>
+            );
+        }
+        return <span className={colorClass}>{msg}</span>;
+    };
 
     return (
         <div className="h-full flex flex-col bg-[#1e1e1e] text-gray-300 font-mono text-sm relative">
             {/* Console Toolbar */}
-            <div className="h-10 flex items-center justify-between px-2 border-b border-white/10 bg-[#2d2d2d] shrink-0 select-none">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <Filter size={14} className="opacity-50" />
-                    <input
-                        type="text"
-                        placeholder="Filter logs..."
-                        className="input input-xs input-ghost h-7 w-full max-w-[200px] bg-black/20 focus:bg-black/40 text-gray-300 placeholder:text-gray-600 focus:outline-none focus:text-white transition-colors rounded-sm"
-                        value={filterText}
-                        onChange={(e) => setFilterText(e.target.value)}
-                    />
-                    {filteredLogs.length !== logs.length && (
-                        <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded ml-2">
-                            {filteredLogs.length} / {logs.length}
-                        </span>
+            <div className="h-10 flex items-center justify-between px-2 border-b border-white/10 bg-[#2d2d2d] shrink-0 select-none z-10">
+                <div className="flex items-center gap-2 flex-1 min-w-0 mr-4">
+                    {/* Mode Toggle */}
+                    <div className="join bg-black/20 rounded-md p-0.5">
+                        <button
+                            className={clsx("join-item btn btn-xs border-none h-6 min-h-0 px-2", searchMode === 'find' ? "btn-primary" : "btn-ghost opacity-50")}
+                            onClick={() => setSearchMode('find')}
+                            title="Find & Highlight"
+                        >
+                            <Search size={12} />
+                        </button>
+                        <button
+                            className={clsx("join-item btn btn-xs border-none h-6 min-h-0 px-2", searchMode === 'filter' ? "btn-primary" : "btn-ghost opacity-50")}
+                            onClick={() => setSearchMode('filter')}
+                            title="Filter Lines"
+                        >
+                            <Filter size={12} />
+                        </button>
+                    </div>
+
+                    {/* Search Input */}
+                    <div className="relative flex-1 max-w-[300px]">
+                        <input
+                            type="text"
+                            placeholder={searchMode === 'find' ? "Find keyword..." : "Filter logs..."}
+                            className={clsx(
+                                "input input-xs input-ghost h-7 w-full pl-2 pr-16 bg-black/20 focus:bg-black/40 text-gray-300 placeholder:text-gray-600 focus:outline-none transition-colors rounded-sm",
+                                searchText && "bg-black/40 text-white font-bold"
+                            )}
+                            value={searchText}
+                            onChange={(e) => setSearchText(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && searchMode === 'find') {
+                                    if (e.shiftKey) prevMatch(); else nextMatch();
+                                }
+                            }}
+                        />
+                        {/* Match Counter / Clear */}
+                        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                            {searchText && (
+                                <>
+                                    <span className="text-[10px] opacity-50 font-mono">
+                                        {searchMode === 'find' ? (
+                                            matches.length > 0 ? `${currentMatchIndex + 1}/${matches.length}` : '0/0'
+                                        ) : (
+                                            `${displayLogs.length}`
+                                        )}
+                                    </span>
+                                    <button onClick={() => setSearchText('')} className="opacity-50 hover:opacity-100 p-0.5">
+                                        <XCircle size={12} />
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Navigation Buttons (Only in Find mode) */}
+                    {searchMode === 'find' && (
+                        <div className="join gap-0.5">
+                            <button
+                                className="btn btn-xs btn-ghost btn-square h-7 min-h-0 rounded-sm disabled:bg-transparent"
+                                disabled={matches.length === 0}
+                                onClick={prevMatch}
+                                title="Previous Match (Shift+Enter)"
+                            >
+                                <ArrowUp size={14} />
+                            </button>
+                            <button
+                                className="btn btn-xs btn-ghost btn-square h-7 min-h-0 rounded-sm disabled:bg-transparent"
+                                disabled={matches.length === 0}
+                                onClick={nextMatch}
+                                title="Next Match (Enter)"
+                            >
+                                <ArrowDown size={14} />
+                            </button>
+                        </div>
                     )}
                 </div>
 
+                {/* Right Actions */}
                 <div className="flex items-center gap-1">
                     <div className="h-4 w-px bg-white/10 mx-1"></div>
 
                     <button
-                        className={clsx("btn btn-xs btn-ghost btn-square rounded-sm", isWrap ? "text-primary bg-primary/10" : "opacity-50")}
+                        className={clsx("btn btn-xs btn-ghost btn-square rounded-sm h-7 min-h-0", isWrap ? "text-primary bg-primary/10" : "opacity-50")}
                         onClick={() => setIsWrap(!isWrap)}
                         title="Toggle Word Wrap"
                     >
@@ -425,7 +568,7 @@ const LogConsole: React.FC<{
                     </button>
 
                     <button
-                        className={clsx("btn btn-xs btn-ghost btn-square rounded-sm", isAutoScroll ? "text-success bg-success/10" : "opacity-50")}
+                        className={clsx("btn btn-xs btn-ghost btn-square rounded-sm h-7 min-h-0", isAutoScroll ? "text-success bg-success/10" : "opacity-50")}
                         onClick={() => setIsAutoScroll(!isAutoScroll)}
                         title="Auto-scroll (Tail)"
                     >
@@ -433,7 +576,7 @@ const LogConsole: React.FC<{
                     </button>
 
                     <button
-                        className="btn btn-xs btn-ghost btn-square text-error hover:bg-error/10 rounded-sm opacity-60 hover:opacity-100"
+                        className="btn btn-xs btn-ghost btn-square text-error hover:bg-error/10 rounded-sm opacity-60 hover:opacity-100 h-7 min-h-0"
                         onClick={onClear}
                         title="Clear Console"
                     >
@@ -443,29 +586,35 @@ const LogConsole: React.FC<{
             </div>
 
             {/* Virtualized Log List */}
-            <div className="flex-1 min-h-0 relative">
+            <div className="flex-1 min-h-0 relative group">
                 <Virtuoso
                     ref={virtuosoRef}
-                    data={filteredLogs}
+                    data={displayLogs}
                     followOutput={isAutoScroll ? 'smooth' : false}
-                    initialTopMostItemIndex={filteredLogs.length - 1}
-                    itemContent={(_, log) => (
-                        <div className={clsx("px-4 py-0.5 hover:bg-white/5 flex gap-3 text-xs md:text-sm", isWrap ? "whitespace-pre-wrap break-all" : "whitespace-nowrap")}>
-                            <span className="opacity-30 select-none w-20 shrink-0 text-right font-light text-[11px] pt-[2px]">
-                                {log.timestamp ? log.timestamp.split('T')[1].split('.')[0] : ''}
-                            </span>
-                            <span className={clsx(
-                                "flex-1",
-                                log.type === 'error' ? "text-red-400 font-bold" :
-                                    log.type === 'status' ? "text-blue-400 font-bold" :
-                                        log.type === 'success' ? "text-emerald-400 font-bold" :
-                                            log.type === 'warning' ? "text-yellow-400" :
-                                                "text-gray-300"
+                    initialTopMostItemIndex={displayLogs.length - 1}
+                    atBottomStateChange={(atBottom) => {
+                        if (atBottom) setIsAutoScroll(true);
+                        else setIsAutoScroll(false);
+                    }}
+                    itemContent={(index, log) => {
+                        // Check if this row is the current match
+                        const isCurrentMatch = searchMode === 'find' && matches[currentMatchIndex] === index;
+
+                        return (
+                            <div className={clsx(
+                                "px-4 py-0.5 flex gap-3 text-xs md:text-sm border-l-2 transition-colors",
+                                isWrap ? "whitespace-pre-wrap break-all" : "whitespace-nowrap",
+                                isCurrentMatch ? "bg-primary/20 border-primary" : "border-transparent hover:bg-white/5"
                             )}>
-                                {log.message}
-                            </span>
-                        </div>
-                    )}
+                                <span className="opacity-30 select-none w-20 shrink-0 text-right font-light text-[11px] pt-[2px] font-mono">
+                                    {log.timestamp ? log.timestamp.split('T')[1].split('.')[0] : ''}
+                                </span>
+                                <span className="flex-1 font-mono">
+                                    {renderMessage(log.message || '', log.type || '')}
+                                </span>
+                            </div>
+                        );
+                    }}
                     className="no-scrollbar"
                 />
 
@@ -476,11 +625,14 @@ const LogConsole: React.FC<{
                     </div>
                 )}
 
-                {/* Blinking Cursor Indicator when Running */}
-                {status === 'running' && isAutoScroll && (
-                    <div className="absolute bottom-2 left-6 animate-pulse text-emerald-500 font-bold bg-[#1e1e1e] px-1 pointer-events-none text-xs">
-                        _
-                    </div>
+                {/* Scroll To Bottom Button (Floating) - Only show if not auto-scrolling */}
+                {!isAutoScroll && (
+                    <button
+                        className="absolute bottom-4 right-6 btn btn-circle btn-xs btn-primary shadow-lg opacity-80 hover:opacity-100 animate-bounce"
+                        onClick={() => { setIsAutoScroll(true); virtuosoRef.current?.scrollToIndex({ index: displayLogs.length - 1, behavior: 'smooth' }); }}
+                    >
+                        <ArrowDown size={14} />
+                    </button>
                 )}
             </div>
         </div>
