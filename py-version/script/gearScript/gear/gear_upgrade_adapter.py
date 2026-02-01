@@ -40,3 +40,10 @@ class GearUpgradeAdapter(ABC):
         raise RuntimeError("un caught gear set type")
 
 
+
+
+
+
+
+
+

@@ -54,3 +54,10 @@ class PurpleGearUpgradeAdapter(GearUpgradeAdapter):
         return self.is_ok_to_upgrade(gear)
 
 
+
+
+
+
+
+
+

@@ -47,6 +47,17 @@ def run_evil_hunter_script():
     evil_hunter_script.execute()
 
 
+def run_chaos_dream_script():
+    """執行卡厄斯夢境腳本"""
+    from script.chaosDream.chaos_dream_script import ChaosDreamScript
+    
+    open_cv_service = OpenCvService()
+    adb = Adb()
+    adb_platform = AdbPlatform(adb, open_cv_service)
+    chaos_dream_script = ChaosDreamScript(adb_platform)
+    chaos_dream_script.execute()
+
+
 def run_adb_script():
     """執行 ADB 腳本範例"""
     open_cv_service = OpenCvService()
@@ -75,11 +86,13 @@ def main():
             run_gear_script()
         elif script_name == "evil-hunter":
             run_evil_hunter_script()
+        elif script_name == "chaos-dream":
+            run_chaos_dream_script()
         elif script_name == "adb":
             run_adb_script()
         else:
             print(f"未知的腳本: {script_name}")
-            print("可用的腳本: robot, gear, evil-hunter, adb")
+            print("可用的腳本: robot, gear, evil-hunter, chaos-dream, adb")
     else:
         # 預設執行 Robot 腳本
         print("未指定腳本，執行 Robot 腳本...")

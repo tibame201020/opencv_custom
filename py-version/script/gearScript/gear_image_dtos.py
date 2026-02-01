@@ -21,3 +21,10 @@ class GearOcr:
     threshold: float
 
 
+
+
+
+
+
+
+

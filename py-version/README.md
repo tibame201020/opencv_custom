@@ -31,7 +31,7 @@ pip install -r requirements.txt
 
 ```bash
 cd py-version
-python main.py
+python chaos_dream_script.py
 ```
 
 ### 方式 2：使用腳本執行器
