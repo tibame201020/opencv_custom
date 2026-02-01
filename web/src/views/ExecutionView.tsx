@@ -5,7 +5,7 @@ import { useAppStore, type Script } from '../store';
 import {
     Play, Square, Search, X, Monitor, Smartphone,
     Terminal, Sliders, ChevronRight, ChevronLeft,
-    Trash2, ArrowDown, ArrowUp, WrapText, Filter, XCircle
+    Trash2, ArrowDown, ArrowUp, WrapText, Filter, XCircle, Download
 } from 'lucide-react';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import clsx from 'clsx';
@@ -348,6 +348,7 @@ export const ExecutionView: React.FC = () => {
                                 ) : (
                                     <LogConsole
                                         logs={activeTab.logs}
+                                        instanceName={activeTab.label}
                                         onClear={() => {
                                             // Call store action
                                             useAppStore.getState().clearLogs(activeTab.tabId);
@@ -374,8 +375,9 @@ export const ExecutionView: React.FC = () => {
 // Sub-component for performance and state isolation
 const LogConsole: React.FC<{
     logs: any[],
+    instanceName: string,
     onClear: () => void
-}> = ({ logs, onClear }) => {
+}> = ({ logs, instanceName, onClear }) => {
     // Search & Filter State
     const [searchText, setSearchText] = useState('');
     const [searchMode, setSearchMode] = useState<'filter' | 'find'>('find'); // 'find' = highlight & nav; 'filter' = show matching lines only
@@ -442,6 +444,24 @@ const LogConsole: React.FC<{
         const prev = (currentMatchIndex - 1 + matches.length) % matches.length;
         setCurrentMatchIndex(prev);
         scrollToIndex(matches[prev]);
+    };
+
+    const handleDownload = () => {
+        if (logs.length === 0) return;
+        const content = logs.map(l => {
+            const time = l.timestamp ? l.timestamp.replace('T', ' ').split('.')[0] : '';
+            return `[${time}] [${l.type || 'INFO'}] ${l.message}`;
+        }).join('\n');
+
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${instanceName || 'console'}.log`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     };
 
     // Helper to highlight text
@@ -556,6 +576,15 @@ const LogConsole: React.FC<{
                 {/* Right Actions */}
                 <div className="flex items-center gap-1">
                     <div className="h-4 w-px bg-white/10 mx-1"></div>
+
+                    <button
+                        className="btn btn-xs btn-ghost btn-square rounded-sm h-7 min-h-0 opacity-50 hover:opacity-100"
+                        onClick={handleDownload}
+                        disabled={logs.length === 0}
+                        title="Download Log"
+                    >
+                        <Download size={14} />
+                    </button>
 
                     <button
                         className={clsx("btn btn-xs btn-ghost btn-square rounded-sm h-7 min-h-0", isWrap ? "text-primary bg-primary/10" : "opacity-50")}
