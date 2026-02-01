@@ -27,11 +27,12 @@ export const ExecutionView: React.FC = () => {
     const {
         scriptTabs, activeTabId,
         openScriptTab, closeScriptTab, setActiveScriptTab, setSubTab,
-        updateScriptStatus, appendLog, renameScriptTab
+        updateScriptStatus, appendLog, renameScriptTab, updateScriptParams
     } = useAppStore();
 
     // UI State
     const [scripts, setScripts] = useState<Script[]>([]);
+    const [devices, setDevices] = useState<string[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [isDrawerOpen, setIsDrawerOpen] = useState(true);
 
@@ -58,6 +59,18 @@ export const ExecutionView: React.FC = () => {
                 setScripts(MOCK_SCRIPTS as any);
             }
         };
+
+        const fetchDevices = async () => {
+            try {
+                const res = await axios.get(`${API_Base}/devices`);
+                setDevices(res.data);
+            } catch (err) {
+                console.error("Failed to fetch devices", err);
+                setDevices([]);
+            }
+        };
+
+        fetchDevices();
         fetchScripts();
     }, []);
 
@@ -105,7 +118,10 @@ export const ExecutionView: React.FC = () => {
         updateScriptStatus(tabId, 'running');
         setSubTab(tabId, 'logs'); // Switch to console view automatically
         try {
-            const res = await axios.post(`${API_Base}/run`, { scriptId: scriptId, params: "{}" });
+            const activeTab = scriptTabs.find(t => t.tabId === tabId);
+            const params = activeTab?.params ? JSON.stringify(activeTab.params) : "{}";
+
+            const res = await axios.post(`${API_Base}/run`, { scriptId: scriptId, params: params });
             const runId = res.data.runId;
             updateScriptStatus(tabId, 'running', runId);
 
@@ -355,7 +371,19 @@ export const ExecutionView: React.FC = () => {
                                                     <label className="label cursor-pointer justify-start gap-4">
                                                         <span className="font-bold">Target Device ID</span>
                                                     </label>
-                                                    <input type="text" placeholder="Type here" className="input input-bordered w-full" />
+                                                    {getScriptDef(activeTab.scriptId)?.platform === 'android' ? (
+                                                        <select
+                                                            className="select select-bordered w-full font-mono"
+                                                            value={activeTab.params?.deviceId || ''}
+                                                            onChange={(e) => updateScriptParams(activeTab.tabId, { deviceId: e.target.value })}
+                                                        >
+                                                            <option value="" disabled>Select a device</option>
+                                                            {devices.map(d => <option key={d} value={d}>{d}</option>)}
+                                                            {devices.length === 0 && <option value="" disabled>No devices found (Is ADB running?)</option>}
+                                                        </select>
+                                                    ) : (
+                                                        <div className="text-sm opacity-50 italic px-1">Not required for Desktop platform</div>
+                                                    )}
                                                 </div>
                                                 <div className="form-control w-52">
                                                     <label className="label cursor-pointer justify-start gap-3">

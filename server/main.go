@@ -5,8 +5,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"server/process_manager"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -52,6 +54,7 @@ func main() {
 		api.GET("/scripts", listScripts)
 		api.POST("/run", runScript)
 		api.POST("/stop", stopScript)
+		api.GET("/devices", listDevices)
 	}
 
 	r.GET("/ws/logs/:id", streamLogs)
@@ -108,6 +111,32 @@ func stopScript(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{"status": "stopped"})
+}
+
+func listDevices(c *gin.Context) {
+	// Execute 'adb devices'
+	cmd := exec.Command("adb", "devices")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to execute adb: " + err.Error()})
+		return
+	}
+
+	lines := strings.Split(string(output), "\n")
+	var devices []string
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "List of devices attached") {
+			continue
+		}
+		parts := strings.Fields(line)
+		if len(parts) >= 2 && parts[1] == "device" {
+			devices = append(devices, parts[0])
+		}
+	}
+
+	c.JSON(200, devices)
 }
 
 func streamLogs(c *gin.Context) {

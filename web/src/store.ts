@@ -50,6 +50,7 @@ interface AppState {
 
     // Execution Updates
     updateScriptStatus: (tabId: string, status: ScriptTabState['status'], runId?: string) => void;
+    updateScriptParams: (tabId: string, params: Partial<ScriptTabState['params']>) => void;
     appendLog: (tabId: string, log: Omit<LogMessage, 'timestamp'>) => void;
     clearLogs: (tabId: string) => void;
 }
@@ -113,6 +114,10 @@ export const useAppStore = create<AppState>()(
 
             updateScriptStatus: (tabId, status, runId) => set(state => ({
                 scriptTabs: state.scriptTabs.map(t => t.tabId === tabId ? { ...t, status, runId: runId || t.runId } : t)
+            })),
+
+            updateScriptParams: (tabId, params) => set(state => ({
+                scriptTabs: state.scriptTabs.map(t => t.tabId === tabId ? { ...t, params: { ...t.params, ...params } } : t)
             })),
 
             appendLog: (tabId, log) => set(state => ({
