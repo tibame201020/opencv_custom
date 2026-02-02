@@ -10,13 +10,17 @@ interface ScreenshotModalProps {
     isOpen: boolean;
     onClose: () => void;
     deviceId: string;
+    scriptId?: string | null;
 }
 
 export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
-    isOpen, onClose, deviceId
+    isOpen, onClose, deviceId, scriptId
 }) => {
     const { activeTabId, scriptTabs } = useAppStore();
     const activeTab = scriptTabs.find(t => t.tabId === activeTabId);
+
+    // Determine the target script: Preference given to prop (Editor mode) -> then active tab (Execution mode)
+    const targetScriptId = scriptId || (activeTab?.scriptId);
 
     // Core State
     const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -242,14 +246,16 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
             // Append active script ID if available
             const activeTab = scriptTabs.find(t => t.tabId === activeTabId);
             if (activeTab) {
-                formData.append('scriptId', activeTab.scriptId);
+                // Based on previous turn instructions: "script folder".
             }
 
-            const res = await axios.post(`${API_Base}/assets`, formData, {
+            let url = targetScriptId ? `${API_Base}/scripts/${targetScriptId}/assets` : `${API_Base}/assets`;
+
+            await axios.post(url, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
-            showToast(`Saved to ${res.data.path}`, 'success');
+            showToast("Asset saved successfully!");
         } catch (err: any) {
             console.error(err);
             // Handle tainted canvas error specifically if it happens despite fixes
@@ -390,169 +396,155 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                         <div>
                             <h4 className="font-bold text-sm uppercase opacity-50 mb-2">Actions</h4>
 
-                            <div className="p-3 bg-base-200 rounded-xl space-y-3 border border-base-300 mb-4">
+                            <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                    <label className="text-[10px] uppercase tracking-widest font-bold opacity-30 mb-1 block">
-                                        Target Location:
-                                    </label>
-                                    <div className="flex items-center gap-2 text-warning animate-pulse px-1">
-                                        <span className="p-1 bg-warning/10 rounded"><Save size={12} /></span>
-                                        <span className="text-xs font-mono truncate">{activeTab ? `${activeTab.label}/images` : "Global Assets"}</span>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label className="text-[10px] uppercase opacity-30 block mb-1 font-bold">Region Padding X</label>
-                                        <input
-                                            type="number"
-                                            className="input input-xs input-bordered w-full bg-base-300 font-mono"
-                                            value={regionPaddingX}
-                                            onChange={(e) => setRegionPaddingX(Number(e.target.value))}
-                                            min={0}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] uppercase opacity-30 block mb-1 font-bold">Region Padding Y</label>
-                                        <input
-                                            type="number"
-                                            className="input input-xs input-bordered w-full bg-base-300 font-mono"
-                                            value={regionPaddingY}
-                                            onChange={(e) => setRegionPaddingY(Number(e.target.value))}
-                                            min={0}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="text-[10px] uppercase opacity-30 block mb-1 font-bold">Filename</label>
+                                    <label className="text-[10px] uppercase opacity-30 block mb-1 font-bold">Region Padding X</label>
                                     <input
-                                        type="text"
-                                        value={filename}
-                                        onChange={(e) => setFilename(e.target.value)}
-                                        className="input input-bordered w-full h-8 text-xs font-mono bg-base-300 selection:bg-primary/20"
-                                        placeholder="asset_name.png"
+                                        type="number"
+                                        className="input input-xs input-bordered w-full bg-base-300 font-mono"
+                                        value={regionPaddingX}
+                                        onChange={(e) => setRegionPaddingX(Number(e.target.value))}
+                                        min={0}
                                     />
                                 </div>
-
-                                <button
-                                    onClick={handleSaveAsset}
-                                    disabled={isSaving || !imageUrl}
-                                    className={clsx(
-                                        "btn btn-primary btn-sm w-full gap-2 shadow-lg transition-all",
-                                        isSaving && "loading"
-                                    )}
-                                >
-                                    <Save size={16} />
-                                    {isSaving ? "Saving..." : "Save to Assets"}
-                                </button>
+                                <div>
+                                    <label className="text-[10px] uppercase opacity-30 block mb-1 font-bold">Region Padding Y</label>
+                                    <input
+                                        type="number"
+                                        className="input input-xs input-bordered w-full bg-base-300 font-mono"
+                                        value={regionPaddingY}
+                                        onChange={(e) => setRegionPaddingY(Number(e.target.value))}
+                                        min={0}
+                                    />
+                                </div>
                             </div>
 
-                            <h4 className="font-bold text-sm uppercase opacity-50 mb-2">Code Sniplets</h4>
-                            <div className="space-y-2 pb-10">
-                                {/* click_image_full */}
+                            <div>
+                                <label className="text-[10px] uppercase opacity-30 block mb-1 font-bold">Filename</label>
+                                <input
+                                    type="text"
+                                    value={filename}
+                                    onChange={(e) => setFilename(e.target.value)}
+                                    className="input input-bordered w-full h-8 text-xs font-mono bg-base-300 selection:bg-primary/20"
+                                    placeholder="asset_name.png"
+                                />
+                            </div>
+
+                            <button
+                                onClick={handleSaveAsset}
+                                disabled={isSaving || !imageUrl}
+                                className={clsx(
+                                    "btn btn-primary btn-sm w-full gap-2 shadow-lg transition-all",
+                                    isSaving && "loading"
+                                )}
+                            >
+                                <Save size={16} />
+                                {isSaving ? "Saving..." : "Save to Assets"}
+                            </button>
+                        </div>
+
+                        <h4 className="font-bold text-sm uppercase opacity-50 mb-2">Code Sniplets</h4>
+                        <div className="space-y-2 pb-10">
+                            {/* click_image_full */}
+                            <div className={clsx(
+                                "rounded-xl overflow-hidden border transition-all duration-300 group selection:bg-success/20 cursor-pointer",
+                                copiedId === 'click_full' ? "border-success bg-success/5 shadow-[0_0_15px_-5px_rgba(34,197,94,0.3)]" : "border-base-300 bg-neutral hover:border-primary/50"
+                            )}
+                                onClick={() => handleCopy('click_full', `self.platform.click_image_full(f"{self.image_root}/${filename}", self.deviceId)`)}
+                            >
+                                <div className="flex items-center justify-between px-3 py-1.5 bg-base-300/50 border-b border-base-300/30">
+                                    <div className="text-[10px] uppercase tracking-widest font-bold opacity-30">Full Screen Search</div>
+                                    {copiedId === 'click_full' ? <Check size={12} className="text-success animate-in zoom-in" /> : <Copy size={12} className="opacity-30 group-hover:opacity-60 transition-opacity" />}
+                                </div>
+                                <div className="p-3 font-mono text-[11px] text-success/80">
+                                    self.platform.click_image_full(f"&#123;self.image_root&#125;/{filename}", self.deviceId)
+                                </div>
+                            </div>
+
+                            {/* click_image_with_similar */}
+                            <div className={clsx(
+                                "rounded-xl overflow-hidden border transition-all duration-300 group selection:bg-success/20 cursor-pointer",
+                                copiedId === 'click_similar' ? "border-success bg-success/5 shadow-[0_0_15px_-5px_rgba(34,197,94,0.3)]" : "border-base-300 bg-neutral hover:border-primary/50"
+                            )}
+                                onClick={() => handleCopy('click_similar', `self.platform.click_image_with_similar(f"{self.image_root}/${filename}", self.default_threshold, self.deviceId)`)}
+                            >
+                                <div className="flex items-center justify-between px-3 py-1.5 bg-base-300/50 border-b border-base-300/30">
+                                    <div className="text-[10px] uppercase tracking-widest font-bold opacity-30">Similar Search</div>
+                                    {copiedId === 'click_similar' ? <Check size={12} className="text-success animate-in zoom-in" /> : <Copy size={12} className="opacity-30 group-hover:opacity-60 transition-opacity" />}
+                                </div>
+                                <div className="p-3 font-mono text-[11px] text-success/80">
+                                    self.platform.click_image_with_similar(f"&#123;self.image_root&#125;/{filename}", threshold, self.deviceId)
+                                </div>
+                            </div>
+
+                            {/* click_image (Region) */}
+                            {getSelectionRect() && getSelectionRect()!.w > 5 && (
                                 <div className={clsx(
                                     "rounded-xl overflow-hidden border transition-all duration-300 group selection:bg-success/20 cursor-pointer",
-                                    copiedId === 'click_full' ? "border-success bg-success/5 shadow-[0_0_15px_-5px_rgba(34,197,94,0.3)]" : "border-base-300 bg-neutral hover:border-primary/50"
+                                    copiedId === 'click_region' ? "border-success bg-success/5 shadow-[0_0_15px_-5px_rgba(34,197,94,0.3)]" : "border-base-300 bg-neutral hover:border-primary/50"
                                 )}
-                                    onClick={() => handleCopy('click_full', `self.platform.click_image_full("assets/${filename}", self.deviceId)`)}
+                                    onClick={() => {
+                                        const rect = getSelectionRect()!;
+                                        const scaleX = imageRef.current!.naturalWidth / imageRef.current!.getBoundingClientRect().width;
+                                        const scaleY = imageRef.current!.naturalHeight / imageRef.current!.getBoundingClientRect().height;
+
+                                        const x1 = Math.max(0, Math.floor(rect.x * scaleX) - regionPaddingX);
+                                        const y1 = Math.max(0, Math.floor(rect.y * scaleY) - regionPaddingY);
+                                        const x2 = Math.min(imageRef.current!.naturalWidth, Math.floor((rect.x + rect.w) * scaleX) + regionPaddingX);
+                                        const y2 = Math.min(imageRef.current!.naturalHeight, Math.floor((rect.y + rect.h) * scaleY) + regionPaddingY);
+
+                                        const text = `self.platform.click_image(f"{self.image_root}/${filename}", OcrRegion(${x1}, ${y1}, ${x2}, ${y2}), self.deviceId)`;
+                                        handleCopy('click_region', text);
+                                    }}
                                 >
                                     <div className="flex items-center justify-between px-3 py-1.5 bg-base-300/50 border-b border-base-300/30">
-                                        <div className="text-[10px] uppercase tracking-widest font-bold opacity-30">Full Screen Search</div>
-                                        {copiedId === 'click_full' ? <Check size={12} className="text-success animate-in zoom-in" /> : <Copy size={12} className="opacity-30 group-hover:opacity-60 transition-opacity" />}
+                                        <div className="text-[10px] uppercase tracking-widest font-bold opacity-30 underline decoration-dotted">Region Search</div>
+                                        {copiedId === 'click_region' ? <Check size={12} className="text-success animate-in zoom-in" /> : <Copy size={12} className="opacity-30 group-hover:opacity-60 transition-opacity" />}
                                     </div>
-                                    <div className="p-3 font-mono text-[11px] text-success/80">
-                                        self.platform.click_image_full("assets/{filename}", self.deviceId)
+                                    <div className="p-3 font-mono text-[11px] text-success/80 leading-relaxed">
+                                        self.platform.click_image(f"&#123;self.image_root&#125;/{filename}", OcrRegion(...), self.deviceId)
                                     </div>
                                 </div>
+                            )}
 
-                                {/* click_image_with_similar */}
-                                <div className={clsx(
-                                    "rounded-xl overflow-hidden border transition-all duration-300 group selection:bg-success/20 cursor-pointer",
-                                    copiedId === 'click_similar' ? "border-success bg-success/5 shadow-[0_0_15px_-5px_rgba(34,197,94,0.3)]" : "border-base-300 bg-neutral hover:border-primary/50"
-                                )}
-                                    onClick={() => handleCopy('click_similar', `self.platform.click_image_with_similar("assets/${filename}", self.default_threshold, self.deviceId)`)}
-                                >
-                                    <div className="flex items-center justify-between px-3 py-1.5 bg-base-300/50 border-b border-base-300/30">
-                                        <div className="text-[10px] uppercase tracking-widest font-bold opacity-30">Similar Search</div>
-                                        {copiedId === 'click_similar' ? <Check size={12} className="text-success animate-in zoom-in" /> : <Copy size={12} className="opacity-30 group-hover:opacity-60 transition-opacity" />}
-                                    </div>
-                                    <div className="p-3 font-mono text-[11px] text-success/80">
-                                        self.platform.click_image_with_similar("assets/{filename}", threshold, self.deviceId)
-                                    </div>
+                            {/* Asset Path */}
+                            <div className={clsx(
+                                "rounded-xl overflow-hidden border transition-all duration-300 group selection:bg-success/20 cursor-pointer",
+                                copiedId === 'path' ? "border-success bg-success/5 shadow-[0_0_15px_-5px_rgba(34,197,94,0.3)]" : "border-base-300 bg-neutral hover:border-primary/50"
+                            )}
+                                onClick={() => handleCopy('path', `f"{self.image_root}/${filename}"`)}
+                            >
+                                <div className="flex items-center justify-between px-3 py-1.5 bg-base-300/50 border-b border-base-300/30">
+                                    <div className="text-[10px] uppercase tracking-widest font-bold opacity-30">Asset Path</div>
+                                    {copiedId === 'path' ? <Check size={12} className="text-success animate-in zoom-in" /> : <Copy size={12} className="opacity-30 group-hover:opacity-60 transition-opacity" />}
                                 </div>
-
-                                {/* click_image (Region) */}
-                                {getSelectionRect() && getSelectionRect()!.w > 5 && (
-                                    <div className={clsx(
-                                        "rounded-xl overflow-hidden border transition-all duration-300 group selection:bg-success/20 cursor-pointer",
-                                        copiedId === 'click_region' ? "border-success bg-success/5 shadow-[0_0_15px_-5px_rgba(34,197,94,0.3)]" : "border-base-300 bg-neutral hover:border-primary/50"
-                                    )}
-                                        onClick={() => {
-                                            const rect = getSelectionRect()!;
-                                            const scaleX = imageRef.current!.naturalWidth / imageRef.current!.getBoundingClientRect().width;
-                                            const scaleY = imageRef.current!.naturalHeight / imageRef.current!.getBoundingClientRect().height;
-
-                                            const x1 = Math.max(0, Math.floor(rect.x * scaleX) - regionPaddingX);
-                                            const y1 = Math.max(0, Math.floor(rect.y * scaleY) - regionPaddingY);
-                                            const x2 = Math.min(imageRef.current!.naturalWidth, Math.floor((rect.x + rect.w) * scaleX) + regionPaddingX);
-                                            const y2 = Math.min(imageRef.current!.naturalHeight, Math.floor((rect.y + rect.h) * scaleY) + regionPaddingY);
-
-                                            const text = `self.platform.click_image("assets/${filename}", region=[${x1}, ${y1}, ${x2}, ${y2}], device_id=self.deviceId)`;
-                                            handleCopy('click_region', text);
-                                        }}
-                                    >
-                                        <div className="flex items-center justify-between px-3 py-1.5 bg-base-300/50 border-b border-base-300/30">
-                                            <div className="text-[10px] uppercase tracking-widest font-bold opacity-30 underline decoration-dotted">Region Search</div>
-                                            {copiedId === 'click_region' ? <Check size={12} className="text-success animate-in zoom-in" /> : <Copy size={12} className="opacity-30 group-hover:opacity-60 transition-opacity" />}
-                                        </div>
-                                        <div className="p-3 font-mono text-[11px] text-success/80 leading-relaxed">
-                                            self.platform.click_image("assets/{filename}", region=[...], self.deviceId)
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Asset Path */}
-                                <div className={clsx(
-                                    "rounded-xl overflow-hidden border transition-all duration-300 group selection:bg-success/20 cursor-pointer",
-                                    copiedId === 'path' ? "border-success bg-success/5 shadow-[0_0_15px_-5px_rgba(34,197,94,0.3)]" : "border-base-300 bg-neutral hover:border-primary/50"
-                                )}
-                                    onClick={() => handleCopy('path', `assets/${filename}`)}
-                                >
-                                    <div className="flex items-center justify-between px-3 py-1.5 bg-base-300/50 border-b border-base-300/30">
-                                        <div className="text-[10px] uppercase tracking-widest font-bold opacity-30">Asset Path</div>
-                                        {copiedId === 'path' ? <Check size={12} className="text-success animate-in zoom-in" /> : <Copy size={12} className="opacity-30 group-hover:opacity-60 transition-opacity" />}
-                                    </div>
-                                    <div className="p-3 font-mono text-[11px] text-success/80">
-                                        "assets/{filename}"
-                                    </div>
+                                <div className="p-3 font-mono text-[11px] text-success/80">
+                                    f"&#123;self.image_root&#125;/{filename}"
                                 </div>
                             </div>
                         </div>
                     </div>
-
-                    {/* Resize Handle */}
-                    <div
-                        className="absolute bottom-0 right-0 w-6 h-6 cursor-se-resize z-50 flex items-center justify-center opacity-50 hover:opacity-100 transition-opacity"
-                        onMouseDown={startResize}
-                    >
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="transform rotate-0">
-                            <path d="M11 1L11 11L1 11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                        </svg>
-                    </div>
                 </div>
-            </div>
 
-            {/* Toast Notification */}
-            {
-                toast && (
+                {/* Resize Handle */}
+                <div
+                    className="absolute bottom-0 right-0 w-6 h-6 cursor-se-resize z-50 flex items-center justify-center opacity-50 hover:opacity-100 transition-opacity"
+                    onMouseDown={startResize}
+                >
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="transform rotate-0">
+                        <path d="M11 1L11 11L1 11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                </div>
+
+                {/* Toast Notification */}
+                {toast && (
                     <div className="toast toast-end z-[100]">
                         <div className={clsx("alert", toast.type === 'success' ? "alert-success" : "alert-error")}>
                             <span>{toast.message}</span>
                         </div>
                     </div>
-                )
-            }
-        </div >
+                )}
+            </div>
+        </div>
     );
 };

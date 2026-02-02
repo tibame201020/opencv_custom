@@ -6,6 +6,8 @@ import { Save, Play, FileCode, Plus, Trash2, Camera, HelpCircle } from 'lucide-r
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ScreenshotModal } from '../components/ScreenshotModal';
 import { ApiRefModal } from '../components/ApiRefModal';
+import { AssetExplorer } from '../components/AssetExplorer';
+import { registerPythonCompletions } from '../utils/monacoConfig';
 
 const API_Base = "http://localhost:8080/api";
 
@@ -33,6 +35,10 @@ export const EditorView: React.FC = () => {
     // Confirmation State
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isApiRefModalOpen, setIsApiRefModalOpen] = useState(false);
+
+    // Asset Explorer State
+    const [assetExplorerCollapsed, setAssetExplorerCollapsed] = useState(false);
+    const [assetExplorerWidth, setAssetExplorerWidth] = useState(250);
 
     const editorRef = useRef<any>(null);
 
@@ -140,6 +146,10 @@ export const EditorView: React.FC = () => {
 
     const handleEditorMount: OnMount = (editor, monaco) => {
         editorRef.current = editor;
+
+        // Register Completions
+        registerPythonCompletions(monaco);
+
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
             handleSave();
         });
@@ -190,6 +200,17 @@ export const EditorView: React.FC = () => {
                 </div>
             </div>
 
+            {/* Asset Explorer (Contextual) */}
+            {selectedScriptId && (
+                <AssetExplorer
+                    scriptId={selectedScriptId}
+                    width={assetExplorerCollapsed ? 40 : assetExplorerWidth}
+                    collapsed={assetExplorerCollapsed}
+                    onToggle={() => setAssetExplorerCollapsed(!assetExplorerCollapsed)}
+                    onResize={(w: number) => setAssetExplorerWidth(w)}
+                />
+            )}
+
             {/* Main Editor Area */}
             <div className="flex-1 flex flex-col h-full overflow-hidden">
                 {/* Toolbar */}
@@ -200,6 +221,7 @@ export const EditorView: React.FC = () => {
                                 {scripts.find(s => s.id === selectedScriptId)?.name}
                                 {isDirty && <span className="text-warning ml-2">* (Unsaved)</span>}
                             </div>
+
                             <button
                                 className="btn btn-sm btn-primary gap-2"
                                 onClick={handleSave}
@@ -298,50 +320,52 @@ export const EditorView: React.FC = () => {
             </div>
 
             {/* Create Script Modal */}
-            {isModalOpen && (
-                <div className="modal modal-open">
-                    <div className="modal-box">
-                        <h3 className="font-bold text-lg">Create New Script</h3>
-                        <div className="form-control w-full mt-4">
-                            <label className="label">
-                                <span className="label-text">Script Name</span>
-                            </label>
-                            <input
-                                type="text"
-                                placeholder="my-awesome-script"
-                                className="input input-bordered w-full"
-                                value={newScriptName}
-                                onChange={e => setNewScriptName(e.target.value)}
-                            />
-                            <label className="label">
-                                <span className="label-text">Platform</span>
-                            </label>
-                            <select
-                                className="select select-bordered w-full"
-                                value={newScriptPlatform}
-                                onChange={e => setNewScriptPlatform(e.target.value)}
-                            >
-                                <option value="android">Android (ADB)</option>
-                                <option value="desktop">Desktop (Robot)</option>
-                            </select>
-                            <label className="label">
-                                <span className="label-text-alt">Only letters, numbers, hyphens, and underscores.</span>
-                            </label>
-                        </div>
+            {
+                isModalOpen && (
+                    <div className="modal modal-open">
+                        <div className="modal-box">
+                            <h3 className="font-bold text-lg">Create New Script</h3>
+                            <div className="form-control w-full mt-4">
+                                <label className="label">
+                                    <span className="label-text">Script Name</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="my-awesome-script"
+                                    className="input input-bordered w-full"
+                                    value={newScriptName}
+                                    onChange={e => setNewScriptName(e.target.value)}
+                                />
+                                <label className="label">
+                                    <span className="label-text">Platform</span>
+                                </label>
+                                <select
+                                    className="select select-bordered w-full"
+                                    value={newScriptPlatform}
+                                    onChange={e => setNewScriptPlatform(e.target.value)}
+                                >
+                                    <option value="android">Android (ADB)</option>
+                                    <option value="desktop">Desktop (Robot)</option>
+                                </select>
+                                <label className="label">
+                                    <span className="label-text-alt">Only letters, numbers, hyphens, and underscores.</span>
+                                </label>
+                            </div>
 
-                        <div className="modal-action">
-                            <button className="btn" onClick={() => setIsModalOpen(false)}>Cancel</button>
-                            <button
-                                className="btn btn-primary"
-                                onClick={handleCreateScript}
-                                disabled={isCreating || !newScriptName.trim()}
-                            >
-                                {isCreating ? "Creating..." : "Create"}
-                            </button>
+                            <div className="modal-action">
+                                <button className="btn" onClick={() => setIsModalOpen(false)}>Cancel</button>
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={handleCreateScript}
+                                    disabled={isCreating || !newScriptName.trim()}
+                                >
+                                    {isCreating ? "Creating..." : "Create"}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
             {/* Confirmation Modal */}
             <ConfirmModal
                 isOpen={isDeleteModalOpen}
@@ -358,12 +382,13 @@ export const EditorView: React.FC = () => {
                 isOpen={isScreenshotModalOpen}
                 onClose={() => setIsScreenshotModalOpen(false)}
                 deviceId={selectedDevice}
+                scriptId={selectedScriptId}
             />
 
             <ApiRefModal
                 isOpen={isApiRefModalOpen}
                 onClose={() => setIsApiRefModalOpen(false)}
             />
-        </div>
+        </div >
     );
 };

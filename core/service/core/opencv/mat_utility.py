@@ -14,27 +14,22 @@ class MatUtility:
     def get_mat_from_file(file_path: str) -> np.ndarray:
         """
         從檔案路徑載入 Mat 物件（灰階）
-        
-        Args:
-            file_path: 檔案路徑
-            
-        Returns:
-            Mat 物件（灰階）
+        支援中文路徑
         """
-        return cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
+        # 使用 numpy fromfile 繞過 cv2.imread 對中文路徑的限制
+        img_array = np.fromfile(file_path, np.uint8)
+        return cv2.imdecode(img_array, cv2.IMREAD_GRAYSCALE)
     
     @staticmethod
     def get_mat_from_file_with_mask(file_path: str) -> np.ndarray:
         """
         從檔案路徑載入 Mat 物件（支援 Alpha 通道遮罩）
-        
-        Args:
-            file_path: 檔案路徑
-            
-        Returns:
-            處理後的 Mat 物件
+        支援中文路徑
         """
-        img = cv2.imread(file_path, cv2.IMREAD_UNCHANGED)
+        # 使用 numpy fromfile 繞過 cv2.imread 對中文路徑的限制
+        img_array = np.fromfile(file_path, np.uint8)
+        img = cv2.imdecode(img_array, cv2.IMREAD_UNCHANGED)
+        
         if img is None:
             raise RuntimeError(f"Error: Could not load image {file_path}")
         
@@ -53,7 +48,7 @@ class MatUtility:
             return processed_mat
         else:
             # 直接載入為灰階
-            return cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
+            return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if len(img.shape) == 3 else img
     
     @staticmethod
     def convert_bytes_to_mat(bytes_data: bytes) -> Optional[np.ndarray]:
@@ -127,20 +122,11 @@ class MatUtility:
     @staticmethod
     def write_to_file(file_path: str, mat: np.ndarray) -> Path:
         """
-        將 Mat 寫入檔案
-        
-        Args:
-            file_path: 檔案路徑
-            mat: Mat 物件
-            
-        Returns:
-            儲存的檔案路徑
-            
-        Raises:
-            RuntimeError: 寫入失敗時拋出
+        將 Mat 寫入檔案 (支援中文路徑)
         """
-        success = cv2.imwrite(file_path, mat)
-        if not success:
-            raise RuntimeError("error when writeToFile")
+        is_success, im_buf_arr = cv2.imencode(Path(file_path).suffix, mat)
+        if not is_success:
+            raise RuntimeError("error when encode image")
+        im_buf_arr.tofile(file_path)
         return Path(file_path)
 

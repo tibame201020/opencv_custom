@@ -58,9 +58,18 @@ func main() {
 		api.GET("/devices", listDevices)
 		api.GET("/scripts/:id/content", getScriptContent)
 		api.POST("/scripts/:id/content", saveScriptContent)
+		// Existing DELETE for script
 		api.DELETE("/scripts/:id", deleteScript)
+
+		// Asset Management
+		api.GET("/scripts/:id/assets", listAssets)
+		api.POST("/scripts/:id/assets/rename", renameAsset)
+		api.DELETE("/scripts/:id/assets/:filename", deleteAsset)
+		api.GET("/scripts/:id/assets/:filename/raw", getAssetRaw)
+
 		api.GET("/devices/:id/screenshot", getDeviceScreenshot)
 		api.POST("/assets", uploadAsset)
+		api.POST("/scripts/:id/assets", uploadAsset)
 	}
 
 	r.GET("/ws/logs/:id", streamLogs)
@@ -68,6 +77,89 @@ func main() {
 	port := ":8080"
 	fmt.Printf("Server starting on %s\n", port)
 	r.Run(port)
+}
+
+func listAssets(c *gin.Context) {
+	scriptID := c.Param("id")
+	assets, err := manager.ListAssets(scriptID)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, assets)
+}
+
+func renameAsset(c *gin.Context) {
+	scriptID := c.Param("id")
+	var req struct {
+		OldName string `json:"oldName"`
+		NewName string `json:"newName"`
+	}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	if err := manager.RenameAsset(scriptID, req.OldName, req.NewName); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"status": "ok"})
+}
+
+func deleteAsset(c *gin.Context) {
+	scriptID := c.Param("id")
+	filename := c.Param("filename")
+
+	if err := manager.DeleteAsset(scriptID, filename); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"status": "ok"})
+}
+
+func getAssetRaw(c *gin.Context) {
+	scriptID := c.Param("id")
+	filename := c.Param("filename")
+
+	// Helper to find script path (duplicated logic, should refactor in manager but ok for now)
+	scripts, err := manager.ListScripts()
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	var scriptPath string
+	for _, s := range scripts {
+		if s["id"] == scriptID {
+			scriptPath = s["path"]
+			break
+		}
+	}
+
+	if scriptPath == "" {
+		c.JSON(404, gin.H{"error": "script not found"})
+		return
+	}
+
+	// scriptPath is relative to Core, e.g. script/custom/foo/foo.py
+	// Image is in script/custom/foo/images/filename
+	fullScriptPath := filepath.Join(manager.CorePath, scriptPath)
+	imagesDir := filepath.Join(filepath.Dir(fullScriptPath), "images")
+	imagePath := filepath.Join(imagesDir, filename)
+
+	// Security check
+	if filepath.Dir(imagePath) != imagesDir {
+		c.JSON(403, gin.H{"error": "Forbidden"})
+		return
+	}
+
+	if _, err := os.Stat(imagePath); os.IsNotExist(err) {
+		c.JSON(404, gin.H{"error": "Asset not found"})
+		return
+	}
+
+	c.File(imagePath)
 }
 
 func getDeviceScreenshot(c *gin.Context) {
@@ -97,6 +189,9 @@ func uploadAsset(c *gin.Context) {
 	}
 
 	scriptID := c.PostForm("scriptId")
+	if scriptID == "" {
+		scriptID = c.Param("id")
+	}
 	fmt.Printf("UploadAsset Request - ScriptID: '%s'\n", scriptID)
 
 	cwd, _ := os.Getwd()

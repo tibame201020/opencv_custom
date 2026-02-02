@@ -47,24 +47,31 @@ const API_DATA: ApiMethod[] = [
         platform: 'android'
     },
     {
+        name: 'click_image',
+        params: 'image_path: str, region: OcrRegion, device_id: str = None',
+        desc: '在指定區域尋找並點擊圖片',
+        example: 'self.platform.click_image(f"{self.image_root}/btn.png", OcrRegion(0, 0, 100, 100), self.deviceId)',
+        platform: 'android'
+    },
+    {
         name: 'find_image_full',
         params: 'image_path: str, device_id: str = None',
         desc: '全螢幕尋找圖片',
-        example: 'found, point = self.platform.find_image_full("target.png", self.deviceId)',
+        example: 'found, point = self.platform.find_image_full(f"{self.image_root}/target.png", self.deviceId)',
         platform: 'android'
     },
     {
         name: 'click_image_full',
         params: 'image_path: str, device_id: str = None',
         desc: '全螢幕尋找並點擊圖片 (回傳 bool)',
-        example: 'success = self.platform.click_image_full("btn.png", self.deviceId)',
+        example: 'success = self.platform.click_image_full(f"{self.image_root}/btn.png", self.deviceId)',
         platform: 'android'
     },
     {
         name: 'click_image_with_similar',
         params: 'image_path: str, similar: float, device_id: str = None',
         desc: '全螢幕尋找並點擊圖片 (指定相似度)',
-        example: 'self.platform.click_image_with_similar("btn.png", 0.9, self.deviceId)',
+        example: 'self.platform.click_image_with_similar(f"{self.image_root}/btn.png", 0.9, self.deviceId)',
         platform: 'android'
     },
     {

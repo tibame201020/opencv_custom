@@ -48,6 +48,16 @@ export const ExecutionView: React.FC = () => {
     const wsMap = useRef<Map<string, WebSocket>>(new Map()); // Key is tabId now
     const logEndRef = useRef<HTMLDivElement>(null);
 
+    // Toast State
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const [toastType, setToastType] = useState<'info' | 'error'>('info');
+
+    const showToast = (msg: string, type: 'info' | 'error' = 'info') => {
+        setToastMessage(msg);
+        setToastType(type);
+        setTimeout(() => setToastMessage(null), 3000);
+    };
+
     // Fetch scripts
     useEffect(() => {
         const fetchScripts = async () => {
@@ -115,11 +125,22 @@ export const ExecutionView: React.FC = () => {
 
     // Run Script Logic
     const handleRun = async (tabId: string, scriptId: string) => {
+        const activeTab = scriptTabs.find(t => t.tabId === tabId);
+        const scriptDef = getScriptDef(scriptId);
+
+        if (!activeTab || !scriptDef) return;
+
+        // Validation: Android requires Device ID
+        if (scriptDef.platform === 'android' && !activeTab.params?.deviceId) {
+            showToast("Please select a target device before running!", "error");
+            // Highlight the select box if possible, or just return
+            return;
+        }
+
         updateScriptStatus(tabId, 'running');
         setSubTab(tabId, 'logs'); // Switch to console view automatically
         try {
-            const activeTab = scriptTabs.find(t => t.tabId === tabId);
-            const params = activeTab?.params ? JSON.stringify(activeTab.params) : "{}";
+            const params = activeTab.params ? JSON.stringify(activeTab.params) : "{}";
 
             const res = await axios.post(`${API_Base}/run`, { scriptId: scriptId, params: params });
             const runId = res.data.runId;
@@ -147,9 +168,11 @@ export const ExecutionView: React.FC = () => {
                     appendLog(tabId, { type: 'stdout', message: event.data });
                 }
             };
-        } catch (err) {
+        } catch (err: any) {
             updateScriptStatus(tabId, 'error');
-            appendLog(tabId, { type: 'error', message: 'Failed to start: ' + err });
+            const errorMsg = err.response?.data?.error || err.message || 'Unknown error';
+            appendLog(tabId, { type: 'error', message: 'Failed to start: ' + errorMsg });
+            showToast('Failed to start script: ' + errorMsg, 'error');
         }
     };
 
@@ -260,9 +283,9 @@ export const ExecutionView: React.FC = () => {
             </div>
 
             {/* Workspace Area */}
-            <div className="flex-1 flex flex-col min-w-0 bg-base-200/30">
-                {/* Tabs Header (Instances) */}
-                <div className="flex items-center gap-2 px-2 pt-2 bg-base-100 border-b border-base-200 overflow-x-auto no-scrollbar">
+            <div className="flex-1 flex flex-col min-w-0 bg-base-100/5">
+                {/* Tabs Header (Chrome-like) */}
+                <div className="flex items-end gap-1 px-2 pt-2 bg-[#121212] border-b border-[#121212] overflow-x-auto no-scrollbar h-11 shrink-0">
                     {scriptTabs.map(tab => {
                         const isActive = activeTabId === tab.tabId;
                         const isEditing = editingTabId === tab.tabId;
@@ -271,16 +294,19 @@ export const ExecutionView: React.FC = () => {
                             <div
                                 key={tab.tabId}
                                 className={clsx(
-                                    "flex items-center gap-2 px-4 py-2.5 rounded-t-lg border-t border-x border-b-0 text-sm font-medium cursor-pointer select-none transition-colors min-w-[160px] max-w-[240px] group",
+                                    "relative flex items-center gap-2 px-4 py-2 rounded-t-xl text-sm font-medium cursor-pointer select-none transition-all min-w-[150px] max-w-[240px] group border-b-0 h-full",
                                     isActive
-                                        ? "bg-base-100 border-base-200 text-base-content relative top-[1px] shadow-sm"
-                                        : "bg-base-200/50 border-transparent text-base-content/50 hover:bg-base-200 hover:text-base-content/80"
+                                        ? "bg-base-100 text-base-content shadow-[0_-5px_10px_-5px_rgba(0,0,0,0.2)] z-10"
+                                        : "bg-transparent text-gray-500 hover:bg-white/5 hover:text-gray-300 mb-0.5"
                                 )}
                                 onClick={() => setActiveScriptTab(tab.tabId)}
                                 onDoubleClick={(e) => { e.stopPropagation(); startEditing(tab.tabId, tab.label); }}
                             >
+                                {/* Separator style for inactive tabs (pseudo-element simulation) */}
+                                {!isActive && <div className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-px bg-white/10 group-last:hidden group-hover:hidden" />}
+
                                 <span className={clsx("w-2 h-2 rounded-full shrink-0",
-                                    tab.status === 'running' ? "bg-success animate-pulse" :
+                                    tab.status === 'running' ? "bg-success animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" :
                                         tab.status === 'error' ? "bg-error" : "bg-base-content/20"
                                 )} />
 
@@ -288,7 +314,7 @@ export const ExecutionView: React.FC = () => {
                                     <input
                                         ref={editInputRef}
                                         type="text"
-                                        className="input input-xs input-ghost h-auto p-0 flex-1 min-w-0 bg-transparent focus:outline-none font-medium"
+                                        className="input input-xs input-ghost h-auto p-0 flex-1 min-w-0 bg-transparent focus:outline-none font-medium text-inherit"
                                         value={editName}
                                         onChange={(e) => setEditName(e.target.value)}
                                         onBlur={saveEditing}
@@ -300,11 +326,14 @@ export const ExecutionView: React.FC = () => {
                                 )}
 
                                 <button
-                                    className="opacity-0 group-hover:opacity-100 hover:bg-base-content/10 rounded-full p-0.5 transition-all"
+                                    className="opacity-0 group-hover:opacity-100 hover:bg-base-content/10 rounded-full p-0.5 transition-all text-inherit"
                                     onClick={(e) => { e.stopPropagation(); handleCloseTabRequest(tab.tabId); }}
                                 >
                                     <X size={12} />
                                 </button>
+
+                                {/* Bottom masking to blend with content when active */}
+                                {isActive && <div className="absolute -bottom-1 left-0 right-0 h-2 bg-base-100 z-20" />}
                             </div>
                         );
                     })}
@@ -434,6 +463,17 @@ export const ExecutionView: React.FC = () => {
                     <form method="dialog" className="modal-backdrop">
                         <button onClick={() => setConfirmCloseTabId(null)}>close</button>
                     </form>
+                </div>
+            )}
+
+            {/* Toast Notifications */}
+            {toastMessage && (
+                <div className="toast toast-bottom toast-end z-[9999]">
+                    <div className={clsx("active:scale-95 transition-transform alert shadow-lg font-bold border-none",
+                        toastType === 'error' ? "alert-error text-error-content" : "alert-info text-info-content"
+                    )}>
+                        <span>{toastMessage}</span>
+                    </div>
                 </div>
             )}
         </div>

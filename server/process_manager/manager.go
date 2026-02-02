@@ -275,6 +275,7 @@ func (sm *ScriptManager) CreateScript(name string, platform string) error {
 	if platform == "desktop" {
 		template = fmt.Sprintf(`from script.script_interface import ScriptInterface
 from service.platform.robot.robot_platform import RobotPlatform
+from service.core.opencv.dto import OcrRegion
 
 class %s(ScriptInterface):
     def __init__(self, platform: RobotPlatform):
@@ -303,6 +304,7 @@ class %s(ScriptInterface):
 		// Default to android
 		template = fmt.Sprintf(`from script.script_interface import ScriptInterface
 from service.platform.adb.adb_platform import AdbPlatform
+from service.core.opencv.dto import OcrRegion
 
 class %s(ScriptInterface):
     def __init__(self, platform: AdbPlatform):
@@ -385,4 +387,109 @@ func (sm *ScriptManager) DeleteScript(scriptID string) error {
 		// Legacy flat file structure
 		return os.Remove(fullPath)
 	}
+}
+
+func (sm *ScriptManager) ListAssets(scriptID string) ([]map[string]interface{}, error) {
+	scripts, err := sm.ListScripts()
+	if err != nil {
+		return nil, err
+	}
+
+	var scriptPath string
+	for _, s := range scripts {
+		if s["id"] == scriptID {
+			scriptPath = s["path"]
+			break
+		}
+	}
+
+	if scriptPath == "" {
+		return nil, fmt.Errorf("script not found")
+	}
+
+	// Calculate images dir: script/custom/<name>/images
+	fullPath := filepath.Join(sm.CorePath, scriptPath)
+	imagesDir := filepath.Join(filepath.Dir(fullPath), "images")
+
+	entries, err := os.ReadDir(imagesDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []map[string]interface{}{}, nil
+		}
+		return nil, err
+	}
+
+	var assets []map[string]interface{}
+	for _, e := range entries {
+		if !e.IsDir() {
+			assets = append(assets, map[string]interface{}{
+				"name": e.Name(),
+				"path": fmt.Sprintf("scripts/%s/assets/%s", scriptID, e.Name()), // Virtual path
+			})
+		}
+	}
+	return assets, nil
+}
+
+func (sm *ScriptManager) RenameAsset(scriptID, oldName, newName string) error {
+	scripts, err := sm.ListScripts()
+	if err != nil {
+		return err
+	}
+
+	var scriptPath string
+	for _, s := range scripts {
+		if s["id"] == scriptID {
+			scriptPath = s["path"]
+			break
+		}
+	}
+
+	if scriptPath == "" {
+		return fmt.Errorf("script not found")
+	}
+
+	imagesDir := filepath.Join(filepath.Dir(filepath.Join(sm.CorePath, scriptPath)), "images")
+	oldPath := filepath.Join(imagesDir, oldName)
+	newPath := filepath.Join(imagesDir, newName)
+
+	// Validate paths are within imagesDir
+	if filepath.Dir(oldPath) != imagesDir || filepath.Dir(newPath) != imagesDir {
+		return fmt.Errorf("invalid asset path")
+	}
+
+	if _, err := os.Stat(newPath); err == nil {
+		return fmt.Errorf("file already exists")
+	}
+
+	return os.Rename(oldPath, newPath)
+}
+
+func (sm *ScriptManager) DeleteAsset(scriptID, filename string) error {
+	scripts, err := sm.ListScripts()
+	if err != nil {
+		return err
+	}
+
+	var scriptPath string
+	for _, s := range scripts {
+		if s["id"] == scriptID {
+			scriptPath = s["path"]
+			break
+		}
+	}
+
+	if scriptPath == "" {
+		return fmt.Errorf("script not found")
+	}
+
+	imagesDir := filepath.Join(filepath.Dir(filepath.Join(sm.CorePath, scriptPath)), "images")
+	targetPath := filepath.Join(imagesDir, filename)
+
+	// Validate path
+	if filepath.Dir(targetPath) != imagesDir {
+		return fmt.Errorf("invalid asset path")
+	}
+
+	return os.Remove(targetPath)
 }

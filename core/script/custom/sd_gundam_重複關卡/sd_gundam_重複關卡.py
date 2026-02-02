@@ -1,7 +1,16 @@
 from script.script_interface import ScriptInterface
 from service.platform.adb.adb_platform import AdbPlatform
+from service.core.opencv.dto import OcrRegion
 
 class Sd_gundam_重複關卡Script(ScriptInterface):
+    
+    target_images = [
+            "images/繼續.png",
+            "images/下一步.png",
+            "images/再次挑戰.png",
+            "images/確定.png",
+        ]
+    
     def __init__(self, platform: AdbPlatform):
         self.platform = platform
         self.platform_type = "android"
@@ -14,6 +23,11 @@ class Sd_gundam_重複關卡Script(ScriptInterface):
         print(f"Device ID: {self.deviceId}")
         print(f"Image Root: {self.image_root}")
         print(f"Default Threshold: {self.default_threshold}")
+        
+
+        self.platform.connect(self.deviceId)
+        # self.platform.click_image(f"{self.image_root}/繼續.png", OcrRegion(1069, 629, 1163, 693), self.deviceId)
+        self.platform.click_image("images/繼續.png", OcrRegion(1069, 629, 1163, 693), self.deviceId)
         
         # --- Adb Platform Examples ---
         # self.platform.click(100, 100, self.deviceId)
