@@ -412,7 +412,13 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                             <h4 className="font-bold text-sm uppercase opacity-50 mb-2">Code Sniplets</h4>
                             <div className="space-y-2">
                                 <div className="p-2 bg-base-200 rounded text-xs font-mono break-all cursor-pointer hover:bg-base-300 transition-colors"
-                                    onClick={() => { navigator.clipboard.writeText(`self.platform.click(${mousePos.x}, ${mousePos.y})`); }}
+                                    onClick={() => {
+                                        const text = getSelectionRect() && getSelectionRect()!.w > 5
+                                            ? `self.platform.click_image("assets/${filename}", self.default_threshold, self.deviceId)`
+                                            : `self.platform.click(${mousePos.x}, ${mousePos.y}, self.deviceId)`;
+                                        navigator.clipboard.writeText(text);
+                                        showToast(`Copied: ${text}`, 'success');
+                                    }}
                                     title="Click to copy"
                                 >
                                     {getSelectionRect() && getSelectionRect()!.w > 5 ? (
@@ -421,7 +427,7 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                                 <span>Click Image</span>
                                                 <Copy size={10} />
                                             </div>
-                                            self.platform.click_image("assets/{filename}")
+                                            self.platform.click_image("assets/{filename}", self.default_threshold, self.deviceId)
                                         </>
                                     ) : (
                                         <>
@@ -429,13 +435,16 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                                 <span>Click</span>
                                                 <Copy size={10} />
                                             </div>
-                                            self.platform.click({mousePos.x}, {mousePos.y})
+                                            self.platform.click({mousePos.x}, {mousePos.y}, self.deviceId)
                                         </>
                                     )}
                                 </div>
 
                                 <div className="p-2 bg-base-200 rounded text-xs font-mono break-all cursor-pointer hover:bg-base-300 transition-colors"
-                                    onClick={() => { navigator.clipboard.writeText(`assets/${filename}`); }}
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(`assets/${filename}`);
+                                        showToast("Copied path", 'success');
+                                    }}
                                     title="Click to copy path"
                                 >
                                     <div className="flex justify-between items-center opacity-50 mb-1">
@@ -447,16 +456,22 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
                                 {getSelectionRect() && getSelectionRect()!.w > 5 && (
                                     <div className="p-2 bg-base-200 rounded text-xs font-mono break-all cursor-pointer hover:bg-base-300 transition-colors"
-                                        onClick={() => { navigator.clipboard.writeText(`self.platform.find_image("assets/${filename}")`); }}
-                                        title="Click to copy"
+                                        onClick={() => {
+                                            const text = `self.platform.find_image("assets/${filename}", region, self.deviceId)`;
+                                            navigator.clipboard.writeText(text);
+                                            showToast("Copied find_image", 'success');
+                                        }}
+                                        title="Copy find_image"
                                     >
                                         <div className="flex justify-between items-center opacity-50 mb-1">
                                             <span>Find Image</span>
                                             <Copy size={10} />
                                         </div>
-                                        self.platform.find_image("assets/{filename}")
+                                        self.platform.find_image("assets/{filename}", region, self.deviceId)
                                     </div>
                                 )}
+
+
                             </div>
                         </div>
                     </div>
@@ -474,13 +489,15 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
             </div>
 
             {/* Toast Notification */}
-            {toast && (
-                <div className="toast toast-end z-[100]">
-                    <div className={clsx("alert", toast.type === 'success' ? "alert-success" : "alert-error")}>
-                        <span>{toast.message}</span>
+            {
+                toast && (
+                    <div className="toast toast-end z-[100]">
+                        <div className={clsx("alert", toast.type === 'success' ? "alert-success" : "alert-error")}>
+                            <span>{toast.message}</span>
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };

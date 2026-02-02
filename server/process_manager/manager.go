@@ -282,9 +282,20 @@ class %s(ScriptInterface):
         super().__init__()
 
     def execute(self):
-        print("Starting %s (Desktop)...")
-        # Your desktop automation code here
+        print(f"Starting %s (Desktop)...")
+        
+        # --- Useful Properties ---
+        # print(f"Image Root: {self.image_root}")
+        # print(f"Default Threshold: {self.default_threshold}")
+        # print(f"Device ID: {self.deviceId}") # None for Desktop usually
+        
+        # --- Robot Platform Examples ---
         # self.platform.mouse_move(100, 100)
+        # self.platform.click(100, 100)
+        # self.platform.drag(100, 100, 200, 200, duration=1.0)
+        # self.platform.type_text("Hello World")
+        # self.platform.press_key("enter")
+        
         print("Done.")
 `, className, validName)
 	} else {
@@ -299,9 +310,28 @@ class %s(ScriptInterface):
         super().__init__()
 
     def execute(self):
-        print("Starting %s (Android)...")
-        # Your android automation code here
+        print(f"Starting %s (Android)...")
+        
+        # --- Useful Properties ---
+        print(f"Device ID: {self.deviceId}")
+        print(f"Image Root: {self.image_root}")
+        print(f"Default Threshold: {self.default_threshold}")
+        
+        # --- Adb Platform Examples ---
         # self.platform.click(100, 100)
+        # self.platform.swipe(100, 100, 200, 200, duration=500)
+        # self.platform.input_text("Hello")
+        # self.platform.key_event("KEYCODE_HOME")
+        # self.platform.start_app("com.example.package")
+        # self.platform.stop_app("com.example.package")
+        # self.platform.app_info("com.example.package")
+        
+        # --- Image Recognition ---
+        # result = self.platform.screenshot()
+        # found, point = self.platform.find_image("target_image.png")
+        # if found:
+        #     self.platform.click(point[0], point[1])
+        
         print("Done.")
 `, className, validName)
 	}
