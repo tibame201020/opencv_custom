@@ -97,6 +97,7 @@ func uploadAsset(c *gin.Context) {
 	}
 
 	scriptID := c.PostForm("scriptId")
+	fmt.Printf("UploadAsset Request - ScriptID: '%s'\n", scriptID)
 
 	cwd, _ := os.Getwd()
 	var targetDir string

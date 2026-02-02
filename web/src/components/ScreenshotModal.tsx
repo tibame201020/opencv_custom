@@ -16,6 +16,7 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
     isOpen, onClose, deviceId
 }) => {
     const { activeTabId, scriptTabs } = useAppStore();
+    const activeTab = scriptTabs.find(t => t.tabId === activeTabId);
 
     // Core State
     const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -356,10 +357,27 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                         )}
                     </div>
 
+
+
                     {/* Sidebar / Tools */}
                     <div className="w-80 bg-base-100 border-l border-base-200 p-4 flex flex-col gap-4 shrink-0">
                         <div>
                             <h4 className="font-bold text-sm uppercase opacity-50 mb-2">Actions</h4>
+
+                            {/* Target Indicator */}
+                            <div className="text-xs mb-2 p-2 bg-base-200 rounded border border-base-300">
+                                <span className="opacity-50 block mb-1">Target Location:</span>
+                                {activeTab ? (
+                                    <span className="font-mono text-primary font-bold truncate block" title={activeTab.label}>
+                                        📦 Script: {activeTab.label}
+                                    </span>
+                                ) : (
+                                    <span className="font-mono text-warning font-bold">
+                                        📂 Global Assets
+                                    </span>
+                                )}
+                            </div>
+
                             <div className="grid gap-2">
                                 <div className="form-control">
                                     <label className="label py-1"><span className="label-text">Filename</span></label>
@@ -376,7 +394,7 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                     disabled={!imageUrl || loading || isSaving}
                                 >
                                     {isSaving ? <span className="loading loading-spinner loading-xs"></span> : <Save size={16} />}
-                                    Save to Assets
+                                    Save to {activeTab ? "Script" : "Assets"}
                                 </button>
                                 <a
                                     href={imageUrl || '#'}
