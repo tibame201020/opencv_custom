@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Search, Smartphone, Monitor, Code } from 'lucide-react';
+import { X, Search, Smartphone, Monitor, Code, Check } from 'lucide-react';
 
 interface ApiMethod {
     name: string;
@@ -111,6 +111,26 @@ const API_DATA: ApiMethod[] = [
     }
 ];
 
+const CopyButton: React.FC<{ text: string }> = ({ text }) => {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+        <button
+            className={`btn btn-xs btn-square ${copied ? 'btn-success' : 'btn-ghost'}`}
+            onClick={handleCopy}
+            title="Click to copy example"
+        >
+            {copied ? <Check size={12} /> : <Code size={12} className="opacity-50" />}
+        </button>
+    );
+};
+
 interface ApiRefModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -131,7 +151,7 @@ export const ApiRefModal: React.FC<ApiRefModalProps> = ({ isOpen, onClose }) => 
 
     return (
         <div className="modal modal-open">
-            <div className="modal-box max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden bg-base-100 rounded-xl border border-base-300 shadow-2xl">
+            <div className="modal-box max-w-6xl h-[90vh] flex flex-col p-0 overflow-hidden bg-base-100 rounded-xl border border-base-300 shadow-2xl">
                 {/* Header */}
                 <div className="p-4 border-b border-base-300 flex items-center justify-between bg-base-200">
                     <div className="flex items-center gap-2">
@@ -193,14 +213,11 @@ export const ApiRefModal: React.FC<ApiRefModalProps> = ({ isOpen, onClose }) => 
                                     {api.desc}
                                 </div>
                                 <div className="bg-base-300 rounded p-2 text-xs font-mono relative group-hover:bg-base-200 transition-colors">
-                                    <div className="text-primary/50 mb-1 opacity-50">Example:</div>
-                                    <code className="text-primary-focus cursor-pointer"
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(api.example);
-                                            // showToast logic here would be nice but we don't have it imported easily
-                                        }}
-                                        title="Click to copy example"
-                                    >
+                                    <div className="flex items-center justify-between mb-1">
+                                        <div className="text-primary/50 opacity-50">Example:</div>
+                                        <CopyButton text={api.example} />
+                                    </div>
+                                    <code className="text-primary-focus">
                                         {api.example}
                                     </code>
                                 </div>

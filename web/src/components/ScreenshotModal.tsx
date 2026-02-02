@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { RefreshCw, Download, Save, MousePointer, X, Copy, RotateCcw } from 'lucide-react';
+import { RefreshCw, Download, Save, MousePointer, X, Copy, RotateCcw, Check } from 'lucide-react';
 import clsx from 'clsx';
 import { useAppStore } from '../store';
 
@@ -22,7 +22,14 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
     const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [copiedId, setCopiedId] = useState<string | null>(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+    const handleCopy = (id: string, text: string) => {
+        navigator.clipboard.writeText(text);
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 2000);
+    };
     const imageRef = useRef<HTMLImageElement>(null);
 
     // Asset saving state
@@ -411,13 +418,15 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                         <div className="flex-1">
                             <h4 className="font-bold text-sm uppercase opacity-50 mb-2">Code Sniplets</h4>
                             <div className="space-y-2">
-                                <div className="p-2 bg-base-200 rounded text-xs font-mono break-all cursor-pointer hover:bg-base-300 transition-colors"
+                                <div className={clsx(
+                                    "p-2 bg-base-200 rounded text-xs font-mono break-all cursor-pointer hover:bg-base-300 transition-colors border",
+                                    copiedId === 'click' ? "border-success bg-success/10" : "border-transparent"
+                                )}
                                     onClick={() => {
                                         const text = getSelectionRect() && getSelectionRect()!.w > 5
                                             ? `self.platform.click_image_with_similar("assets/${filename}", self.default_threshold, self.deviceId)`
                                             : `self.platform.click(${mousePos.x}, ${mousePos.y}, self.deviceId)`;
-                                        navigator.clipboard.writeText(text);
-                                        showToast(`Copied: ${text}`, 'success');
+                                        handleCopy('click', text);
                                     }}
                                     title="Click to copy"
                                 >
@@ -425,7 +434,7 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                         <>
                                             <div className="flex justify-between items-center opacity-50 mb-1">
                                                 <span>Click Image</span>
-                                                <Copy size={10} />
+                                                {copiedId === 'click' ? <Check size={10} className="text-success" /> : <Copy size={10} />}
                                             </div>
                                             self.platform.click_image_with_similar("assets/{filename}", self.default_threshold, self.deviceId)
                                         </>
@@ -433,39 +442,41 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                         <>
                                             <div className="flex justify-between items-center opacity-50 mb-1">
                                                 <span>Click</span>
-                                                <Copy size={10} />
+                                                {copiedId === 'click' ? <Check size={10} className="text-success" /> : <Copy size={10} />}
                                             </div>
                                             self.platform.click({mousePos.x}, {mousePos.y}, self.deviceId)
                                         </>
                                     )}
                                 </div>
 
-                                <div className="p-2 bg-base-200 rounded text-xs font-mono break-all cursor-pointer hover:bg-base-300 transition-colors"
-                                    onClick={() => {
-                                        navigator.clipboard.writeText(`assets/${filename}`);
-                                        showToast("Copied path", 'success');
-                                    }}
+                                <div className={clsx(
+                                    "p-2 bg-base-200 rounded text-xs font-mono break-all cursor-pointer hover:bg-base-300 transition-colors border",
+                                    copiedId === 'path' ? "border-success bg-success/10" : "border-transparent"
+                                )}
+                                    onClick={() => handleCopy('path', `assets/${filename}`)}
                                     title="Click to copy path"
                                 >
                                     <div className="flex justify-between items-center opacity-50 mb-1">
                                         <span>Asset Path</span>
-                                        <Copy size={10} />
+                                        {copiedId === 'path' ? <Check size={10} className="text-success" /> : <Copy size={10} />}
                                     </div>
                                     "assets/{filename}"
                                 </div>
 
                                 {getSelectionRect() && getSelectionRect()!.w > 5 && (
-                                    <div className="p-2 bg-base-200 rounded text-xs font-mono break-all cursor-pointer hover:bg-base-300 transition-colors"
+                                    <div className={clsx(
+                                        "p-2 bg-base-200 rounded text-xs font-mono break-all cursor-pointer hover:bg-base-300 transition-colors border",
+                                        copiedId === 'find' ? "border-success bg-success/10" : "border-transparent"
+                                    )}
                                         onClick={() => {
                                             const text = `self.platform.find_image("assets/${filename}", region, self.deviceId)`;
-                                            navigator.clipboard.writeText(text);
-                                            showToast("Copied find_image", 'success');
+                                            handleCopy('find', text);
                                         }}
                                         title="Copy find_image"
                                     >
                                         <div className="flex justify-between items-center opacity-50 mb-1">
                                             <span>Find Image</span>
-                                            <Copy size={10} />
+                                            {copiedId === 'find' ? <Check size={10} className="text-success" /> : <Copy size={10} />}
                                         </div>
                                         self.platform.find_image("assets/{filename}", region, self.deviceId)
                                     </div>
