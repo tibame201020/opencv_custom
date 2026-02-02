@@ -419,8 +419,8 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                             <h4 className="font-bold text-sm uppercase opacity-50 mb-2">Code Sniplets</h4>
                             <div className="space-y-2">
                                 <div className={clsx(
-                                    "p-2 bg-base-200 rounded text-xs font-mono break-all cursor-pointer hover:bg-base-300 transition-colors border",
-                                    copiedId === 'click' ? "border-success bg-success/10" : "border-transparent"
+                                    "rounded-xl overflow-hidden border transition-all duration-300 group selection:bg-success/20",
+                                    copiedId === 'click' ? "border-success bg-success/5 shadow-[0_0_15px_-5px_rgba(34,197,94,0.3)]" : "border-base-300 bg-neutral hover:border-primary/50"
                                 )}
                                     onClick={() => {
                                         const text = getSelectionRect() && getSelectionRect()!.w > 5
@@ -430,43 +430,40 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                     }}
                                     title="Click to copy"
                                 >
-                                    {getSelectionRect() && getSelectionRect()!.w > 5 ? (
-                                        <>
-                                            <div className="flex justify-between items-center opacity-50 mb-1">
-                                                <span>Click Image</span>
-                                                {copiedId === 'click' ? <Check size={10} className="text-success" /> : <Copy size={10} />}
-                                            </div>
-                                            self.platform.click_image_with_similar("assets/{filename}", self.default_threshold, self.deviceId)
-                                        </>
-                                    ) : (
-                                        <>
-                                            <div className="flex justify-between items-center opacity-50 mb-1">
-                                                <span>Click</span>
-                                                {copiedId === 'click' ? <Check size={10} className="text-success" /> : <Copy size={10} />}
-                                            </div>
-                                            self.platform.click({mousePos.x}, {mousePos.y}, self.deviceId)
-                                        </>
-                                    )}
+                                    <div className="flex items-center justify-between px-3 py-1.5 bg-base-300/50 border-b border-base-300/30">
+                                        <div className="text-[10px] uppercase tracking-widest font-bold opacity-30 flex items-center gap-1.5">
+                                            {getSelectionRect() && getSelectionRect()!.w > 5 ? "Click Image" : "Click Interaction"}
+                                        </div>
+                                        {copiedId === 'click' ? <Check size={12} className="text-success animate-in zoom-in" /> : <Copy size={12} className="opacity-30 group-hover:opacity-60 transition-opacity" />}
+                                    </div>
+                                    <div className="p-3 font-mono text-[11px] leading-relaxed break-all text-success/80">
+                                        {getSelectionRect() && getSelectionRect()!.w > 5
+                                            ? `self.platform.click_image_with_similar("assets/${filename}", self.default_threshold, self.deviceId)`
+                                            : `self.platform.click(${mousePos.x}, ${mousePos.y}, self.deviceId)`
+                                        }
+                                    </div>
                                 </div>
 
                                 <div className={clsx(
-                                    "p-2 bg-base-200 rounded text-xs font-mono break-all cursor-pointer hover:bg-base-300 transition-colors border",
-                                    copiedId === 'path' ? "border-success bg-success/10" : "border-transparent"
+                                    "rounded-xl overflow-hidden border transition-all duration-300 group",
+                                    copiedId === 'path' ? "border-success bg-success/5 shadow-[0_0_15px_-5px_rgba(34,197,94,0.3)]" : "border-base-300 bg-neutral hover:border-primary/50"
                                 )}
                                     onClick={() => handleCopy('path', `assets/${filename}`)}
                                     title="Click to copy path"
                                 >
-                                    <div className="flex justify-between items-center opacity-50 mb-1">
-                                        <span>Asset Path</span>
-                                        {copiedId === 'path' ? <Check size={10} className="text-success" /> : <Copy size={10} />}
+                                    <div className="flex items-center justify-between px-3 py-1.5 bg-base-300/50 border-b border-base-300/30">
+                                        <div className="text-[10px] uppercase tracking-widest font-bold opacity-30">Asset Path</div>
+                                        {copiedId === 'path' ? <Check size={12} className="text-success animate-in zoom-in" /> : <Copy size={12} className="opacity-30 group-hover:opacity-60 transition-opacity" />}
                                     </div>
-                                    "assets/{filename}"
+                                    <div className="p-3 font-mono text-[11px] text-success/80">
+                                        "assets/{filename}"
+                                    </div>
                                 </div>
 
                                 {getSelectionRect() && getSelectionRect()!.w > 5 && (
                                     <div className={clsx(
-                                        "p-2 bg-base-200 rounded text-xs font-mono break-all cursor-pointer hover:bg-base-300 transition-colors border",
-                                        copiedId === 'find' ? "border-success bg-success/10" : "border-transparent"
+                                        "rounded-xl overflow-hidden border transition-all duration-300 group",
+                                        copiedId === 'find' ? "border-success bg-success/5 shadow-[0_0_15px_-5px_rgba(34,197,94,0.3)]" : "border-base-300 bg-neutral hover:border-primary/50"
                                     )}
                                         onClick={() => {
                                             const text = `self.platform.find_image("assets/${filename}", region, self.deviceId)`;
@@ -474,11 +471,13 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                         }}
                                         title="Copy find_image"
                                     >
-                                        <div className="flex justify-between items-center opacity-50 mb-1">
-                                            <span>Find Image</span>
-                                            {copiedId === 'find' ? <Check size={10} className="text-success" /> : <Copy size={10} />}
+                                        <div className="flex items-center justify-between px-3 py-1.5 bg-base-300/50 border-b border-base-300/30">
+                                            <div className="text-[10px] uppercase tracking-widest font-bold opacity-30">Find Recognition</div>
+                                            {copiedId === 'find' ? <Check size={12} className="text-success animate-in zoom-in" /> : <Copy size={12} className="opacity-30 group-hover:opacity-60 transition-opacity" />}
                                         </div>
-                                        self.platform.find_image("assets/{filename}", region, self.deviceId)
+                                        <div className="p-3 font-mono text-[11px] leading-relaxed break-all text-success/80">
+                                            self.platform.find_image("assets/{filename}", region, self.deviceId)
+                                        </div>
                                     </div>
                                 )}
 

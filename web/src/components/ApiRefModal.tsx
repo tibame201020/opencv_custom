@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Search, Smartphone, Monitor, Code, Check } from 'lucide-react';
+import { X, Search, Smartphone, Monitor, Code, Check, Copy } from 'lucide-react';
+import clsx from 'clsx';
 
 interface ApiMethod {
     name: string;
@@ -122,11 +123,14 @@ const CopyButton: React.FC<{ text: string }> = ({ text }) => {
 
     return (
         <button
-            className={`btn btn-xs btn-square ${copied ? 'btn-success' : 'btn-ghost'}`}
+            className={clsx(
+                "btn btn-xs btn-square transition-all duration-300",
+                copied ? "btn-success shadow-sm shadow-success/20" : "btn-ghost hover:bg-base-300"
+            )}
             onClick={handleCopy}
             title="Click to copy example"
         >
-            {copied ? <Check size={12} /> : <Code size={12} className="opacity-50" />}
+            {copied ? <Check size={12} className="text-success-content" /> : <Copy size={12} className="opacity-60" />}
         </button>
     );
 };
@@ -151,40 +155,42 @@ export const ApiRefModal: React.FC<ApiRefModalProps> = ({ isOpen, onClose }) => 
 
     return (
         <div className="modal modal-open">
-            <div className="modal-box max-w-6xl h-[90vh] flex flex-col p-0 overflow-hidden bg-base-100 rounded-xl border border-base-300 shadow-2xl">
+            <div className="modal-box max-w-6xl h-[90vh] flex flex-col p-0 overflow-hidden bg-base-100 rounded-2xl border border-base-300 shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)]">
                 {/* Header */}
-                <div className="p-4 border-b border-base-300 flex items-center justify-between bg-base-200">
-                    <div className="flex items-center gap-2">
-                        <Code className="text-primary" />
-                        <h3 className="font-bold text-lg">Python API Reference</h3>
+                <div className="p-5 border-b border-base-300 flex items-center justify-between bg-base-200/50 backdrop-blur-md">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary/10 rounded-lg">
+                            <Code className="text-primary" size={20} />
+                        </div>
+                        <h3 className="font-bold text-xl tracking-tight">Python API Reference</h3>
                     </div>
-                    <button className="btn btn-sm btn-circle btn-ghost" onClick={onClose}>
+                    <button className="btn btn-sm btn-circle btn-ghost hover:bg-error/10 hover:text-error transition-colors" onClick={onClose}>
                         <X size={20} />
                     </button>
                 </div>
 
                 {/* Filters & Search */}
-                <div className="p-4 bg-base-100 flex gap-4 items-center">
-                    <div className="join">
+                <div className="p-4 bg-base-100 flex gap-4 items-center border-b border-base-200">
+                    <div className="join bg-base-200 p-1 rounded-xl">
                         <button
-                            className={`btn btn-sm join-item ${filter === 'all' ? 'btn-primary' : 'btn-ghost border border-base-300'}`}
+                            className={`btn btn-sm join-item border-none ${filter === 'all' ? 'btn-primary shadow-md' : 'btn-ghost opacity-60'}`}
                             onClick={() => setFilter('all')}
                         >All</button>
                         <button
-                            className={`btn btn-sm join-item ${filter === 'android' ? 'btn-primary' : 'btn-ghost border border-base-300'}`}
+                            className={`btn btn-sm join-item border-none ${filter === 'android' ? 'btn-primary shadow-md' : 'btn-ghost opacity-60'}`}
                             onClick={() => setFilter('android')}
                         ><Smartphone size={14} className="mr-1" /> Android</button>
                         <button
-                            className={`btn btn-sm join-item ${filter === 'desktop' ? 'btn-primary' : 'btn-ghost border border-base-300'}`}
+                            className={`btn btn-sm join-item border-none ${filter === 'desktop' ? 'btn-primary shadow-md' : 'btn-ghost opacity-60'}`}
                             onClick={() => setFilter('desktop')}
                         ><Monitor size={14} className="mr-1" /> Desktop</button>
                     </div>
                     <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" size={16} />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30" size={18} />
                         <input
                             type="text"
-                            placeholder="Search methods or description..."
-                            className="input input-sm input-bordered w-full pl-10"
+                            placeholder="Search methods, parameters or descriptions..."
+                            className="input input-bordered w-full pl-12 bg-base-200 border-none focus:bg-base-300 transition-all rounded-xl h-10"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             autoFocus
@@ -193,33 +199,40 @@ export const ApiRefModal: React.FC<ApiRefModalProps> = ({ isOpen, onClose }) => 
                 </div>
 
                 {/* List Container */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 pt-2">
+                <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-base-100">
                     {filteredApi.length === 0 ? (
-                        <div className="text-center py-20 opacity-30">No matching methods found</div>
+                        <div className="flex flex-col items-center justify-center py-40 opacity-20">
+                            <Search size={64} className="mb-4" />
+                            <div className="text-xl">No matching methods found</div>
+                        </div>
                     ) : (
                         filteredApi.map((api, idx) => (
-                            <div key={idx} className="bg-base-200/50 rounded-lg border border-base-300 p-4 hover:border-primary/50 transition-colors group">
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-primary font-bold font-mono text-base">{api.name}</span>
-                                        <span className="text-xs opacity-50 font-mono">({api.params})</span>
-                                    </div>
-                                    <div className="flex gap-1">
-                                        {(api.platform === 'android' || api.platform === 'both') && <Smartphone size={12} className="opacity-30" />}
-                                        {(api.platform === 'desktop' || api.platform === 'both') && <Monitor size={12} className="opacity-30" />}
+                            <div key={idx} className="group relative">
+                                <div className="flex items-start justify-between mb-3">
+                                    <div className="flex flex-col">
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-primary font-bold font-mono text-lg group-hover:text-primary-focus transition-colors">{api.name}</span>
+                                            <div className="flex gap-1.5">
+                                                {(api.platform === 'android' || api.platform === 'both') && <div title="Android" className="badge badge-xs badge-outline border-primary/30 text-primary/60 px-1">ADB</div>}
+                                                {(api.platform === 'desktop' || api.platform === 'both') && <div title="Desktop" className="badge badge-xs badge-outline border-secondary/30 text-secondary/60 px-1">ROBOT</div>}
+                                            </div>
+                                        </div>
+                                        <div className="text-xs opacity-40 font-mono mt-1">{api.params}</div>
                                     </div>
                                 </div>
-                                <div className="text-sm border-l-2 border-primary/20 pl-3 mb-3 text-base-content/80">
+
+                                <p className="text-sm text-base-content/70 mb-4 font-sans leading-relaxed">
                                     {api.desc}
-                                </div>
-                                <div className="bg-base-300 rounded p-2 text-xs font-mono relative group-hover:bg-base-200 transition-colors">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <div className="text-primary/50 opacity-50">Example:</div>
+                                </p>
+
+                                <div className="relative overflow-hidden rounded-xl border border-base-300 bg-neutral shadow-inner">
+                                    <div className="flex items-center justify-between px-4 py-2 bg-base-300/50 border-b border-base-300/30">
+                                        <div className="text-[10px] uppercase tracking-widest font-bold opacity-30">Example Code</div>
                                         <CopyButton text={api.example} />
                                     </div>
-                                    <code className="text-primary-focus">
+                                    <div className="p-4 font-mono text-sm overflow-x-auto whitespace-nowrap text-success/90 selection:bg-success/20 selection:text-success">
                                         {api.example}
-                                    </code>
+                                    </div>
                                 </div>
                             </div>
                         ))
