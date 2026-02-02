@@ -161,25 +161,41 @@ def cmd_list(args):
     # Scan custom scripts
     custom_dir = project_root / "script" / "custom"
     if custom_dir.exists():
-        for file in custom_dir.glob("*.py"):
-            if file.name == "__init__.py": continue
-            script_id = file.stem
-            # Determine platform by reading file content
+        # Check both files and directories
+        for path in custom_dir.iterdir():
+            if path.name == "__init__.py": continue
+            
+            script_id = path.stem
             platform = "android"
-            try:
-                content = file.read_text(encoding='utf-8')
-                if "RobotPlatform" in content:
-                    platform = "desktop"
-            except:
-                pass
+            script_path = ""
+            
+            if path.is_file() and path.suffix == ".py":
+                # Legacy: script/custom/foo.py
+                script_path = f"script/custom/{path.name}"
+                try:
+                   content = path.read_text(encoding='utf-8')
+                   if "RobotPlatform" in content: platform = "desktop"
+                except: pass
+            
+            elif path.is_dir():
+                # New: script/custom/foo/foo.py
+                inner_file = path / f"{path.name}.py"
+                if inner_file.exists():
+                    script_path = f"script/custom/{path.name}/{path.name}.py"
+                    try:
+                       content = inner_file.read_text(encoding='utf-8')
+                       if "RobotPlatform" in content: platform = "desktop"
+                    except: pass
+            
+            if script_path:
+                scripts.append({
+                    "id": script_id,
+                    "name": script_id.capitalize(),
+                    "platform": platform,
+                    "description": "User custom script",
+                    "path": script_path
+                })
 
-            scripts.append({
-                "id": script_id,
-                "name": script_id.capitalize(),
-                "platform": platform,
-                "description": "User custom script",
-                "path": f"script/custom/{file.name}"
-            })
     # We output the list raw JSON, NOT triggering the hook because LIST command result is parsed by backend
     # So we temporarily restore stdout or just use sys.__stdout__
     sys.stdout = sys.__stdout__
@@ -208,10 +224,19 @@ def cmd_run(args):
         else:
             # Try to load dynamic custom script
             try:
-                # Check if script exists in custom folder
-                custom_path = project_root / "script" / "custom" / f"{script_id}.py"
-                if custom_path.exists():
-                    module_name = f"script.custom.{script_id}"
+                # Check for New Structure: script/custom/<id>/<id>.py
+                new_struct_path = project_root / "script" / "custom" / script_id / f"{script_id}.py"
+                # Check for Old Structure: script/custom/<id>.py
+                old_struct_path = project_root / "script" / "custom" / f"{script_id}.py"
+                
+                module_name = ""
+                
+                if new_struct_path.exists():
+                     module_name = f"script.custom.{script_id}.{script_id}"
+                elif old_struct_path.exists():
+                     module_name = f"script.custom.{script_id}"
+                
+                if module_name:
                     module = importlib.import_module(module_name)
                     
                     # Find class that ends with 'Script'
@@ -263,8 +288,6 @@ def cmd_run(args):
                                 
                             adb_platform = AdbPlatform(adb, open_cv_service)
                             script_instance = script_class(adb_platform)
-                            
-                        script_instance.execute()
                             
                         script_instance.execute()
                         return

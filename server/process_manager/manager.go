@@ -240,8 +240,27 @@ func (sm *ScriptManager) CreateScript(name string, platform string) error {
 	}
 
 	validName := strings.ReplaceAll(name, " ", "_") // simple sanitize
+
+	// Create Script Directory: script/custom/<name>
+	scriptDir := filepath.Join(customDir, validName)
+	if err := os.MkdirAll(scriptDir, 0755); err != nil {
+		return fmt.Errorf("failed to create script directory: %v", err)
+	}
+
+	// Create Images Directory: script/custom/<name>/images
+	imagesDir := filepath.Join(scriptDir, "images")
+	if err := os.MkdirAll(imagesDir, 0755); err != nil {
+		return fmt.Errorf("failed to create images directory: %v", err)
+	}
+
+	// Create __init__.py
+	initPath := filepath.Join(scriptDir, "__init__.py")
+	if _, err := os.Stat(initPath); os.IsNotExist(err) {
+		os.WriteFile(initPath, []byte(""), 0644)
+	}
+
 	filename := validName + ".py"
-	fullPath := filepath.Join(customDir, filename)
+	fullPath := filepath.Join(scriptDir, filename)
 
 	// check if exists
 	if _, err := os.Stat(fullPath); err == nil {
@@ -309,11 +328,26 @@ func (sm *ScriptManager) DeleteScript(scriptID string) error {
 	}
 
 	// Safety: Only delete files in script/custom
-	// script/custom/foo.py
-	if !strings.HasPrefix(filepath.ToSlash(scriptPath), "script/custom/") {
+	// Expect format: script/custom/<name>/<name>.py
+	cleanPath := filepath.ToSlash(scriptPath)
+	if !strings.HasPrefix(cleanPath, "script/custom/") {
 		return fmt.Errorf("cannot delete built-in or non-custom scripts")
 	}
 
+	// If it's the new folder structure, scriptPath ends with .py
+	// We want to remove the PARENT directory if it matches the script name
 	fullPath := filepath.Join(sm.CorePath, scriptPath)
-	return os.Remove(fullPath)
+
+	// Check if parent dir name matches script name (without ext)
+	parentDir := filepath.Dir(fullPath)
+	scriptName := strings.TrimSuffix(filepath.Base(fullPath), ".py")
+	parentName := filepath.Base(parentDir)
+
+	if scriptName == parentName {
+		// It is the new structure, remove the folder
+		return os.RemoveAll(parentDir)
+	} else {
+		// Legacy flat file structure
+		return os.Remove(fullPath)
+	}
 }

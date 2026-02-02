@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { RefreshCw, Download, Save, MousePointer, X, Copy, RotateCcw } from 'lucide-react';
 import clsx from 'clsx';
+import { useAppStore } from '../store';
 
 const API_Base = 'http://localhost:8080/api';
 
@@ -14,6 +15,8 @@ interface ScreenshotModalProps {
 export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
     isOpen, onClose, deviceId
 }) => {
+    const { activeTabId, scriptTabs } = useAppStore();
+
     // Core State
     const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -225,6 +228,12 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
             const formData = new FormData();
             formData.append('file', blob, filename);
+
+            // Append active script ID if available
+            const activeTab = scriptTabs.find(t => t.tabId === activeTabId);
+            if (activeTab) {
+                formData.append('scriptId', activeTab.scriptId);
+            }
 
             const res = await axios.post(`${API_Base}/assets`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }

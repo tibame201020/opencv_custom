@@ -96,22 +96,39 @@ func uploadAsset(c *gin.Context) {
 		return
 	}
 
+	scriptID := c.PostForm("scriptId")
+
 	cwd, _ := os.Getwd()
-	assetsDir := filepath.Join(cwd, "..", "core", "assets")
-	if err := os.MkdirAll(assetsDir, 0755); err != nil {
-		c.JSON(500, gin.H{"error": "Failed to create assets directory"})
+	var targetDir string
+	var returnPath string
+
+	if scriptID != "" {
+		// New Structure: core/script/custom/<scriptId>/images
+		// Validate scriptID simple characters
+		scriptID = strings.ReplaceAll(scriptID, " ", "_") // Sanitize slightly
+		// Need validation? Assuming ID matches folder name for now.
+		targetDir = filepath.Join(cwd, "..", "core", "script", "custom", scriptID, "images")
+		returnPath = "script/custom/" + scriptID + "/images/" + filepath.Base(file.Filename)
+	} else {
+		// Legacy: core/assets
+		targetDir = filepath.Join(cwd, "..", "core", "assets")
+		returnPath = "assets/" + filepath.Base(file.Filename)
+	}
+
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		c.JSON(500, gin.H{"error": "Failed to create assets directory: " + err.Error()})
 		return
 	}
 
 	filename := filepath.Base(file.Filename)
-	targetPath := filepath.Join(assetsDir, filename)
+	targetPath := filepath.Join(targetDir, filename)
 
 	if err := c.SaveUploadedFile(file, targetPath); err != nil {
 		c.JSON(500, gin.H{"error": "Failed to save file: " + err.Error()})
 		return
 	}
 
-	c.JSON(200, gin.H{"status": "uploaded", "path": "assets/" + filename})
+	c.JSON(200, gin.H{"status": "uploaded", "path": returnPath})
 }
 
 func listScripts(c *gin.Context) {
