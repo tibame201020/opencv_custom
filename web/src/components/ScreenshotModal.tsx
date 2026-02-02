@@ -414,7 +414,7 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                 <div className="p-2 bg-base-200 rounded text-xs font-mono break-all cursor-pointer hover:bg-base-300 transition-colors"
                                     onClick={() => {
                                         const text = getSelectionRect() && getSelectionRect()!.w > 5
-                                            ? `self.platform.click_image("assets/${filename}", self.default_threshold, self.deviceId)`
+                                            ? `self.platform.click_image_with_similar("assets/${filename}", self.default_threshold, self.deviceId)`
                                             : `self.platform.click(${mousePos.x}, ${mousePos.y}, self.deviceId)`;
                                         navigator.clipboard.writeText(text);
                                         showToast(`Copied: ${text}`, 'success');
@@ -427,7 +427,7 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                                 <span>Click Image</span>
                                                 <Copy size={10} />
                                             </div>
-                                            self.platform.click_image("assets/{filename}", self.default_threshold, self.deviceId)
+                                            self.platform.click_image_with_similar("assets/{filename}", self.default_threshold, self.deviceId)
                                         </>
                                     ) : (
                                         <>

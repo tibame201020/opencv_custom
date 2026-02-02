@@ -239,7 +239,8 @@ func (sm *ScriptManager) CreateScript(name string, platform string) error {
 		return err
 	}
 
-	validName := strings.ReplaceAll(name, " ", "_") // simple sanitize
+	validName := strings.ReplaceAll(name, " ", "_")
+	validName = strings.ReplaceAll(validName, "-", "_") // Hyphens are invalid in Python class/module names
 
 	// Create Script Directory: script/custom/<name>
 	scriptDir := filepath.Join(customDir, validName)
@@ -318,19 +319,23 @@ class %s(ScriptInterface):
         print(f"Default Threshold: {self.default_threshold}")
         
         # --- Adb Platform Examples ---
-        # self.platform.click(100, 100)
-        # self.platform.swipe(100, 100, 200, 200, duration=500)
-        # self.platform.input_text("Hello")
-        # self.platform.key_event("KEYCODE_HOME")
-        # self.platform.start_app("com.example.package")
-        # self.platform.stop_app("com.example.package")
-        # self.platform.app_info("com.example.package")
+        # self.platform.click(100, 100, self.deviceId)
+        # self.platform.swipe(100, 100, 200, 200, self.deviceId)
+        # self.platform.swipe_with_duration(100, 100, 200, 200, 500, self.deviceId)
+        # self.platform.type_text("Hello", self.deviceId)
+        # self.platform.key_event("KEYCODE_HOME", self.deviceId)
+        # self.platform.start_app("com.example.package", self.deviceId)
+        # self.platform.stop_app("com.example.package", self.deviceId)
         
         # --- Image Recognition ---
-        # result = self.platform.screenshot()
-        # found, point = self.platform.find_image("target_image.png")
+        # mat = self.platform.take_snapshot(self.deviceId)
+        # found, point = self.platform.find_image_full("target_image.png", self.deviceId)
         # if found:
-        #     self.platform.click(point[0], point[1])
+        #     self.platform.click(point[0], point[1], self.deviceId)
+        
+        # --- Click Image Shortcuts ---
+        # self.platform.click_image_full("target.png", self.deviceId)
+        # self.platform.click_image_with_similar("target.png", 0.9, self.deviceId)
         
         print("Done.")
 `, className, validName)

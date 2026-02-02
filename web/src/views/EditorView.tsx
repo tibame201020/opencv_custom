@@ -2,9 +2,10 @@ import React, { useEffect, useState, useRef } from 'react';
 import Editor, { type OnMount } from '@monaco-editor/react';
 import axios from 'axios';
 import { useAppStore } from '../store';
-import { Save, Play, FileCode, Plus, Trash2, Camera } from 'lucide-react';
+import { Save, Play, FileCode, Plus, Trash2, Camera, HelpCircle } from 'lucide-react';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ScreenshotModal } from '../components/ScreenshotModal';
+import { ApiRefModal } from '../components/ApiRefModal';
 
 const API_Base = "http://localhost:8080/api";
 
@@ -31,6 +32,7 @@ export const EditorView: React.FC = () => {
 
     // Confirmation State
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isApiRefModalOpen, setIsApiRefModalOpen] = useState(false);
 
     const editorRef = useRef<any>(null);
 
@@ -237,6 +239,13 @@ export const EditorView: React.FC = () => {
                                 </div>
                             )}
 
+                            <button
+                                className="btn btn-sm btn-ghost gap-2 text-primary"
+                                onClick={() => setIsApiRefModalOpen(true)}
+                                title="API Reference"
+                            >
+                                <HelpCircle size={16} /> API Ref
+                            </button>
                             <div className="flex-1"></div> {/* Spacer to push Delete to right */}
 
                             <button
@@ -349,6 +358,11 @@ export const EditorView: React.FC = () => {
                 isOpen={isScreenshotModalOpen}
                 onClose={() => setIsScreenshotModalOpen(false)}
                 deviceId={selectedDevice}
+            />
+
+            <ApiRefModal
+                isOpen={isApiRefModalOpen}
+                onClose={() => setIsApiRefModalOpen(false)}
             />
         </div>
     );
