@@ -289,6 +289,10 @@ def cmd_run(args):
                             adb_platform = AdbPlatform(adb, open_cv_service)
                             script_instance = script_class(adb_platform)
                             
+                        # Inject deviceId if available
+                        if 'device_id' in locals() and device_id:
+                            script_instance.deviceId = device_id
+                            
                         script_instance.execute()
                         return
 

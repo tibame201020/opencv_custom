@@ -15,6 +15,7 @@ class ScriptInterface(ABC):
         script_dir = Path(__file__).parent.resolve()  # py-version/script
         self.image_root: str = str(script_dir / "images")  # 圖片根目錄，相對於 script 目錄
         self.default_threshold: float = 0.8  # 預設辨識度閾值
+        self.deviceId: Optional[str] = None  # 裝置 ID (注入)
     
     @abstractmethod
     def execute(self) -> None:
