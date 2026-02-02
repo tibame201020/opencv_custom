@@ -89,6 +89,48 @@ const API_DATA: ApiMethod[] = [
         platform: 'android'
     },
     {
+        name: 'exec',
+        params: 'command: str',
+        desc: '發送原生 ADB 命令。會自動注入目前裝置 ID 並解析 adb 執行檔路徑。',
+        example: 'self.platform.exec("adb shell wm size")',
+        platform: 'android'
+    },
+    {
+        name: 'adb: Get Model',
+        params: '',
+        desc: '取得行動裝置型號',
+        example: 'model = self.platform.exec("adb shell getprop ro.product.model")',
+        platform: 'android'
+    },
+    {
+        name: 'adb: Package Activity',
+        params: '',
+        desc: '取得目前前景運行的 Activity',
+        example: 'activity = self.platform.exec("adb shell dumpsys window | grep mCurrentFocus")',
+        platform: 'android'
+    },
+    {
+        name: 'adb: List Packages',
+        params: '',
+        desc: '列出所有已安裝的套件',
+        example: 'packages = self.platform.exec("adb shell pm list packages")',
+        platform: 'android'
+    },
+    {
+        name: 'adb: Screenshot (Pull)',
+        params: '',
+        desc: '使用原生命令截圖到裝置並拉回電腦',
+        example: 'self.platform.exec("adb shell screencap -p /sdcard/s.png")\nself.platform.exec("adb pull /sdcard/s.png .")',
+        platform: 'android'
+    },
+    {
+        name: 'adb: Unlock Screen',
+        params: '',
+        desc: '模擬按下電源鍵與解鎖',
+        example: 'self.platform.exec("adb shell input keyevent 26")\nself.platform.exec("adb shell input keyevent 82")',
+        platform: 'android'
+    },
+    {
         name: 'sleep',
         params: 'seconds: int',
         desc: '程式暫停 (秒)',

@@ -220,13 +220,7 @@ class AdbPlatform(PlatformService):
         time.sleep(seconds)
     
     def exec(self, command: str) -> str:
-        """發送 ADB 命令"""
-        # 替換 adb 為 platform-tools\\adb.exe (Windows) 或 platform-tools/adb (Linux/Mac)
-        import os
-        if os.name == 'nt':
-            command = command.replace("adb ", "platform-tools\\adb.exe ")
-        else:
-            command = command.replace("adb ", "platform-tools/adb ")
+        """發送原生 ADB 命令（會自動注入目前裝置 ID）"""
         return self.adb.exec(command)
     
     def swipe(self, x1: float, y1: float, x2: float, y2: float, device_id: str = None) -> str:

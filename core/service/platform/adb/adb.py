@@ -18,6 +18,12 @@ class Adb:
         if self.device_id and ":" in self.device_id:
              self.exec(f"adb connect {self.device_id}")
 
+    def _get_adb_bin(self) -> str:
+        """取得 ADB 執行檔路徑"""
+        from .adb_command import AdbCommand
+        # 借用 AdbCommand 的路徑解析邏輯，但去掉尾端空格
+        return AdbCommand.DEVICE_LIST._get_adb_platform().strip()
+
     def exec(self, command: str) -> str:
         """
         執行 ADB 命令
@@ -28,13 +34,16 @@ class Adb:
         Returns:
             標準輸出字串
         """
-        # Inject Device ID if present and command is adb command
-        if self.device_id and command.strip().startswith("adb "):
-             # Check if -s is already present?
-             if " -s " not in command:
-                 parts = command.strip().split(" ", 1)
-                 if len(parts) == 2:
-                     command = f"adb -s {self.device_id} {parts[1]}"
+        adb_bin = self._get_adb_bin()
+        
+        # 1. 統一將 "adb " 換成完整的 adb_bin 路徑
+        if command.strip().startswith("adb "):
+            command = command.strip().replace("adb ", f"{adb_bin} ", 1)
+        
+        # 2. 如果有指定 device_id 且命令中還沒有 -s，則注入 -s
+        if self.device_id and adb_bin in command and " -s " not in command:
+            # 在 adb_bin 後注入 -s id
+            command = command.replace(adb_bin, f"{adb_bin} -s {self.device_id}", 1)
         
         try:
             result = subprocess.run(
