@@ -16,11 +16,12 @@ interface AssetExplorerProps {
     scriptId: string | null;
     width: number;
     collapsed: boolean;
+    refreshKey?: number;
     onToggle: () => void;
     onResize: (width: number) => void;
 }
 
-export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, collapsed, onToggle, onResize }) => {
+export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, collapsed, refreshKey, onToggle, onResize }) => {
     const [assets, setAssets] = useState<Asset[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedAsset, setSelectedAsset] = useState<string | null>(null);
@@ -94,7 +95,7 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
     useEffect(() => {
         if (scriptId) fetchAssets();
         else setAssets([]);
-    }, [scriptId]);
+    }, [scriptId, refreshKey]);
 
     // Close context menu on click elsewhere
     useEffect(() => {

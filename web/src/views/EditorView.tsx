@@ -39,8 +39,14 @@ export const EditorView: React.FC = () => {
     // Asset Explorer State
     const [assetExplorerCollapsed, setAssetExplorerCollapsed] = useState(false);
     const [assetExplorerWidth, setAssetExplorerWidth] = useState(250);
+    const [assetRefreshTrigger, setAssetRefreshTrigger] = useState(0);
 
     const editorRef = useRef<any>(null);
+    const selectedScriptIdRef = useRef<string | null>(selectedScriptId);
+
+    useEffect(() => {
+        selectedScriptIdRef.current = selectedScriptId;
+    }, [selectedScriptId]);
 
     useEffect(() => {
         fetchScripts();
@@ -90,11 +96,16 @@ export const EditorView: React.FC = () => {
     };
 
     const handleSave = async () => {
-        if (!selectedScriptId) return;
+        const targetId = selectedScriptIdRef.current;
+        if (!targetId || !editorRef.current) return;
+
+        const currentCode = editorRef.current.getValue();
         try {
-            await axios.post(`${API_Base}/scripts/${selectedScriptId}/content`, { content: code });
-            setOriginalCode(code);
+            await axios.post(`${API_Base}/scripts/${targetId}/content`, { content: currentCode });
+            setOriginalCode(currentCode);
             setIsDirty(false);
+            // Refresh local state just in case
+            setCode(currentCode);
         } catch (err) {
             console.error("Failed to save", err);
             alert("Failed to save script");
@@ -206,6 +217,7 @@ export const EditorView: React.FC = () => {
                     scriptId={selectedScriptId}
                     width={assetExplorerCollapsed ? 40 : assetExplorerWidth}
                     collapsed={assetExplorerCollapsed}
+                    refreshKey={assetRefreshTrigger}
                     onToggle={() => setAssetExplorerCollapsed(!assetExplorerCollapsed)}
                     onResize={(w: number) => setAssetExplorerWidth(w)}
                 />
@@ -380,7 +392,10 @@ export const EditorView: React.FC = () => {
             {/* Android Screenshot Modal */}
             <ScreenshotModal
                 isOpen={isScreenshotModalOpen}
-                onClose={() => setIsScreenshotModalOpen(false)}
+                onClose={() => {
+                    setIsScreenshotModalOpen(false);
+                    setAssetRefreshTrigger(prev => prev + 1);
+                }}
                 deviceId={selectedDevice}
                 scriptId={selectedScriptId}
             />
