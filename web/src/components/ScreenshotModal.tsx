@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { RefreshCw, Download, Save, MousePointer, X, Copy, RotateCcw, Check } from 'lucide-react';
+import { RefreshCw, Save, MousePointer, X, Copy, RotateCcw, Check } from 'lucide-react';
 import clsx from 'clsx';
 import { useAppStore } from '../store';
 
@@ -41,6 +41,8 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
     // Resizing State
     const [size, setSize] = useState({ width: 1280, height: 800 });
+    const [regionPaddingX, setRegionPaddingX] = useState(5);
+    const [regionPaddingY, setRegionPaddingY] = useState(5);
     const isResizing = useRef(false);
     const lastMousePos = useRef({ x: 0, y: 0 });
 
@@ -325,23 +327,40 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                     onMouseDown={handleImageMouseDown}
                                     draggable={false}
                                 />
-                                {/* Selection Overlay */}
-                                {selection.start && selection.end && (
-                                    <div
-                                        className="absolute border-2 border-green-500 bg-green-500/20 pointer-events-none"
-                                        style={{
-                                            left: Math.min(selection.start.x, selection.end.x),
-                                            top: Math.min(selection.start.y, selection.end.y),
-                                            width: Math.abs(selection.end.x - selection.start.x),
-                                            height: Math.abs(selection.end.y - selection.start.y)
-                                        }}
-                                    >
-                                        {/* Dimensions Badge */}
-                                        <div className="absolute -top-6 left-0 bg-green-600 text-white text-[10px] px-1 rounded">
-                                            {Math.round(Math.abs(selection.end.x - selection.start.x) * (imageRef.current?.naturalWidth || 0) / (imageRef.current?.getBoundingClientRect().width || 1))} x
-                                            {Math.round(Math.abs(selection.end.y - selection.start.y) * (imageRef.current?.naturalHeight || 0) / (imageRef.current?.getBoundingClientRect().height || 1))}
+                                {/* Selection Rect */}
+                                {getSelectionRect() && (
+                                    <>
+                                        {/* Search Region (Dashed) */}
+                                        <div
+                                            className="absolute border border-dashed border-success/40 pointer-events-none"
+                                            style={{
+                                                left: getSelectionRect()!.x - (regionPaddingX / (imageRef.current?.naturalWidth || 1)) * (imageRef.current?.getBoundingClientRect().width || 0),
+                                                top: getSelectionRect()!.y - (regionPaddingY / (imageRef.current?.naturalHeight || 1)) * (imageRef.current?.getBoundingClientRect().height || 0),
+                                                width: getSelectionRect()!.w + (regionPaddingX * 2 / (imageRef.current?.naturalWidth || 1)) * (imageRef.current?.getBoundingClientRect().width || 0),
+                                                height: getSelectionRect()!.h + (regionPaddingY * 2 / (imageRef.current?.naturalHeight || 1)) * (imageRef.current?.getBoundingClientRect().height || 0),
+                                                transition: 'all 0.1s ease-out'
+                                            }}
+                                        >
+                                            <div className="absolute -top-4 left-0 text-[10px] text-success/60 font-mono">Search Region</div>
                                         </div>
-                                    </div>
+
+                                        {/* Actual Selection */}
+                                        <div
+                                            className="absolute border-2 border-primary shadow-[0_0_15px_rgba(59,130,246,0.5)] pointer-events-none"
+                                            style={{
+                                                left: getSelectionRect()!.x,
+                                                top: getSelectionRect()!.y,
+                                                width: getSelectionRect()!.w,
+                                                height: getSelectionRect()!.h,
+                                            }}
+                                        >
+                                            <div className="absolute -top-6 left-0 bg-primary text-white text-[10px] px-1.5 py-0.5 rounded shadow-lg font-bold flex items-center gap-1">
+                                                <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
+                                                {Math.round(getSelectionRect()!.w * (imageRef.current?.naturalWidth || 0) / (imageRef.current?.getBoundingClientRect().width || 1))} x
+                                                {Math.round(getSelectionRect()!.h * (imageRef.current?.naturalHeight || 0) / (imageRef.current?.getBoundingClientRect().height || 1))}
+                                            </div>
+                                        </div>
+                                    </>
                                 )}
                             </div>
                         ) : (
@@ -367,89 +386,138 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
 
                     {/* Sidebar / Tools */}
-                    <div className="w-80 bg-base-100 border-l border-base-200 p-4 flex flex-col gap-4 shrink-0">
+                    <div className="w-80 bg-base-100 border-l border-base-200 p-4 flex flex-col gap-4 shrink-0 overflow-y-auto">
                         <div>
                             <h4 className="font-bold text-sm uppercase opacity-50 mb-2">Actions</h4>
 
-                            {/* Target Indicator */}
-                            <div className="text-xs mb-2 p-2 bg-base-200 rounded border border-base-300">
-                                <span className="opacity-50 block mb-1">Target Location:</span>
-                                {activeTab ? (
-                                    <span className="font-mono text-primary font-bold truncate block" title={activeTab.label}>
-                                        📦 Script: {activeTab.label}
-                                    </span>
-                                ) : (
-                                    <span className="font-mono text-warning font-bold">
-                                        📂 Global Assets
-                                    </span>
-                                )}
-                            </div>
+                            <div className="p-3 bg-base-200 rounded-xl space-y-3 border border-base-300 mb-4">
+                                <div>
+                                    <label className="text-[10px] uppercase tracking-widest font-bold opacity-30 mb-1 block">
+                                        Target Location:
+                                    </label>
+                                    <div className="flex items-center gap-2 text-warning animate-pulse px-1">
+                                        <span className="p-1 bg-warning/10 rounded"><Save size={12} /></span>
+                                        <span className="text-xs font-mono truncate">{activeTab ? `${activeTab.label}/images` : "Global Assets"}</span>
+                                    </div>
+                                </div>
 
-                            <div className="grid gap-2">
-                                <div className="form-control">
-                                    <label className="label py-1"><span className="label-text">Filename</span></label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="text-[10px] uppercase opacity-30 block mb-1 font-bold">Region Padding X</label>
+                                        <input
+                                            type="number"
+                                            className="input input-xs input-bordered w-full bg-base-300 font-mono"
+                                            value={regionPaddingX}
+                                            onChange={(e) => setRegionPaddingX(Number(e.target.value))}
+                                            min={0}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] uppercase opacity-30 block mb-1 font-bold">Region Padding Y</label>
+                                        <input
+                                            type="number"
+                                            className="input input-xs input-bordered w-full bg-base-300 font-mono"
+                                            value={regionPaddingY}
+                                            onChange={(e) => setRegionPaddingY(Number(e.target.value))}
+                                            min={0}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="text-[10px] uppercase opacity-30 block mb-1 font-bold">Filename</label>
                                     <input
                                         type="text"
-                                        className="input input-sm input-bordered"
                                         value={filename}
-                                        onChange={e => setFilename(e.target.value)}
+                                        onChange={(e) => setFilename(e.target.value)}
+                                        className="input input-bordered w-full h-8 text-xs font-mono bg-base-300 selection:bg-primary/20"
+                                        placeholder="asset_name.png"
                                     />
                                 </div>
+
                                 <button
-                                    className="btn btn-sm btn-primary"
                                     onClick={handleSaveAsset}
-                                    disabled={!imageUrl || loading || isSaving}
+                                    disabled={isSaving || !imageUrl}
+                                    className={clsx(
+                                        "btn btn-primary btn-sm w-full gap-2 shadow-lg transition-all",
+                                        isSaving && "loading"
+                                    )}
                                 >
-                                    {isSaving ? <span className="loading loading-spinner loading-xs"></span> : <Save size={16} />}
-                                    Save to {activeTab ? "Script" : "Assets"}
+                                    <Save size={16} />
+                                    {isSaving ? "Saving..." : "Save to Assets"}
                                 </button>
-                                <a
-                                    href={imageUrl || '#'}
-                                    download={filename}
-                                    className={clsx("btn btn-sm btn-ghost border-base-300", (!imageUrl || loading) && "btn-disabled")}
-                                >
-                                    <Download size={16} /> Download
-                                </a>
                             </div>
-                        </div>
 
-                        <div className="divider my-0"></div>
-
-                        <div className="flex-1">
                             <h4 className="font-bold text-sm uppercase opacity-50 mb-2">Code Sniplets</h4>
-                            <div className="space-y-2">
+                            <div className="space-y-2 pb-10">
+                                {/* click_image_full */}
                                 <div className={clsx(
-                                    "rounded-xl overflow-hidden border transition-all duration-300 group selection:bg-success/20",
-                                    copiedId === 'click' ? "border-success bg-success/5 shadow-[0_0_15px_-5px_rgba(34,197,94,0.3)]" : "border-base-300 bg-neutral hover:border-primary/50"
+                                    "rounded-xl overflow-hidden border transition-all duration-300 group selection:bg-success/20 cursor-pointer",
+                                    copiedId === 'click_full' ? "border-success bg-success/5 shadow-[0_0_15px_-5px_rgba(34,197,94,0.3)]" : "border-base-300 bg-neutral hover:border-primary/50"
                                 )}
-                                    onClick={() => {
-                                        const text = getSelectionRect() && getSelectionRect()!.w > 5
-                                            ? `self.platform.click_image_with_similar("assets/${filename}", self.default_threshold, self.deviceId)`
-                                            : `self.platform.click(${mousePos.x}, ${mousePos.y}, self.deviceId)`;
-                                        handleCopy('click', text);
-                                    }}
-                                    title="Click to copy"
+                                    onClick={() => handleCopy('click_full', `self.platform.click_image_full("assets/${filename}", self.deviceId)`)}
                                 >
                                     <div className="flex items-center justify-between px-3 py-1.5 bg-base-300/50 border-b border-base-300/30">
-                                        <div className="text-[10px] uppercase tracking-widest font-bold opacity-30 flex items-center gap-1.5">
-                                            {getSelectionRect() && getSelectionRect()!.w > 5 ? "Click Image" : "Click Interaction"}
-                                        </div>
-                                        {copiedId === 'click' ? <Check size={12} className="text-success animate-in zoom-in" /> : <Copy size={12} className="opacity-30 group-hover:opacity-60 transition-opacity" />}
+                                        <div className="text-[10px] uppercase tracking-widest font-bold opacity-30">Full Screen Search</div>
+                                        {copiedId === 'click_full' ? <Check size={12} className="text-success animate-in zoom-in" /> : <Copy size={12} className="opacity-30 group-hover:opacity-60 transition-opacity" />}
                                     </div>
-                                    <div className="p-3 font-mono text-[11px] leading-relaxed break-all text-success/80">
-                                        {getSelectionRect() && getSelectionRect()!.w > 5
-                                            ? `self.platform.click_image_with_similar("assets/${filename}", self.default_threshold, self.deviceId)`
-                                            : `self.platform.click(${mousePos.x}, ${mousePos.y}, self.deviceId)`
-                                        }
+                                    <div className="p-3 font-mono text-[11px] text-success/80">
+                                        self.platform.click_image_full("assets/{filename}", self.deviceId)
                                     </div>
                                 </div>
 
+                                {/* click_image_with_similar */}
                                 <div className={clsx(
-                                    "rounded-xl overflow-hidden border transition-all duration-300 group",
+                                    "rounded-xl overflow-hidden border transition-all duration-300 group selection:bg-success/20 cursor-pointer",
+                                    copiedId === 'click_similar' ? "border-success bg-success/5 shadow-[0_0_15px_-5px_rgba(34,197,94,0.3)]" : "border-base-300 bg-neutral hover:border-primary/50"
+                                )}
+                                    onClick={() => handleCopy('click_similar', `self.platform.click_image_with_similar("assets/${filename}", self.default_threshold, self.deviceId)`)}
+                                >
+                                    <div className="flex items-center justify-between px-3 py-1.5 bg-base-300/50 border-b border-base-300/30">
+                                        <div className="text-[10px] uppercase tracking-widest font-bold opacity-30">Similar Search</div>
+                                        {copiedId === 'click_similar' ? <Check size={12} className="text-success animate-in zoom-in" /> : <Copy size={12} className="opacity-30 group-hover:opacity-60 transition-opacity" />}
+                                    </div>
+                                    <div className="p-3 font-mono text-[11px] text-success/80">
+                                        self.platform.click_image_with_similar("assets/{filename}", threshold, self.deviceId)
+                                    </div>
+                                </div>
+
+                                {/* click_image (Region) */}
+                                {getSelectionRect() && getSelectionRect()!.w > 5 && (
+                                    <div className={clsx(
+                                        "rounded-xl overflow-hidden border transition-all duration-300 group selection:bg-success/20 cursor-pointer",
+                                        copiedId === 'click_region' ? "border-success bg-success/5 shadow-[0_0_15px_-5px_rgba(34,197,94,0.3)]" : "border-base-300 bg-neutral hover:border-primary/50"
+                                    )}
+                                        onClick={() => {
+                                            const rect = getSelectionRect()!;
+                                            const scaleX = imageRef.current!.naturalWidth / imageRef.current!.getBoundingClientRect().width;
+                                            const scaleY = imageRef.current!.naturalHeight / imageRef.current!.getBoundingClientRect().height;
+
+                                            const x1 = Math.max(0, Math.floor(rect.x * scaleX) - regionPaddingX);
+                                            const y1 = Math.max(0, Math.floor(rect.y * scaleY) - regionPaddingY);
+                                            const x2 = Math.min(imageRef.current!.naturalWidth, Math.floor((rect.x + rect.w) * scaleX) + regionPaddingX);
+                                            const y2 = Math.min(imageRef.current!.naturalHeight, Math.floor((rect.y + rect.h) * scaleY) + regionPaddingY);
+
+                                            const text = `self.platform.click_image("assets/${filename}", region=[${x1}, ${y1}, ${x2}, ${y2}], device_id=self.deviceId)`;
+                                            handleCopy('click_region', text);
+                                        }}
+                                    >
+                                        <div className="flex items-center justify-between px-3 py-1.5 bg-base-300/50 border-b border-base-300/30">
+                                            <div className="text-[10px] uppercase tracking-widest font-bold opacity-30 underline decoration-dotted">Region Search</div>
+                                            {copiedId === 'click_region' ? <Check size={12} className="text-success animate-in zoom-in" /> : <Copy size={12} className="opacity-30 group-hover:opacity-60 transition-opacity" />}
+                                        </div>
+                                        <div className="p-3 font-mono text-[11px] text-success/80 leading-relaxed">
+                                            self.platform.click_image("assets/{filename}", region=[...], self.deviceId)
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Asset Path */}
+                                <div className={clsx(
+                                    "rounded-xl overflow-hidden border transition-all duration-300 group selection:bg-success/20 cursor-pointer",
                                     copiedId === 'path' ? "border-success bg-success/5 shadow-[0_0_15px_-5px_rgba(34,197,94,0.3)]" : "border-base-300 bg-neutral hover:border-primary/50"
                                 )}
                                     onClick={() => handleCopy('path', `assets/${filename}`)}
-                                    title="Click to copy path"
                                 >
                                     <div className="flex items-center justify-between px-3 py-1.5 bg-base-300/50 border-b border-base-300/30">
                                         <div className="text-[10px] uppercase tracking-widest font-bold opacity-30">Asset Path</div>
@@ -459,29 +527,6 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                         "assets/{filename}"
                                     </div>
                                 </div>
-
-                                {getSelectionRect() && getSelectionRect()!.w > 5 && (
-                                    <div className={clsx(
-                                        "rounded-xl overflow-hidden border transition-all duration-300 group",
-                                        copiedId === 'find' ? "border-success bg-success/5 shadow-[0_0_15px_-5px_rgba(34,197,94,0.3)]" : "border-base-300 bg-neutral hover:border-primary/50"
-                                    )}
-                                        onClick={() => {
-                                            const text = `self.platform.find_image("assets/${filename}", region, self.deviceId)`;
-                                            handleCopy('find', text);
-                                        }}
-                                        title="Copy find_image"
-                                    >
-                                        <div className="flex items-center justify-between px-3 py-1.5 bg-base-300/50 border-b border-base-300/30">
-                                            <div className="text-[10px] uppercase tracking-widest font-bold opacity-30">Find Recognition</div>
-                                            {copiedId === 'find' ? <Check size={12} className="text-success animate-in zoom-in" /> : <Copy size={12} className="opacity-30 group-hover:opacity-60 transition-opacity" />}
-                                        </div>
-                                        <div className="p-3 font-mono text-[11px] leading-relaxed break-all text-success/80">
-                                            self.platform.find_image("assets/{filename}", region, self.deviceId)
-                                        </div>
-                                    </div>
-                                )}
-
-
                             </div>
                         </div>
                     </div>
