@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"script-platform/server/utils"
 	"strings"
 	"sync"
 	"time"
@@ -52,6 +53,7 @@ func (sm *ScriptManager) ListScripts() ([]map[string]string, error) {
 		// Binary Mode: script-engine list
 		cmd = exec.Command(sm.CmdPath, "list")
 	}
+	utils.HideConsole(cmd)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -85,6 +87,7 @@ func (sm *ScriptManager) RunScript(scriptID string, params string) (string, erro
 		cmd = exec.CommandContext(ctx, sm.CmdPath, "run", "--script", scriptID)
 		// Important: Set Dir to where the resources are if needed, but CorePath is mostly references
 	}
+	utils.HideConsole(cmd)
 
 	if params != "" {
 		cmd.Args = append(cmd.Args, "--params", params)

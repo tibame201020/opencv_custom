@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"script-platform/server/process_manager"
+	"script-platform/server/utils"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -231,6 +232,7 @@ func getDeviceScreenshot(c *gin.Context) {
 	adbPath := getAdbPath()
 
 	cmd := exec.Command(adbPath, "-s", deviceID, "exec-out", "screencap", "-p")
+	utils.HideConsole(cmd)
 	output, err := cmd.Output()
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Screenshot failed: " + err.Error()})
@@ -339,6 +341,7 @@ func listDevices(c *gin.Context) {
 
 	getDevices := func() ([]string, error) {
 		cmd := exec.Command(adbPath, "devices")
+		utils.HideConsole(cmd)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			return nil, err
@@ -379,11 +382,13 @@ func checkAdbStatus(c *gin.Context) {
 	adbPath := getAdbPath()
 
 	cmd := exec.Command(adbPath, "get-state")
+	utils.HideConsole(cmd)
 	if err := cmd.Run(); err != nil {
 		// If get-state fails, it might be that no device is connected, OR server is off.
 		// Better check: tasklist on Windows
 		if os.PathSeparator == '\\' {
 			checkCmd := exec.Command("tasklist", "/FI", "IMAGENAME eq adb.exe", "/FO", "CSV", "/NH")
+			utils.HideConsole(checkCmd)
 			out, _ := checkCmd.Output()
 			if strings.Contains(string(out), "adb.exe") {
 				c.JSON(200, gin.H{"status": "running", "details": "ADB process found"})
@@ -391,6 +396,7 @@ func checkAdbStatus(c *gin.Context) {
 			}
 		} else {
 			checkCmd := exec.Command("pgrep", "adb")
+			utils.HideConsole(checkCmd)
 			if err := checkCmd.Run(); err == nil {
 				c.JSON(200, gin.H{"status": "running", "details": "ADB process found"})
 				return
@@ -405,7 +411,9 @@ func checkAdbStatus(c *gin.Context) {
 func startAdb(c *gin.Context) {
 	adbPath := getAdbPath()
 
-	err := exec.Command(adbPath, "start-server").Run()
+	cmd := exec.Command(adbPath, "start-server")
+	utils.HideConsole(cmd)
+	err := cmd.Run()
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to start ADB: " + err.Error()})
 		return
@@ -416,7 +424,9 @@ func startAdb(c *gin.Context) {
 func stopAdb(c *gin.Context) {
 	adbPath := getAdbPath()
 
-	err := exec.Command(adbPath, "kill-server").Run()
+	cmd := exec.Command(adbPath, "kill-server")
+	utils.HideConsole(cmd)
+	err := cmd.Run()
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to stop ADB: " + err.Error()})
 		return
@@ -441,6 +451,7 @@ func executeAdbCommand(c *gin.Context) {
 	args := strings.Fields(req.Command)
 
 	cmd := exec.Command(adbPath, args...)
+	utils.HideConsole(cmd)
 	output, err := cmd.CombinedOutput()
 
 	result := string(output)
