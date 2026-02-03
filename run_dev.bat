@@ -5,7 +5,7 @@ cd server
 start "AutoScript Server" cmd /k "server.exe"
 cd ..
 
-cd web
+cd frontend
 start "AutoScript Frontend" cmd /k "npm run dev"
 cd ..
 

@@ -16,10 +16,11 @@ import (
 )
 
 type ScriptManager struct {
-	processes  map[string]*ScriptProcess
-	mu         sync.RWMutex
-	CorePath   string // Path to core directory
-	PythonPath string // Path to python executable
+	processes   map[string]*ScriptProcess
+	mu          sync.RWMutex
+	CorePath    string // Path to core directory
+	CmdPath     string // Path to python OR executable
+	EntryScript string // Path to entry.py (optional if CmdPath is self-contained)
 }
 
 type ScriptProcess struct {
@@ -32,18 +33,26 @@ type ScriptProcess struct {
 	Cancel    context.CancelFunc
 }
 
-func NewScriptManager(corePath, pythonPath string) *ScriptManager {
+func NewScriptManager(corePath, cmdPath, entryScript string) *ScriptManager {
 	return &ScriptManager{
-		processes:  make(map[string]*ScriptProcess),
-		CorePath:   corePath,
-		PythonPath: pythonPath,
+		processes:   make(map[string]*ScriptProcess),
+		CorePath:    corePath,
+		CmdPath:     cmdPath,
+		EntryScript: entryScript,
 	}
 }
 
 func (sm *ScriptManager) ListScripts() ([]map[string]string, error) {
-	// Call python entry.py list
-	scriptPath := filepath.Join(sm.CorePath, "entry.py")
-	cmd := exec.Command(sm.PythonPath, scriptPath, "list")
+	var cmd *exec.Cmd
+	if sm.EntryScript != "" {
+		// Python Mode: python entry.py list
+		scriptPath := filepath.Join(sm.CorePath, sm.EntryScript)
+		cmd = exec.Command(sm.CmdPath, scriptPath, "list")
+	} else {
+		// Binary Mode: script-engine list
+		cmd = exec.Command(sm.CmdPath, "list")
+	}
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list scripts: %v, output: %s", err, string(output))
@@ -66,8 +75,17 @@ func (sm *ScriptManager) RunScript(scriptID string, params string) (string, erro
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	scriptPath := filepath.Join(sm.CorePath, "entry.py")
-	cmd := exec.CommandContext(ctx, sm.PythonPath, scriptPath, "run", "--script", scriptID)
+	var cmd *exec.Cmd
+	if sm.EntryScript != "" {
+		// Python Mode
+		scriptPath := filepath.Join(sm.CorePath, sm.EntryScript)
+		cmd = exec.CommandContext(ctx, sm.CmdPath, scriptPath, "run", "--script", scriptID)
+	} else {
+		// Binary Mode: directory of binary is usually fine, or we set Cwd
+		cmd = exec.CommandContext(ctx, sm.CmdPath, "run", "--script", scriptID)
+		// Important: Set Dir to where the resources are if needed, but CorePath is mostly references
+	}
+
 	if params != "" {
 		cmd.Args = append(cmd.Args, "--params", params)
 	}

@@ -1,0 +1,124 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Build & Release
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          check-latest: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' 
+
+      - name: Install System Dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev build-essential libssl-dev
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Install Python Dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build Script Engine (Python)
+        run: |
+          pyinstaller core/entry.py --onefile --name script-engine
+        # Output is in dist/script-engine (or script-engine.exe)
+
+      - name: Download ADB (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          curl -L -o platform-tools.zip https://dl.google.com/android/repository/platform-tools-latest-windows.zip
+          tar -xf platform-tools.zip
+
+      - name: Download ADB (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          curl -L -o platform-tools.zip https://dl.google.com/android/repository/platform-tools-latest-linux.zip
+          unzip platform-tools.zip
+
+      - name: Download ADB (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          curl -L -o platform-tools.zip https://dl.google.com/android/repository/platform-tools-latest-darwin.zip
+          unzip platform-tools.zip
+
+      - name: Build Wails App
+        run: |
+          # Ensure go.mod is tidy
+          go mod tidy
+          # Build frontend
+          cd frontend && npm install && cd ..
+          # Build Wails
+          wails build
+
+      - name: Assemble Release Package
+        shell: bash
+        run: |
+          mkdir -p release_package
+          
+          # Copy Main Binary
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            cp build/bin/ScriptPlatform.exe release_package/
+            cp dist/script-engine.exe release_package/
+          else
+            cp build/bin/ScriptPlatform release_package/
+            cp dist/script-engine release_package/
+          fi
+          
+          # Copy Dependencies
+          cp -r platform-tools release_package/
+          
+          # Copy Core Skeleton (Assets need to be there?)
+          # Actually we need 'core/script/custom' structure
+          mkdir -p release_package/core/script/custom
+          mkdir -p release_package/core/assets
+          
+          # Copy requirements.txt just in case? Or License
+          # cp LICENSE release_package/ || true
+
+      - name: Zip Release
+        shell: bash
+        run: |
+          cd release_package
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            7z a ../ScriptPlatform-${{ runner.os }}.zip *
+          else
+            zip -r ../ScriptPlatform-${{ runner.os }}.zip *
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: ScriptPlatform-${{ runner.os }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
