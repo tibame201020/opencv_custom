@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Editor, { type OnMount } from '@monaco-editor/react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store';
 import { Save, Play, FileCode, Plus, Trash2, Camera, HelpCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -12,7 +13,8 @@ import { registerPythonCompletions } from '../utils/monacoConfig';
 const API_Base = "http://localhost:8080/api";
 
 export const EditorView: React.FC = () => {
-    const { openScriptTab, setActiveMainTab } = useAppStore();
+    const { openScriptTab } = useAppStore();
+    const navigate = useNavigate();
 
     const [scripts, setScripts] = useState<any[]>([]);
     const [selectedScriptId, setSelectedScriptId] = useState<string | null>(null);
@@ -172,7 +174,7 @@ export const EditorView: React.FC = () => {
     const handleRun = () => {
         if (selectedScriptId) {
             openScriptTab(selectedScriptId);
-            setActiveMainTab('execution');
+            navigate('/execution');
         }
     };
 

@@ -70,6 +70,13 @@ func main() {
 		api.GET("/devices/:id/screenshot", getDeviceScreenshot)
 		api.POST("/assets", uploadAsset)
 		api.POST("/scripts/:id/assets", uploadAsset)
+
+		// ZIP Import/Export
+		api.GET("/scripts/:id/export", exportScript)
+		api.POST("/scripts/import", importScript)
+
+		// Rename
+		api.POST("/scripts/:id/rename", renameScript)
 	}
 
 	r.GET("/ws/logs/:id", streamLogs)
@@ -400,4 +407,69 @@ func deleteScript(c *gin.Context) {
 		return
 	}
 	c.JSON(200, gin.H{"status": "deleted"})
+}
+
+func exportScript(c *gin.Context) {
+	scriptID := c.Param("id")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s.zip", scriptID))
+	c.Header("Content-Type", "application/zip")
+
+	if err := manager.ExportScriptZip(scriptID, c.Writer); err != nil {
+		// Since headers are already sent if it fails mid-stream, it's hard to return JSON
+		// but Gin might handle it or we can check before starting.
+		log.Printf("Export failed: %v", err)
+	}
+}
+
+func importScript(c *gin.Context) {
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(400, gin.H{"error": "No file uploaded"})
+		return
+	}
+
+	f, err := file.Open()
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to open file"})
+		return
+	}
+	defer f.Close()
+
+	newName := c.PostForm("newName")
+
+	if err := manager.ImportScriptZip(f, file.Size, newName); err != nil {
+		if strings.HasPrefix(err.Error(), "CONFLICT_ALREADY_EXISTS:") {
+			c.JSON(409, gin.H{
+				"error":         "Script already exists",
+				"suggestedName": strings.TrimPrefix(err.Error(), "CONFLICT_ALREADY_EXISTS:"),
+			})
+			return
+		}
+		c.JSON(500, gin.H{"error": "Import failed: " + err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"status": "imported"})
+}
+
+func renameScript(c *gin.Context) {
+	scriptID := c.Param("id")
+	var req struct {
+		NewName string `json:"newName"`
+	}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	if err := manager.RenameScript(scriptID, req.NewName); err != nil {
+		if strings.HasPrefix(err.Error(), "CONFLICT_ALREADY_EXISTS:") {
+			c.JSON(409, gin.H{"error": "A script with this name already exists"})
+			return
+		}
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"status": "renamed"})
 }

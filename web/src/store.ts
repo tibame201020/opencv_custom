@@ -7,6 +7,7 @@ export interface Script {
     name: string;
     platform: 'desktop' | 'android';
     description?: string;
+    path?: string;
 }
 
 export interface ScriptTabState {

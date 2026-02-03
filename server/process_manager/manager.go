@@ -1,6 +1,7 @@
 package process_manager
 
 import (
+	"archive/zip"
 	"bufio"
 	"context"
 	"encoding/json"
@@ -379,14 +380,72 @@ func (sm *ScriptManager) DeleteScript(scriptID string) error {
 	parentDir := filepath.Dir(fullPath)
 	scriptName := strings.TrimSuffix(filepath.Base(fullPath), ".py")
 	parentName := filepath.Base(parentDir)
+	if scriptName == "" || parentName == "" || parentName == "script" || parentName == "custom" {
+		return fmt.Errorf("safety check failed: invalid script structure for deletion")
+	}
 
-	if scriptName == parentName {
+	if scriptName == parentName && strings.HasPrefix(cleanPath, "script/custom/") {
 		// It is the new structure, remove the folder
 		return os.RemoveAll(parentDir)
 	} else {
-		// Legacy flat file structure
+		// Legacy flat file structure or just safety fallback
 		return os.Remove(fullPath)
 	}
+}
+
+func (sm *ScriptManager) RenameScript(scriptID string, newName string) error {
+	scripts, err := sm.ListScripts()
+	if err != nil {
+		return err
+	}
+
+	var scriptPath string
+	for _, s := range scripts {
+		if s["id"] == scriptID {
+			scriptPath = s["path"]
+			break
+		}
+	}
+
+	if scriptPath == "" {
+		return fmt.Errorf("script not found")
+	}
+
+	// Safety: Only rename scripts in script/custom
+	cleanPath := filepath.ToSlash(scriptPath)
+	if !strings.HasPrefix(cleanPath, "script/custom/") {
+		return fmt.Errorf("cannot rename built-in scripts")
+	}
+
+	fullPath := filepath.Join(sm.CorePath, scriptPath)
+	scriptDir := filepath.Dir(fullPath)
+	targetBaseDir := filepath.Dir(scriptDir)
+
+	validNewName := strings.ReplaceAll(newName, " ", "_")
+	validNewName = strings.ReplaceAll(validNewName, "-", "_")
+
+	newDir := filepath.Join(targetBaseDir, validNewName)
+
+	if _, err := os.Stat(newDir); err == nil {
+		return fmt.Errorf("CONFLICT_ALREADY_EXISTS:%s", validNewName)
+	}
+
+	// 1. Rename the folder
+	if err := os.Rename(scriptDir, newDir); err != nil {
+		return fmt.Errorf("failed to rename folder: %v", err)
+	}
+
+	// 2. Rename the main py file inside: newDir/oldName.py -> newDir/newName.py
+	oldPyPath := filepath.Join(newDir, scriptID+".py")
+	newPyPath := filepath.Join(newDir, validNewName+".py")
+
+	if _, err := os.Stat(oldPyPath); err == nil {
+		if err := os.Rename(oldPyPath, newPyPath); err != nil {
+			return fmt.Errorf("failed to rename .py file: %v", err)
+		}
+	}
+
+	return nil
 }
 
 func (sm *ScriptManager) ListAssets(scriptID string) ([]map[string]interface{}, error) {
@@ -492,4 +551,188 @@ func (sm *ScriptManager) DeleteAsset(scriptID, filename string) error {
 	}
 
 	return os.Remove(targetPath)
+}
+
+func (sm *ScriptManager) ExportScriptZip(scriptID string, writer io.Writer) error {
+	scripts, err := sm.ListScripts()
+	if err != nil {
+		return err
+	}
+
+	var scriptPath string
+	for _, s := range scripts {
+		if s["id"] == scriptID {
+			scriptPath = s["path"]
+			break
+		}
+	}
+
+	if scriptPath == "" {
+		return fmt.Errorf("script not found")
+	}
+
+	fullPath := filepath.Join(sm.CorePath, scriptPath)
+	scriptDir := filepath.Dir(fullPath)
+
+	zw := zip.NewWriter(writer)
+	defer zw.Close()
+
+	return filepath.Walk(scriptDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Create path relative to the script directory
+		relPath, err := filepath.Rel(scriptDir, path)
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			if relPath == "." {
+				return nil
+			}
+			_, err = zw.Create(relPath + "/")
+			return err
+		}
+
+		w, err := zw.Create(relPath)
+		if err != nil {
+			return err
+		}
+
+		f, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+
+		_, err = io.Copy(w, f)
+		return err
+	})
+}
+
+func (sm *ScriptManager) ImportScriptZip(reader io.ReaderAt, size int64, overrideName string) error {
+	zr, err := zip.NewReader(reader, size)
+	if err != nil {
+		return err
+	}
+
+	var originalScriptName string
+	for _, f := range zr.File {
+		// Try to find the main script file at the root of the zip, ignoring __init__.py
+		if strings.HasSuffix(f.Name, ".py") && !strings.Contains(f.Name, "/") && f.Name != "__init__.py" {
+			originalScriptName = strings.TrimSuffix(f.Name, ".py")
+			break
+		}
+	}
+
+	if originalScriptName == "" {
+		// Fallback 1: look for wrapped structure (folder/folder.py)
+		for _, f := range zr.File {
+			parts := strings.Split(f.Name, "/")
+			if len(parts) == 2 && strings.HasSuffix(parts[1], ".py") && parts[0]+".py" == parts[1] && parts[1] != "__init__.py" {
+				originalScriptName = parts[0]
+				break
+			}
+		}
+	}
+
+	if originalScriptName == "" {
+		// Fallback 2: Pick the first .py file that is NOT __init__.py from a single top-level folder
+		var topLevelDir string
+		for _, f := range zr.File {
+			parts := strings.Split(f.Name, "/")
+			if len(parts) > 1 {
+				if topLevelDir == "" {
+					topLevelDir = parts[0]
+				} else if topLevelDir != parts[0] {
+					topLevelDir = "" // Multiple top-level dirs
+					break
+				}
+			}
+		}
+		if topLevelDir != "" {
+			for _, f := range zr.File {
+				parts := strings.Split(f.Name, "/")
+				if len(parts) == 2 && parts[0] == topLevelDir && strings.HasSuffix(parts[1], ".py") && parts[1] != "__init__.py" {
+					originalScriptName = topLevelDir
+					break
+				}
+			}
+		}
+	}
+
+	if originalScriptName == "" {
+		return fmt.Errorf("invalid script zip: could not find main .py file (note: __init__.py is ignored)")
+	}
+
+	scriptName := originalScriptName
+	if overrideName != "" {
+		scriptName = strings.ReplaceAll(overrideName, " ", "_")
+		scriptName = strings.ReplaceAll(scriptName, "-", "_")
+	}
+
+	targetDir := filepath.Join(sm.CorePath, "script", "custom", scriptName)
+	if _, err := os.Stat(targetDir); err == nil {
+		return fmt.Errorf("CONFLICT_ALREADY_EXISTS:%s", scriptName)
+	}
+
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return err
+	}
+
+	imagesDir := filepath.Join(targetDir, "images")
+	os.MkdirAll(imagesDir, 0755)
+
+	for _, f := range zr.File {
+		// Normalize paths: remove top-level folder prefix if present
+		cleanName := f.Name
+		parts := strings.Split(f.Name, "/")
+		if len(parts) > 1 && parts[0] == originalScriptName {
+			cleanName = strings.Join(parts[1:], "/")
+		}
+
+		if cleanName == "" {
+			continue
+		}
+
+		// Ensure .py file matches the new script name if overridden
+		if strings.HasSuffix(cleanName, ".py") && !strings.Contains(cleanName, "/") {
+			cleanName = scriptName + ".py"
+		}
+
+		targetPath := filepath.Join(targetDir, cleanName)
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(targetPath, f.Mode())
+			continue
+		}
+
+		err = func() error {
+			rc, err := f.Open()
+			if err != nil {
+				return err
+			}
+			defer rc.Close()
+
+			if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+				return err
+			}
+
+			tf, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+			if err != nil {
+				return err
+			}
+			defer tf.Close()
+
+			_, err = io.Copy(tf, rc)
+			return err
+		}()
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

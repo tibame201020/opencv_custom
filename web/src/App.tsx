@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from './store';
 import { ExecutionView } from './views/ExecutionView';
 import { SettingsView } from './views/SettingsView';
@@ -11,7 +12,18 @@ import clsx from 'clsx';
 function App() {
   const { theme, activeMainTab, setActiveMainTab } = useAppStore();
   const { t } = useTranslation();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  // Sync activeMainTab with route
+  useEffect(() => {
+    const path = location.pathname.split('/')[1];
+    const validTabs = ['execution', 'editor', 'management', 'setting'];
+    if (path && validTabs.includes(path)) {
+      setActiveMainTab(path as 'execution' | 'editor' | 'management' | 'setting');
+    }
+  }, [location, setActiveMainTab]);
 
   // Apply theme
   useEffect(() => {
@@ -19,10 +31,10 @@ function App() {
   }, [theme]);
 
   const navItems = [
-    { id: 'execution', label: t('ui.execution.title'), icon: Play },
-    { id: 'editor', label: 'Editor', icon: FileCode },
-    { id: 'management', label: t('ui.management.title'), icon: Database },
-    { id: 'setting', label: t('ui.setting.title'), icon: SettingsIcon },
+    { id: 'execution', label: t('ui.execution.title'), icon: Play, path: '/execution' },
+    { id: 'editor', label: 'Editor', icon: FileCode, path: '/editor' },
+    { id: 'management', label: t('ui.management.title'), icon: Database, path: '/management' },
+    { id: 'setting', label: t('ui.setting.title'), icon: SettingsIcon, path: '/setting' },
   ] as const;
 
   return (
@@ -54,7 +66,7 @@ function App() {
           {navItems.map(item => (
             <button
               key={item.id}
-              onClick={() => setActiveMainTab(item.id)}
+              onClick={() => navigate(item.path)}
               className={clsx(
                 "w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative",
                 activeMainTab === item.id
@@ -116,10 +128,13 @@ function App() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 bg-base-100 relative">
         <div className="flex-1 overflow-hidden relative">
-          {activeMainTab === 'execution' && <ExecutionView />}
-          {activeMainTab === 'editor' && <EditorView />}
-          {activeMainTab === 'management' && <ManagementView />}
-          {activeMainTab === 'setting' && <SettingsView />}
+          <Routes>
+            <Route path="/execution" element={<ExecutionView />} />
+            <Route path="/editor" element={<EditorView />} />
+            <Route path="/management" element={<ManagementView />} />
+            <Route path="/setting" element={<SettingsView />} />
+            <Route path="/" element={<Navigate to="/execution" replace />} />
+          </Routes>
         </div>
       </div>
     </div>
