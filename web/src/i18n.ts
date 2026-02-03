@@ -53,10 +53,35 @@ const resources = {
                     "locale.zh": "Traditional Chinese",
                     "locale.en": "English"
                 },
+                "editor": {
+                    "title": "Editor",
+                    "files": "Explorer",
+                    "assets": "Assets",
+                    "save": "Save",
+                    "device": "Device",
+                    "selectDevice": "Select Device (ADB)",
+                    "screenshot": "Screenshot",
+                    "confirmDelete": "Delete Asset?",
+                    "deleteWarning": "Are you sure you want to delete this asset?"
+                },
+                "debug": {
+                    "title": "System Debugger",
+                    "subtitle": "ADB Server & Terminal",
+                    "daemonActive": "Daemon Active",
+                    "daemonStopped": "Daemon Stopped",
+                    "statusUnknown": "Status Unknown",
+                    "startServer": "Start Server",
+                    "stopServer": "Stop Server",
+                    "terminalTitle": "adb-shell — 80x24",
+                    "welcome": "Welcome to ADB Debug Terminal.\nType 'devices', 'kill-server', or any ADB command.",
+                    "placeholder": "Type command here... (e.g. devices -l)"
+                },
                 "common": {
                     "loading": "Loading...",
                     "error": "Error occurred",
-                    "success": "Operation successful"
+                    "success": "Operation successful",
+                    "menu": "Menu",
+                    "appTitle": "Platform"
                 }
             }
         }
@@ -111,10 +136,35 @@ const resources = {
                     "locale.zh": "繁體中文",
                     "locale.en": "英文"
                 },
+                "editor": {
+                    "title": "編輯器",
+                    "files": "檔案總管",
+                    "assets": "圖片資產",
+                    "save": "儲存",
+                    "device": "裝置",
+                    "selectDevice": "選擇裝置 (ADB)",
+                    "screenshot": "截圖",
+                    "confirmDelete": "刪除圖片?",
+                    "deleteWarning": "確定要永久刪除此圖片嗎?"
+                },
+                "debug": {
+                    "title": "系統調適",
+                    "subtitle": "ADB 伺服器與終端機",
+                    "daemonActive": "服務運行中",
+                    "daemonStopped": "服務已停止",
+                    "statusUnknown": "狀態未知",
+                    "startServer": "啟動伺服器",
+                    "stopServer": "停止伺服器",
+                    "terminalTitle": "ADB 命令列介面",
+                    "welcome": "歡迎使用 ADB 調適終端機。\n您可以輸入 'devices', 'kill-server' 或任何 ADB 指令。",
+                    "placeholder": "請輸入指令... (例如 devices -l)"
+                },
                 "common": {
                     "loading": "載入中...",
                     "error": "發生錯誤",
-                    "success": "操作成功"
+                    "success": "操作成功",
+                    "menu": "功能選單",
+                    "appTitle": "自動化平台"
                 }
             }
         }
@@ -125,7 +175,7 @@ i18n
     .use(initReactI18next)
     .init({
         resources,
-        lng: "zh", // Default to Traditional Chinese
+        lng: "en", // Default to English
         fallbackLng: "en",
         interpolation: {
             escapeValue: false

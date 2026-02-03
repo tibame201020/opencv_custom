@@ -10,6 +10,33 @@ class Sd_gundam_重複關卡Script(ScriptInterface):
             "images/再次挑戰.png",
             "images/確定.png",
         ]
+
+    target_arr = [
+        {
+            "image": "繼續.png",
+            "ocr": OcrRegion(1069, 629, 1163, 693)
+        },
+        {
+            "image": "繼續.png",
+            "ocr": OcrRegion(1069, 629, 1163, 693)
+        },
+        {
+            "image": "再次出擊.png",
+            "ocr": OcrRegion(799, 627, 919, 687)
+        },
+        {
+            "image": "開始戰鬥.png",
+            "ocr": OcrRegion(549, 622, 668, 680)
+        },
+        {
+            "image": "挑戰.png",
+            "ocr": OcrRegion(730, 630, 802, 681)
+        },
+        {
+            "image": "出擊.png",
+            "ocr": OcrRegion(1080, 631, 1147, 667)
+        }
+    ]
     
     def __init__(self, platform: AdbPlatform):
         self.platform = platform
@@ -19,34 +46,37 @@ class Sd_gundam_重複關卡Script(ScriptInterface):
     def execute(self):
         print(f"Starting sd_gundam_重複關卡 (Android)...")
         
-        # --- Useful Properties ---
+        # --- 基礎屬性資訊 ---
         print(f"Device ID: {self.deviceId}")
         print(f"Image Root: {self.image_root}")
         print(f"Default Threshold: {self.default_threshold}")
-        
-
+    
+        # 連接設備
         self.platform.connect(self.deviceId)
-        # self.platform.click_image(f"{self.image_root}/繼續.png", OcrRegion(1069, 629, 1163, 693), self.deviceId)
-        self.platform.click_image("images/繼續.png", OcrRegion(1069, 629, 1163, 693), self.deviceId)
-        self.platform.click_image(f"{self.image_root}/開始戰鬥.png", OcrRegion(549, 622, 668, 680), self.deviceId)
         
-        # --- Adb Platform Examples ---
-        # self.platform.click(100, 100, self.deviceId)
-        # self.platform.swipe(100, 100, 200, 200, self.deviceId)
-        # self.platform.swipe_with_duration(100, 100, 200, 200, 500, self.deviceId)
-        # self.platform.type_text("Hello", self.deviceId)
-        # self.platform.key_event("KEYCODE_HOME", self.deviceId)
-        # self.platform.start_app("com.example.package", self.deviceId)
-        # self.platform.stop_app("com.example.package", self.deviceId)
-        
-        # --- Image Recognition ---
-        # mat = self.platform.take_snapshot(self.deviceId)
-        # found, point = self.platform.find_image_full("target_image.png", self.deviceId)
-        # if found:
-        #     self.platform.click(point[0], point[1], self.deviceId)
-        
-        # --- Click Image Shortcuts ---
-        # self.platform.click_image_full("target.png", self.deviceId)
-        # self.platform.click_image_with_similar("target.png", 0.9, self.deviceId)
-        
-        print("Done.")
+        while True:
+            print("--- 掃描開始 ---")
+            for target in self.target_arr:
+                try:
+                    image_path = f"{self.image_root}\\{target['image']}"
+                    ocr_region = target["ocr"]
+
+                    print(f"try find = {image_path}")
+                    
+                    # 尋找影像
+                    point = self.platform.find_image(image_path, ocr_region, self.deviceId)
+                    
+                    print(f"point = {point}")
+
+                    if point:
+                        print(f"找到目標: {target['image']}，座標: {point}")
+                        self.platform.click(point[0], point[1], self.deviceId)
+                        # 點擊後可以稍微等待一下
+                        self.platform.sleep(2)
+                    else:
+                        continue
+                    self.platform.sleep(3)
+                except Exception as e:
+                    # 修正這裡的存取方式，並印出實際的錯誤訊息以便偵錯
+                    print(f"處理 {target.get('image', '未知')} 時發生錯誤: {e}")
+                    pass

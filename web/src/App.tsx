@@ -6,7 +6,8 @@ import { ExecutionView } from './views/ExecutionView';
 import { SettingsView } from './views/SettingsView';
 import { ManagementView } from './views/ManagementView';
 import { EditorView } from './views/EditorView';
-import { Play, Settings as SettingsIcon, Database, ChevronLeft, ChevronRight, FileCode } from 'lucide-react';
+import { DebugView } from './views/DebugView';
+import { Play, Settings as SettingsIcon, Database, ChevronLeft, ChevronRight, FileCode, Terminal } from 'lucide-react';
 import clsx from 'clsx';
 
 function App() {
@@ -19,7 +20,7 @@ function App() {
   // Sync activeMainTab with route
   useEffect(() => {
     const path = location.pathname.split('/')[1];
-    const validTabs = ['execution', 'editor', 'management', 'setting'];
+    const validTabs = ['execution', 'editor', 'management', 'setting', 'debug'];
     if (path && validTabs.includes(path)) {
       setActiveMainTab(path as 'execution' | 'editor' | 'management' | 'setting');
     }
@@ -32,9 +33,10 @@ function App() {
 
   const navItems = [
     { id: 'execution', label: t('ui.execution.title'), icon: Play, path: '/execution' },
-    { id: 'editor', label: 'Editor', icon: FileCode, path: '/editor' },
+    { id: 'editor', label: t('ui.editor.title'), icon: FileCode, path: '/editor' },
     { id: 'management', label: t('ui.management.title'), icon: Database, path: '/management' },
     { id: 'setting', label: t('ui.setting.title'), icon: SettingsIcon, path: '/setting' },
+    { id: 'debug', label: t('ui.debug.title'), icon: Terminal, path: '/debug' },
   ] as const;
 
   return (
@@ -52,7 +54,7 @@ function App() {
             <span className="font-bold text-lg">P</span>
           </div>
           <div className={clsx("font-bold text-lg tracking-tight truncate transition-opacity duration-200", isSidebarCollapsed ? "opacity-0 w-0" : "opacity-100 flex-1")}>
-            Platform
+            {t('ui.common.appTitle')}
           </div>
         </div>
 
@@ -60,7 +62,7 @@ function App() {
         <div className="flex-1 py-6 px-3 space-y-2 overflow-y-auto overflow-x-hidden">
           {!isSidebarCollapsed && (
             <div className="text-xs font-bold text-base-content/40 uppercase tracking-widest px-3 mb-2 font-mono truncate">
-              Menu
+              {t('ui.common.menu')}
             </div>
           )}
           {navItems.map(item => (
@@ -133,8 +135,10 @@ function App() {
             <Route path="/editor" element={<EditorView />} />
             <Route path="/management" element={<ManagementView />} />
             <Route path="/setting" element={<SettingsView />} />
+            <Route path="/debug" element={<DebugView />} />
             <Route path="/" element={<Navigate to="/execution" replace />} />
           </Routes>
+
         </div>
       </div>
     </div>

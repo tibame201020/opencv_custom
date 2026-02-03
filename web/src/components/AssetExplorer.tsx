@@ -183,9 +183,9 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
     }
 
     return (
-        <div className="flex flex-col h-full bg-[#1e1e1e] border-r border-[#333] text-gray-300 select-none relative" style={{ width }}>
+        <div className="flex flex-col h-full bg-base-100 border-r border-base-300 text-base-content/80 select-none relative" style={{ width }}>
             {/* Header */}
-            <div className="flex items-center justify-between px-3 h-9 bg-[#252526] text-xs font-bold uppercase tracking-wider shrink-0 cursor-pointer" onClick={onToggle}>
+            <div className="flex items-center justify-between px-3 h-9 bg-base-200 text-xs font-bold uppercase tracking-wider shrink-0 cursor-pointer border-b border-base-300 hover:bg-base-200/80 transition-colors" onClick={onToggle}>
                 <span className="opacity-70">Images</span>
                 <div className="flex items-center gap-1">
                     <span className="badge badge-xs badge-ghost font-mono opacity-50">{assets.length}</span>
@@ -193,21 +193,21 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
             </div>
 
             {/* List */}
-            <div className="flex-1 overflow-y-auto p-1 space-y-0.5 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-1 space-y-0.5 custom-scrollbar bg-base-100">
                 {isLoading && <div className="text-center p-4 opacity-50 text-xs">Loading...</div>}
 
                 {!isLoading && assets.map(asset => (
                     <div
                         key={asset.name}
                         className={clsx(
-                            "flex items-center gap-2 px-2 py-1 rounded-sm cursor-pointer text-sm group",
-                            selectedAsset === asset.name ? "bg-[#37373d] text-white" : "hover:bg-[#2a2d2e]"
+                            "flex items-center gap-2 px-2 py-1 rounded-sm cursor-pointer text-sm group transition-colors",
+                            selectedAsset === asset.name ? "bg-primary/20 text-primary font-bold" : "hover:bg-base-200 text-base-content/70"
                         )}
                         onClick={() => setSelectedAsset(asset.name)}
                         onDoubleClick={() => setPreviewAsset(asset.name)}
                         onContextMenu={(e) => handleContextMenu(e, asset.name)}
                     >
-                        <FileImage size={14} className={clsx("shrink-0", selectedAsset === asset.name ? "text-blue-400" : "opacity-50 group-hover:opacity-80")} />
+                        <FileImage size={14} className={clsx("shrink-0", selectedAsset === asset.name ? "text-primary" : "opacity-50 group-hover:opacity-80")} />
                         <span className="truncate flex-1">{asset.name}</span>
                     </div>
                 ))}
@@ -222,32 +222,32 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
             {/* Snippets Panel (Bottom) */}
             {selectedAsset && (
                 <div
-                    className="min-h-[100px] border-t border-[#333] bg-[#1e1e1e] flex flex-col relative"
+                    className="min-h-[100px] border-t border-base-300 bg-base-100 flex flex-col relative shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]"
                     style={{ height: snippetsHeight }}
                 >
                     {/* Height Resize Handle */}
                     <div
-                        className="absolute top-0 left-0 right-0 h-1 cursor-row-resize hover:bg-blue-500/50 z-10"
+                        className="absolute top-0 left-0 right-0 h-1 cursor-row-resize hover:bg-primary/50 z-10 transition-colors"
                         onMouseDown={startResizeHeight}
                     />
 
-                    <div className="px-3 py-2 bg-[#252526] text-[10px] font-bold uppercase tracking-wider opacity-70 flex items-center gap-2 shrink-0">
+                    <div className="px-3 py-2 bg-base-200 text-[10px] font-bold uppercase tracking-wider opacity-70 flex items-center gap-2 shrink-0 border-b border-base-300">
                         <span>Snippets</span>
                         <span className="opacity-30">/</span>
-                        <span className="truncate text-blue-400 max-w-[120px]">{selectedAsset}</span>
+                        <span className="truncate text-primary max-w-[120px]">{selectedAsset}</span>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                    <div className="flex-1 overflow-y-auto p-2 space-y-2 bg-base-100">
                         {getSnippets(selectedAsset).map((snip, idx) => (
                             <div key={idx} className="group relative">
-                                <div className="text-[10px] opacity-40 mb-1 pl-1">{snip.label}</div>
+                                <div className="text-[10px] opacity-40 mb-1 pl-1 font-bold">{snip.label}</div>
                                 <div
-                                    className="bg-[#2d2d2d] hover:bg-[#333] p-2 rounded text-[11px] font-mono break-all cursor-pointer transition-colors border border-transparent hover:border-[#444]"
+                                    className="bg-base-200 hover:bg-base-300 p-2 rounded text-[11px] font-mono break-all cursor-pointer transition-colors border border-base-300 hover:border-base-400 text-base-content/80 hover:text-base-content"
                                     onClick={() => copyToClipboard(snip.code, idx)}
                                 >
                                     {snip.code}
                                 </div>
                                 {copiedSnippet === idx && (
-                                    <div className="absolute right-2 top-6 text-[10px] text-green-400 font-bold bg-[#1e1e1e] px-1 rounded shadow-sm animate-in fade-in zoom-in">
+                                    <div className="absolute right-2 top-6 text-[10px] text-success font-bold bg-base-100 px-1 rounded shadow-sm animate-in fade-in zoom-in border border-base-200">
                                         Copied
                                     </div>
                                 )}
@@ -259,18 +259,18 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
 
             {/* Width Resize Handle */}
             <div
-                className="absolute top-0 right-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500/50 z-20"
+                className="absolute top-0 right-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 z-20 transition-colors"
                 onMouseDown={startResizeWidth}
             />
 
             {/* Context Menu */}
             {contextMenu && (
                 <div
-                    className="fixed z-[100] bg-[#252526] border border-[#454545] shadow-xl rounded py-1 min-w-[150px] flex flex-col"
+                    className="fixed z-[100] bg-base-200 border border-base-300 shadow-xl rounded py-1 min-w-[150px] flex flex-col animate-in fade-in zoom-in-95 duration-100"
                     style={{ left: contextMenu.x, top: contextMenu.y }}
                 >
                     <button
-                        className="px-3 py-1.5 text-left text-sm hover:bg-[#094771] hover:text-white flex items-center gap-2"
+                        className="px-3 py-1.5 text-left text-sm hover:bg-primary/10 hover:text-primary flex items-center gap-2 transition-colors"
                         onClick={() => {
                             setRenameTarget(contextMenu.asset);
                             setRenameValue(contextMenu.asset);
@@ -279,9 +279,9 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
                     >
                         <Edit2 size={13} /> Rename
                     </button>
-                    <div className="h-px bg-[#454545] my-1" />
+                    <div className="h-px bg-base-300 my-1" />
                     <button
-                        className="px-3 py-1.5 text-left text-sm hover:bg-[#a10000] hover:text-white text-red-400 flex items-center gap-2"
+                        className="px-3 py-1.5 text-left text-sm hover:bg-error/10 hover:text-error text-error flex items-center gap-2 transition-colors"
                         onClick={() => {
                             setDeleteTarget(contextMenu.asset);
                             setContextMenu(null);
@@ -295,11 +295,11 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
             {/* Rename Modal */}
             {renameTarget && (
                 <div className="fixed inset-0 z-[101] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    <div className="bg-[#252526] border border-[#454545] p-4 rounded shadow-2xl w-80 text-gray-200">
+                    <div className="bg-base-100 border border-base-300 p-4 rounded-xl shadow-2xl w-80 text-base-content">
                         <h3 className="font-bold text-sm mb-4">Rename Asset</h3>
                         <input
                             autoFocus
-                            className="w-full bg-[#3c3c3c] border border-[#333] rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500 mb-4"
+                            className="w-full bg-base-200 border border-base-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary mb-4 transition-all"
                             value={renameValue}
                             onChange={(e) => setRenameValue(e.target.value)}
                             onKeyDown={(e) => {
@@ -318,10 +318,10 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
             {/* Delete Confirmation */}
             {deleteTarget && (
                 <div className="fixed inset-0 z-[101] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    <div className="bg-[#252526] border border-[#454545] p-4 rounded shadow-2xl w-80 text-gray-200">
-                        <h3 className="font-bold text-sm text-red-400 mb-2">Delete Asset?</h3>
+                    <div className="bg-base-100 border border-base-300 p-4 rounded-xl shadow-2xl w-80 text-base-content">
+                        <h3 className="font-bold text-sm text-error mb-2">Delete Asset?</h3>
                         <p className="text-xs opacity-70 mb-6">
-                            Are you sure you want to delete <span className="font-bold text-white">{deleteTarget}</span>? This action cannot be undone.
+                            Are you sure you want to delete <span className="font-bold text-base-content">{deleteTarget}</span>? This action cannot be undone.
                         </p>
                         <div className="flex justify-end gap-2">
                             <button className="btn btn-xs btn-ghost" onClick={() => setDeleteTarget(null)}>Cancel</button>
@@ -337,21 +337,13 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
                     className="fixed inset-0 z-[101] flex items-center justify-center bg-black/80 backdrop-blur-md p-8"
                     onClick={() => setPreviewAsset(null)}
                 >
-                    <div className="relative max-w-full max-h-full p-2 bg-[#252526] rounded shadow-2xl border border-[#454545]" onClick={(e) => e.stopPropagation()}>
+                    <div className="relative max-w-full max-h-full p-2 bg-base-100 rounded-xl shadow-2xl border border-base-300" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-2 px-2">
-                            <h3 className="text-sm font-bold text-gray-300">{previewAsset}</h3>
-                            <button onClick={() => setPreviewAsset(null)} className="opacity-50 hover:opacity-100"><X size={16} /></button>
+                            <h3 className="text-sm font-bold text-base-content">{previewAsset}</h3>
+                            <button onClick={() => setPreviewAsset(null)} className="opacity-50 hover:opacity-100 btn btn-xs btn-circle btn-ghost"><X size={16} /></button>
                         </div>
-                        <div className="bg-[url('/transparent-bg.png')] bg-repeat rounded overflow-hidden">
-                            {/* Use direct script asset path via API or if we have a static route. 
-                                Actually we don't have a static route for script images yet?
-                                Wait, backend /api/scripts/:id/content returns Text.
-                                We might need an image serving route.
-                                Ah, we can use Base64 if needed, or better, add a static route in backend.
-                                The backend currently has NO static file serving for script images.
-                                I should check main.go again.
-                                I might need to add a route: GET /api/scripts/:id/assets/:filename/raw
-                             */}
+                        <div className="bg-[url('/transparent-bg.png')] bg-repeat rounded overflow-hidden border border-base-200">
+                            {/* Use direct script asset path via API or if we have a static route. */}
                             <img
                                 src={`${API_Base}/scripts/${scriptId}/assets/${previewAsset}/raw`}
                                 alt={previewAsset}

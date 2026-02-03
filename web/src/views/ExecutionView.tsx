@@ -63,7 +63,7 @@ export const ExecutionView: React.FC = () => {
         const fetchScripts = async () => {
             try {
                 const res = await axios.get(`${API_Base}/scripts`);
-                setScripts(res.data);
+                setScripts(res.data || []);
             } catch (err) {
                 console.error("Failed to fetch scripts", err);
                 setScripts(MOCK_SCRIPTS as any);
@@ -73,7 +73,7 @@ export const ExecutionView: React.FC = () => {
         const fetchDevices = async () => {
             try {
                 const res = await axios.get(`${API_Base}/devices`);
-                setDevices(res.data);
+                setDevices(res.data || []);
             } catch (err) {
                 console.error("Failed to fetch devices", err);
                 setDevices([]);
@@ -285,7 +285,7 @@ export const ExecutionView: React.FC = () => {
             {/* Workspace Area */}
             <div className="flex-1 flex flex-col min-w-0 bg-base-100/5">
                 {/* Tabs Header (Chrome-like) */}
-                <div className="flex items-end gap-1 px-2 pt-2 bg-[#121212] border-b border-[#121212] overflow-x-auto no-scrollbar h-11 shrink-0">
+                <div className="flex items-end gap-1 px-2 pt-2 bg-base-300 border-b border-base-300 overflow-x-auto [&::-webkit-scrollbar]:hidden h-11 shrink-0" style={{ scrollbarWidth: 'none' }}>
                     {scriptTabs.map(tab => {
                         const isActive = activeTabId === tab.tabId;
                         const isEditing = editingTabId === tab.tabId;
@@ -297,7 +297,7 @@ export const ExecutionView: React.FC = () => {
                                     "relative flex items-center gap-2 px-4 py-2 rounded-t-xl text-sm font-medium cursor-pointer select-none transition-all min-w-[150px] max-w-[240px] group border-b-0 h-full",
                                     isActive
                                         ? "bg-base-100 text-base-content shadow-[0_-5px_10px_-5px_rgba(0,0,0,0.2)] z-10"
-                                        : "bg-transparent text-gray-500 hover:bg-white/5 hover:text-gray-300 mb-0.5"
+                                        : "bg-transparent text-base-content/50 hover:bg-base-content/10 hover:text-base-content mb-0.5"
                                 )}
                                 onClick={() => setActiveScriptTab(tab.tabId)}
                                 onDoubleClick={(e) => { e.stopPropagation(); startEditing(tab.tabId, tab.label); }}
@@ -407,7 +407,7 @@ export const ExecutionView: React.FC = () => {
                                                             onChange={(e) => updateScriptParams(activeTab.tabId, { deviceId: e.target.value })}
                                                         >
                                                             <option value="" disabled>Select a device</option>
-                                                            {devices.map(d => <option key={d} value={d}>{d}</option>)}
+                                                            {devices?.map(d => <option key={d} value={d}>{d}</option>)}
                                                             {devices.length === 0 && <option value="" disabled>No devices found (Is ADB running?)</option>}
                                                         </select>
                                                     ) : (
@@ -607,14 +607,14 @@ const LogConsole: React.FC<{
                     {/* Mode Toggle */}
                     <div className="join bg-black/20 rounded-md p-0.5">
                         <button
-                            className={clsx("join-item btn btn-xs border-none h-6 min-h-0 px-2", searchMode === 'find' ? "btn-primary" : "btn-ghost opacity-50")}
+                            className={clsx("join-item btn btn-xs border-none h-6 min-h-0 px-2 hover:bg-white/10 text-gray-400", searchMode === 'find' ? "bg-white/10 text-white" : "")}
                             onClick={() => setSearchMode('find')}
                             title="Find & Highlight"
                         >
                             <Search size={12} />
                         </button>
                         <button
-                            className={clsx("join-item btn btn-xs border-none h-6 min-h-0 px-2", searchMode === 'filter' ? "btn-primary" : "btn-ghost opacity-50")}
+                            className={clsx("join-item btn btn-xs border-none h-6 min-h-0 px-2 hover:bg-white/10 text-gray-400", searchMode === 'filter' ? "bg-white/10 text-white" : "")}
                             onClick={() => setSearchMode('filter')}
                             title="Filter Lines"
                         >
@@ -643,14 +643,14 @@ const LogConsole: React.FC<{
                         <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
                             {searchText && (
                                 <>
-                                    <span className="text-[10px] opacity-50 font-mono">
+                                    <span className="text-[10px] opacity-50 font-mono text-gray-400">
                                         {searchMode === 'find' ? (
                                             matches.length > 0 ? `${currentMatchIndex + 1}/${matches.length}` : '0/0'
                                         ) : (
                                             `${displayLogs.length}`
                                         )}
                                     </span>
-                                    <button onClick={() => setSearchText('')} className="opacity-50 hover:opacity-100 p-0.5">
+                                    <button onClick={() => setSearchText('')} className="text-gray-500 hover:text-white p-0.5">
                                         <XCircle size={12} />
                                     </button>
                                 </>
@@ -662,7 +662,7 @@ const LogConsole: React.FC<{
                     {searchMode === 'find' && (
                         <div className="join gap-0.5">
                             <button
-                                className="btn btn-xs btn-ghost btn-square h-7 min-h-0 rounded-sm disabled:bg-transparent"
+                                className="btn btn-xs btn-ghost btn-square h-7 min-h-0 rounded-sm disabled:bg-transparent text-gray-400 hover:text-white hover:bg-white/10"
                                 disabled={matches.length === 0}
                                 onClick={prevMatch}
                                 title="Previous Match (Shift+Enter)"
@@ -670,7 +670,7 @@ const LogConsole: React.FC<{
                                 <ArrowUp size={14} />
                             </button>
                             <button
-                                className="btn btn-xs btn-ghost btn-square h-7 min-h-0 rounded-sm disabled:bg-transparent"
+                                className="btn btn-xs btn-ghost btn-square h-7 min-h-0 rounded-sm disabled:bg-transparent text-gray-400 hover:text-white hover:bg-white/10"
                                 disabled={matches.length === 0}
                                 onClick={nextMatch}
                                 title="Next Match (Enter)"
@@ -686,7 +686,7 @@ const LogConsole: React.FC<{
                     <div className="h-4 w-px bg-white/10 mx-1"></div>
 
                     <button
-                        className="btn btn-xs btn-ghost btn-square rounded-sm h-7 min-h-0 opacity-50 hover:opacity-100"
+                        className="btn btn-xs btn-ghost btn-square rounded-sm h-7 min-h-0 opacity-50 hover:opacity-100 text-gray-300 hover:bg-white/10"
                         onClick={handleDownload}
                         disabled={logs.length === 0}
                         title="Download Log"
@@ -695,7 +695,7 @@ const LogConsole: React.FC<{
                     </button>
 
                     <button
-                        className={clsx("btn btn-xs btn-ghost btn-square rounded-sm h-7 min-h-0", isWrap ? "text-primary bg-primary/10" : "opacity-50")}
+                        className={clsx("btn btn-xs btn-ghost btn-square rounded-sm h-7 min-h-0 hover:bg-white/10", isWrap ? "text-blue-400" : "text-gray-500")}
                         onClick={() => setIsWrap(!isWrap)}
                         title="Toggle Word Wrap"
                     >
@@ -703,7 +703,7 @@ const LogConsole: React.FC<{
                     </button>
 
                     <button
-                        className={clsx("btn btn-xs btn-ghost btn-square rounded-sm h-7 min-h-0", isAutoScroll ? "text-success bg-success/10" : "opacity-50")}
+                        className={clsx("btn btn-xs btn-ghost btn-square rounded-sm h-7 min-h-0 hover:bg-white/10", isAutoScroll ? "text-green-400" : "text-gray-500")}
                         onClick={() => {
                             const newState = !isAutoScroll;
                             setIsAutoScroll(newState);
@@ -717,7 +717,7 @@ const LogConsole: React.FC<{
                     </button>
 
                     <button
-                        className="btn btn-xs btn-ghost btn-square text-error hover:bg-error/10 rounded-sm opacity-60 hover:opacity-100 h-7 min-h-0"
+                        className="btn btn-xs btn-ghost btn-square text-red-400/70 hover:text-red-400 hover:bg-white/10 rounded-sm h-7 min-h-0"
                         onClick={onClear}
                         title="Clear Console"
                     >
@@ -745,9 +745,9 @@ const LogConsole: React.FC<{
                             <div className={clsx(
                                 "px-4 py-0.5 flex gap-3 text-xs md:text-sm border-l-2 transition-colors",
                                 isWrap ? "whitespace-pre-wrap break-all" : "whitespace-nowrap",
-                                isCurrentMatch ? "bg-primary/20 border-primary" : "border-transparent hover:bg-white/5"
+                                isCurrentMatch ? "bg-white/10 border-blue-400" : "border-transparent hover:bg-white/5"
                             )}>
-                                <span className="opacity-30 select-none w-20 shrink-0 text-right font-light text-[11px] pt-[2px] font-mono">
+                                <span className="opacity-30 select-none w-20 shrink-0 text-right font-light text-[11px] pt-[2px] font-mono text-gray-500">
                                     {log.timestamp ? log.timestamp.split('T')[1].split('.')[0] : ''}
                                 </span>
                                 <span className="flex-1 font-mono">
@@ -761,8 +761,8 @@ const LogConsole: React.FC<{
 
                 {logs.length === 0 && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center opacity-10 pointer-events-none select-none gap-2">
-                        <Terminal size={48} />
-                        <div className="text-sm font-bold uppercase tracking-widest">Console Empty</div>
+                        <Terminal size={48} className="text-white" />
+                        <div className="text-sm font-bold uppercase tracking-widest text-white">Console Empty</div>
                     </div>
                 )}
 

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import Editor, { type OnMount } from '@monaco-editor/react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAppStore } from '../store';
 import { Save, Play, FileCode, Plus, Trash2, Camera, HelpCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -13,7 +14,8 @@ import { registerPythonCompletions } from '../utils/monacoConfig';
 const API_Base = "http://localhost:8080/api";
 
 export const EditorView: React.FC = () => {
-    const { openScriptTab } = useAppStore();
+    const { t } = useTranslation();
+    const { openScriptTab, theme } = useAppStore(); // Use global theme
     const navigate = useNavigate();
 
     const [scripts, setScripts] = useState<any[]>([]);
@@ -67,7 +69,7 @@ export const EditorView: React.FC = () => {
     const fetchScripts = async () => {
         try {
             const res = await axios.get(`${API_Base}/scripts`);
-            setScripts(res.data);
+            setScripts(res.data || []);
         } catch (err) {
             console.error("Failed to fetch scripts", err);
         }
@@ -76,9 +78,10 @@ export const EditorView: React.FC = () => {
     const fetchDevices = async () => {
         try {
             const res = await axios.get(`${API_Base}/devices`);
-            setDevices(res.data);
-            if (res.data.length > 0 && !selectedDevice) {
-                setSelectedDevice(res.data[0]);
+            const data = res.data || [];
+            setDevices(data);
+            if (data.length > 0 && !selectedDevice) {
+                setSelectedDevice(data[0]);
             }
         } catch (err) {
             console.error("Failed to fetch devices", err);
@@ -113,7 +116,7 @@ export const EditorView: React.FC = () => {
             setCode(currentCode);
         } catch (err) {
             console.error("Failed to save", err);
-            alert("Failed to save script");
+            alert(t('ui.common.error'));
         }
     };
 
@@ -136,7 +139,7 @@ export const EditorView: React.FC = () => {
             setIsDeleteModalOpen(false);
         } catch (err: any) {
             console.error("Failed to delete", err);
-            alert("Failed to delete script: " + (err.response?.data?.error || err.message));
+            alert(t('ui.common.error') + ": " + (err.response?.data?.error || err.message));
         }
     };
 
@@ -154,7 +157,7 @@ export const EditorView: React.FC = () => {
             setNewScriptPlatform("android");
         } catch (err: any) {
             console.error("Failed to create script", err);
-            alert("Failed to create script: " + (err.response?.data?.error || err.message));
+            alert(t('ui.common.error') + ": " + (err.response?.data?.error || err.message));
         } finally {
             setIsCreating(false);
         }
@@ -187,7 +190,7 @@ export const EditorView: React.FC = () => {
                         <button
                             className="btn btn-sm btn-ghost btn-square"
                             onClick={() => setScriptExplorerCollapsed(false)}
-                            title="Expand Explorer"
+                            title={t('ui.editor.files')}
                         >
                             <ChevronRight size={20} />
                         </button>
@@ -196,16 +199,16 @@ export const EditorView: React.FC = () => {
                             <div
                                 className="flex items-center gap-2 overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
                                 onClick={() => setScriptExplorerCollapsed(true)}
-                                title="Collapse Explorer"
+                                title={t('ui.editor.files')}
                             >
                                 <FileCode size={20} className="shrink-0" />
-                                <span className="truncate">Script Explorer</span>
+                                <span className="truncate">{t('ui.editor.files')}</span>
                             </div>
                             <div className="flex gap-1">
                                 <button
                                     className="btn btn-xs btn-ghost btn-square"
                                     onClick={() => setIsModalOpen(true)}
-                                    title="New Script"
+                                    title={t('ui.management.create')}
                                 >
                                     <Plus size={16} />
                                 </button>
@@ -229,7 +232,7 @@ export const EditorView: React.FC = () => {
                                         className={selectedScriptId === script.id ? 'active' : ''}
                                         onClick={() => {
                                             if (isDirty) {
-                                                if (!confirm("You have unsaved changes. Discard them?")) return;
+                                                if (!confirm(t('ui.management.confirm') + "?")) return;
                                             }
                                             setSelectedScriptId(script.id);
                                         }}
@@ -250,7 +253,7 @@ export const EditorView: React.FC = () => {
                                 className={`btn btn-sm btn-square ${selectedScriptId === script.id ? 'btn-primary' : 'btn-ghost'}`}
                                 onClick={() => {
                                     if (isDirty) {
-                                        if (!confirm("You have unsaved changes. Discard them?")) return;
+                                        if (!confirm(t('ui.management.confirm') + "?")) return;
                                     }
                                     setSelectedScriptId(script.id);
                                 }}
@@ -283,7 +286,7 @@ export const EditorView: React.FC = () => {
                         <>
                             <div className="font-bold flex-1">
                                 {scripts.find(s => s.id === selectedScriptId)?.name}
-                                {isDirty && <span className="text-warning ml-2">* (Unsaved)</span>}
+                                {isDirty && <span className="text-warning ml-2">*</span>}
                             </div>
 
                             <button
@@ -291,14 +294,14 @@ export const EditorView: React.FC = () => {
                                 onClick={handleSave}
                                 disabled={!isDirty}
                             >
-                                <Save size={16} /> Save
+                                <Save size={16} /> {t('ui.editor.save')}
                             </button>
                             <button
                                 className="btn btn-sm btn-ghost gap-2"
                                 onClick={handleRun}
-                                title="Run in Execution Tab"
+                                title={t('ui.execution.start')}
                             >
-                                <Play size={16} /> Run
+                                <Play size={16} /> {t('ui.execution.start')}
                             </button>
 
                             {/* Android Tools */}
@@ -309,15 +312,15 @@ export const EditorView: React.FC = () => {
                                         value={selectedDevice}
                                         onChange={(e) => setSelectedDevice(e.target.value)}
                                         onClick={() => { if (devices.length === 0) fetchDevices(); }}
-                                        title="Select Target Device"
+                                        title={t('ui.editor.selectDevice')}
                                     >
-                                        <option value="" disabled>Select Device</option>
-                                        {devices.map(d => <option key={d} value={d}>{d}</option>)}
+                                        <option value="" disabled>{t('ui.editor.device')}</option>
+                                        {devices?.map(d => <option key={d} value={d}>{d}</option>)}
                                     </select>
                                     <button
                                         className="btn btn-sm join-item btn-ghost"
                                         onClick={() => setIsScreenshotModalOpen(true)}
-                                        title="Take Screenshot"
+                                        title={t('ui.editor.screenshot')}
                                         disabled={!selectedDevice}
                                     >
                                         <Camera size={16} />
@@ -337,14 +340,14 @@ export const EditorView: React.FC = () => {
                             <button
                                 className="btn btn-sm btn-ghost gap-2 text-error"
                                 onClick={handleDeleteScript}
-                                title="Delete Script"
+                                title={t('ui.management.delete')}
                             >
                                 <Trash2 size={16} />
                             </button>
 
                         </>
                     ) : (
-                        <div className="text-base-content/50 italic">Select a script to edit</div>
+                        <div className="text-base-content/50 italic">{t('ui.execution.noScripts')}</div>
                     )}
                 </div>
 
@@ -361,7 +364,9 @@ export const EditorView: React.FC = () => {
                                 defaultLanguage="python"
                                 path={selectedScriptId} // Helps model separation
                                 value={code}
-                                theme="vs-dark" // Helper to match DaisyUI theme? vs-dark is safe
+                                // Simple mapping: if theme is 'light', 'cupcake', 'bumblebee', 'emerald', 'corporate', 'garden', 'lofi', 'pastel', 'fantasy', 'wireframe', 'cmyk', 'autumn', 'acid', 'lemonade', 'winter', 'nord' -> 'light'
+                                // else -> 'vs-dark'
+                                theme={['light', 'cupcake', 'bumblebee', 'emerald', 'corporate', 'garden', 'lofi', 'pastel', 'fantasy', 'wireframe', 'cmyk', 'autumn', 'acid', 'lemonade', 'winter', 'nord'].includes(theme) ? "light" : "vs-dark"}
                                 onChange={(value) => {
                                     setCode(value || "");
                                     setIsDirty(value !== originalCode);
@@ -377,7 +382,7 @@ export const EditorView: React.FC = () => {
                     ) : (
                         <div className="flex items-center justify-center h-full text-base-content/30 flex-col gap-4">
                             <FileCode size={48} />
-                            <p>No file open</p>
+                            <p>{t('ui.execution.noScripts')}</p>
                         </div>
                     )}
                 </div>
@@ -388,10 +393,10 @@ export const EditorView: React.FC = () => {
                 isModalOpen && (
                     <div className="modal modal-open">
                         <div className="modal-box">
-                            <h3 className="font-bold text-lg">Create New Script</h3>
+                            <h3 className="font-bold text-lg">{t('ui.management.create')}</h3>
                             <div className="form-control w-full mt-4">
                                 <label className="label">
-                                    <span className="label-text">Script Name</span>
+                                    <span className="label-text">{t('ui.management.scriptName')}</span>
                                 </label>
                                 <input
                                     type="text"
@@ -401,29 +406,29 @@ export const EditorView: React.FC = () => {
                                     onChange={e => setNewScriptName(e.target.value)}
                                 />
                                 <label className="label">
-                                    <span className="label-text">Platform</span>
+                                    <span className="label-text">{t('ui.management.platform')}</span>
                                 </label>
                                 <select
                                     className="select select-bordered w-full"
                                     value={newScriptPlatform}
                                     onChange={e => setNewScriptPlatform(e.target.value)}
                                 >
-                                    <option value="android">Android (ADB)</option>
-                                    <option value="desktop">Desktop (Robot)</option>
+                                    <option value="android">{t('ui.management.platformAndroid')}</option>
+                                    <option value="desktop">{t('ui.management.platformDesktop')}</option>
                                 </select>
                                 <label className="label">
-                                    <span className="label-text-alt">Only letters, numbers, hyphens, and underscores.</span>
+                                    <span className="label-text-alt">{t('ui.management.renameHelp')}</span>
                                 </label>
                             </div>
 
                             <div className="modal-action">
-                                <button className="btn" onClick={() => setIsModalOpen(false)}>Cancel</button>
+                                <button className="btn" onClick={() => setIsModalOpen(false)}>{t('ui.management.cancel')}</button>
                                 <button
                                     className="btn btn-primary"
                                     onClick={handleCreateScript}
                                     disabled={isCreating || !newScriptName.trim()}
                                 >
-                                    {isCreating ? "Creating..." : "Create"}
+                                    {isCreating ? t('ui.common.loading') : t('ui.management.create')}
                                 </button>
                             </div>
                         </div>
@@ -433,12 +438,12 @@ export const EditorView: React.FC = () => {
             {/* Confirmation Modal */}
             <ConfirmModal
                 isOpen={isDeleteModalOpen}
-                title="Delete Script"
-                message={`Are you sure you want to delete script '${selectedScriptId}'? This action cannot be undone.`}
+                title={t('ui.management.delete')}
+                message={t('ui.management.deleteWarning')}
                 onConfirm={executeDeleteScript}
                 onCancel={() => setIsDeleteModalOpen(false)}
                 type="danger"
-                confirmText="Delete"
+                confirmText={t('ui.management.delete')}
             />
 
             {/* Android Screenshot Modal */}

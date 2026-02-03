@@ -77,6 +77,12 @@ func main() {
 
 		// Rename
 		api.POST("/scripts/:id/rename", renameScript)
+
+		// Debug / ADB Management
+		api.GET("/adb/status", checkAdbStatus)
+		api.POST("/adb/start", startAdb)
+		api.POST("/adb/stop", stopAdb)
+		api.POST("/adb/command", executeAdbCommand)
 	}
 
 	r.GET("/ws/logs/:id", streamLogs)
@@ -287,29 +293,141 @@ func listDevices(c *gin.Context) {
 	// Execute 'adb devices' using relative path
 	cwd, _ := os.Getwd()
 	adbPath := filepath.Join(cwd, "..", "platform-tools", "adb.exe")
+	if os.PathSeparator != '\\' {
+		adbPath = filepath.Join(cwd, "..", "platform-tools", "adb")
+	}
 
-	cmd := exec.Command(adbPath, "devices")
-	output, err := cmd.CombinedOutput()
+	getDevices := func() ([]string, error) {
+		cmd := exec.Command(adbPath, "devices")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return nil, err
+		}
+
+		lines := strings.Split(string(output), "\n")
+		var devices []string
+
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line == "" || strings.HasPrefix(line, "List of devices attached") {
+				continue
+			}
+			parts := strings.Fields(line)
+			if len(parts) >= 2 && parts[1] == "device" {
+				devices = append(devices, parts[0])
+			}
+		}
+		return devices, nil
+	}
+
+	devices, err := getDevices()
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to execute adb: " + err.Error()})
 		return
 	}
 
-	lines := strings.Split(string(output), "\n")
-	var devices []string
-
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "List of devices attached") {
-			continue
-		}
-		parts := strings.Fields(line)
-		if len(parts) >= 2 && parts[1] == "device" {
-			devices = append(devices, parts[0])
-		}
+	// Ensure non-null for JSON
+	if devices == nil {
+		devices = []string{}
 	}
 
 	c.JSON(200, devices)
+}
+
+// --- ADB Management Endpoints ---
+
+func checkAdbStatus(c *gin.Context) {
+	// Check if adb.exe is in process list (Simple check)
+	// Or just try to run 'adb get-state'
+	cwd, _ := os.Getwd()
+	adbPath := filepath.Join(cwd, "..", "platform-tools", "adb.exe")
+	if os.PathSeparator != '\\' {
+		adbPath = filepath.Join(cwd, "..", "platform-tools", "adb")
+	}
+
+	cmd := exec.Command(adbPath, "get-state")
+	if err := cmd.Run(); err != nil {
+		// If get-state fails, it might be that no device is connected, OR server is off.
+		// Better check: tasklist on Windows
+		if os.PathSeparator == '\\' {
+			checkCmd := exec.Command("tasklist", "/FI", "IMAGENAME eq adb.exe", "/FO", "CSV", "/NH")
+			out, _ := checkCmd.Output()
+			if strings.Contains(string(out), "adb.exe") {
+				c.JSON(200, gin.H{"status": "running", "details": "ADB process found"})
+				return
+			}
+		} else {
+			checkCmd := exec.Command("pgrep", "adb")
+			if err := checkCmd.Run(); err == nil {
+				c.JSON(200, gin.H{"status": "running", "details": "ADB process found"})
+				return
+			}
+		}
+		c.JSON(200, gin.H{"status": "stopped", "details": "ADB process not found"})
+		return
+	}
+	c.JSON(200, gin.H{"status": "running", "details": "ADB responded to get-state"})
+}
+
+func startAdb(c *gin.Context) {
+	cwd, _ := os.Getwd()
+	adbPath := filepath.Join(cwd, "..", "platform-tools", "adb.exe")
+	if os.PathSeparator != '\\' {
+		adbPath = filepath.Join(cwd, "..", "platform-tools", "adb")
+	}
+
+	err := exec.Command(adbPath, "start-server").Run()
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to start ADB: " + err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"status": "started"})
+}
+
+func stopAdb(c *gin.Context) {
+	cwd, _ := os.Getwd()
+	adbPath := filepath.Join(cwd, "..", "platform-tools", "adb.exe")
+	if os.PathSeparator != '\\' {
+		adbPath = filepath.Join(cwd, "..", "platform-tools", "adb")
+	}
+
+	err := exec.Command(adbPath, "kill-server").Run()
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to stop ADB: " + err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"status": "stopped"})
+}
+
+func executeAdbCommand(c *gin.Context) {
+	var req struct {
+		Command string `json:"command"`
+	}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	cwd, _ := os.Getwd()
+	adbPath := filepath.Join(cwd, "..", "platform-tools", "adb.exe")
+	if os.PathSeparator != '\\' {
+		adbPath = filepath.Join(cwd, "..", "platform-tools", "adb")
+	}
+
+	// Security: Only allow adb commands?
+	// We will execute: adb <args>
+	// Split command string into args
+	args := strings.Fields(req.Command)
+
+	cmd := exec.Command(adbPath, args...)
+	output, err := cmd.CombinedOutput()
+
+	result := string(output)
+	if err != nil {
+		result += "\nError: " + err.Error()
+	}
+
+	c.JSON(200, gin.H{"output": result})
 }
 
 func streamLogs(c *gin.Context) {

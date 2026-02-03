@@ -262,24 +262,24 @@ export const ApiRefModal: React.FC<ApiRefModalProps> = ({ isOpen, onClose }) => 
                                         <div className="flex items-center gap-3">
                                             <span className="text-primary font-bold font-mono text-lg group-hover:text-primary-focus transition-colors">{api.name}</span>
                                             <div className="flex gap-1.5">
-                                                {(api.platform === 'android' || api.platform === 'both') && <div title="Android" className="badge badge-xs badge-outline border-primary/30 text-primary/60 px-1">ADB</div>}
-                                                {(api.platform === 'desktop' || api.platform === 'both') && <div title="Desktop" className="badge badge-xs badge-outline border-secondary/30 text-secondary/60 px-1">ROBOT</div>}
+                                                {(api.platform === 'android' || api.platform === 'both') && <div title="Android" className="badge badge-xs badge-outline badge-primary border-primary/30 text-primary/80 px-1">ADB</div>}
+                                                {(api.platform === 'desktop' || api.platform === 'both') && <div title="Desktop" className="badge badge-xs badge-outline badge-secondary border-secondary/30 text-secondary/80 px-1">ROBOT</div>}
                                             </div>
                                         </div>
-                                        <div className="text-xs opacity-40 font-mono mt-1">{api.params}</div>
+                                        <div className="text-xs font-mono mt-1 text-base-content/60 break-all">{api.params}</div>
                                     </div>
                                 </div>
 
-                                <p className="text-sm text-base-content/70 mb-4 font-sans leading-relaxed">
+                                <p className="text-sm text-base-content/80 mb-4 font-sans leading-relaxed">
                                     {api.desc}
                                 </p>
 
-                                <div className="relative overflow-hidden rounded-xl border border-base-300 bg-neutral shadow-inner">
+                                <div className="relative overflow-hidden rounded-xl border border-base-300 bg-base-200/50 shadow-inner group-hover:bg-base-200 transition-colors">
                                     <div className="flex items-center justify-between px-4 py-2 bg-base-300/50 border-b border-base-300/30">
-                                        <div className="text-[10px] uppercase tracking-widest font-bold opacity-30">Example Code</div>
+                                        <div className="text-[10px] uppercase tracking-widest font-bold opacity-50">Example Code</div>
                                         <CopyButton text={api.example} />
                                     </div>
-                                    <div className="p-4 font-mono text-sm overflow-x-auto whitespace-nowrap text-success/90 selection:bg-success/20 selection:text-success">
+                                    <div className="p-4 font-mono text-sm overflow-x-auto whitespace-nowrap text-base-content selection:bg-primary/20">
                                         {api.example}
                                     </div>
                                 </div>
