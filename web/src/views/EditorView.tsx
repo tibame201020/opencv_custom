@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import Editor, { type OnMount } from '@monaco-editor/react';
 import axios from 'axios';
 import { useAppStore } from '../store';
-import { Save, Play, FileCode, Plus, Trash2, Camera, HelpCircle } from 'lucide-react';
+import { Save, Play, FileCode, Plus, Trash2, Camera, HelpCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ScreenshotModal } from '../components/ScreenshotModal';
 import { ApiRefModal } from '../components/ApiRefModal';
@@ -40,6 +40,9 @@ export const EditorView: React.FC = () => {
     const [assetExplorerCollapsed, setAssetExplorerCollapsed] = useState(false);
     const [assetExplorerWidth, setAssetExplorerWidth] = useState(250);
     const [assetRefreshTrigger, setAssetRefreshTrigger] = useState(0);
+
+    // Script Explorer State
+    const [scriptExplorerCollapsed, setScriptExplorerCollapsed] = useState(false);
 
     const editorRef = useRef<any>(null);
     const selectedScriptIdRef = useRef<string | null>(selectedScriptId);
@@ -176,39 +179,86 @@ export const EditorView: React.FC = () => {
     return (
         <div className="flex h-full bg-base-100">
             {/* Sidebar - File Explorer */}
-            <div className="w-64 border-r border-base-300 flex flex-col bg-base-200">
-                <div className="p-4 font-bold text-lg flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <FileCode size={20} /> Script Explorer
-                    </div>
-                    <button
-                        className="btn btn-xs btn-ghost btn-square"
-                        onClick={() => setIsModalOpen(true)}
-                        title="New Script"
-                    >
-                        <Plus size={16} />
-                    </button>
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                    <ul className="menu w-full p-2">
-                        {scripts.map(script => (
-                            <li key={script.id}>
-                                <a
-                                    className={selectedScriptId === script.id ? 'active' : ''}
-                                    onClick={() => {
-                                        if (isDirty) {
-                                            if (!confirm("You have unsaved changes. Discard them?")) return;
-                                        }
-                                        setSelectedScriptId(script.id);
-                                    }}
+            <div className={`${scriptExplorerCollapsed ? 'w-12' : 'w-64'} border-r border-base-300 flex flex-col bg-base-200 transition-all duration-300 ease-in-out`}>
+                <div className={`p-4 font-bold text-lg flex items-center ${scriptExplorerCollapsed ? 'justify-center p-2' : 'justify-between'}`}>
+                    {scriptExplorerCollapsed ? (
+                        <button
+                            className="btn btn-sm btn-ghost btn-square"
+                            onClick={() => setScriptExplorerCollapsed(false)}
+                            title="Expand Explorer"
+                        >
+                            <ChevronRight size={20} />
+                        </button>
+                    ) : (
+                        <>
+                            <div
+                                className="flex items-center gap-2 overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => setScriptExplorerCollapsed(true)}
+                                title="Collapse Explorer"
+                            >
+                                <FileCode size={20} className="shrink-0" />
+                                <span className="truncate">Script Explorer</span>
+                            </div>
+                            <div className="flex gap-1">
+                                <button
+                                    className="btn btn-xs btn-ghost btn-square"
+                                    onClick={() => setIsModalOpen(true)}
+                                    title="New Script"
                                 >
-                                    <span className="font-mono text-xs opacity-70">[{script.platform}]</span>
-                                    {script.name}
-                                </a>
-                            </li>
-                        ))}
-                    </ul>
+                                    <Plus size={16} />
+                                </button>
+                                <button
+                                    className="btn btn-xs btn-ghost btn-square"
+                                    onClick={() => setScriptExplorerCollapsed(true)}
+                                    title="Collapse Explorer"
+                                >
+                                    <ChevronLeft size={16} />
+                                </button>
+                            </div>
+                        </>
+                    )}
                 </div>
+                {!scriptExplorerCollapsed && (
+                    <div className="flex-1 overflow-y-auto">
+                        <ul className="menu w-full p-2">
+                            {scripts.map(script => (
+                                <li key={script.id}>
+                                    <a
+                                        className={selectedScriptId === script.id ? 'active' : ''}
+                                        onClick={() => {
+                                            if (isDirty) {
+                                                if (!confirm("You have unsaved changes. Discard them?")) return;
+                                            }
+                                            setSelectedScriptId(script.id);
+                                        }}
+                                    >
+                                        <span className="font-mono text-xs opacity-70">[{script.platform}]</span>
+                                        {script.name}
+                                    </a>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+                {scriptExplorerCollapsed && (
+                    <div className="flex-1 flex flex-col items-center py-2 gap-2 overflow-y-auto scrollbar-hide">
+                        {scripts.map(script => (
+                            <button
+                                key={script.id}
+                                className={`btn btn-sm btn-square ${selectedScriptId === script.id ? 'btn-primary' : 'btn-ghost'}`}
+                                onClick={() => {
+                                    if (isDirty) {
+                                        if (!confirm("You have unsaved changes. Discard them?")) return;
+                                    }
+                                    setSelectedScriptId(script.id);
+                                }}
+                                title={script.name}
+                            >
+                                <span className="text-[10px] font-bold">{script.name.charAt(0).toUpperCase()}</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Asset Explorer (Contextual) */}
