@@ -13,14 +13,6 @@ import clsx from 'clsx';
 const API_Base = 'http://localhost:8080/api';
 const WS_Base = 'ws://localhost:8080/ws/logs';
 
-// Mock Data (Fallback)
-const MOCK_SCRIPTS = [
-    { id: 'robot', name: 'Robot Script (Desktop)', platform: 'desktop', description: 'Automates desktop GUI interactions' },
-    { id: 'gear', name: 'Gear Script', platform: 'android', description: 'Farms gear in mobile game' },
-    { id: 'evil_hunter', name: 'Evil Hunter', platform: 'android', description: 'Auto-combat script' },
-    { id: 'chaos_dream', name: 'Chaos Dream', platform: 'android', description: 'Dungeon crawler bot' },
-    { id: 'adb_test', name: 'ADB Test', platform: 'android', description: 'Connectivity check' },
-];
 
 export const ExecutionView: React.FC = () => {
     const { t } = useTranslation();
@@ -66,7 +58,7 @@ export const ExecutionView: React.FC = () => {
                 setScripts(res.data || []);
             } catch (err) {
                 console.error("Failed to fetch scripts", err);
-                setScripts(MOCK_SCRIPTS as any);
+                setScripts([]);
             }
         };
 

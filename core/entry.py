@@ -202,9 +202,8 @@ def cmd_list(args):
                 })
 
     # We output the list raw JSON, NOT triggering the hook because LIST command result is parsed by backend
-    # So we temporarily restore stdout or just use sys.__stdout__
-    sys.stdout = sys.__stdout__
-    print(json.dumps(scripts))
+    # We use ensure_ascii=False to support Chinese characters
+    print(json.dumps(scripts, ensure_ascii=False))
 
 def cmd_run(args):
     """Run a specific script"""

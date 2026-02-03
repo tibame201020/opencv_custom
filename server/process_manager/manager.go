@@ -60,9 +60,21 @@ func (sm *ScriptManager) ListScripts() ([]map[string]string, error) {
 		return nil, fmt.Errorf("failed to list scripts: %v, output: %s", err, string(output))
 	}
 
+	// Robust JSON extraction: Find the first '[' and last ']'
+	// This helps ignore noise like "Added new directory to watcher" or warnings
+	raw := string(output)
+	start := strings.Index(raw, "[")
+	end := strings.LastIndex(raw, "]")
+
+	if start == -1 || end == -1 || end < start {
+		return nil, fmt.Errorf("failed to find JSON array in output: %s", raw)
+	}
+
+	jsonPart := raw[start : end+1]
+
 	var scripts []map[string]string
-	if err := json.Unmarshal(output, &scripts); err != nil {
-		return nil, fmt.Errorf("failed to parse script list: %v, raw: %s", err, string(output))
+	if err := json.Unmarshal([]byte(jsonPart), &scripts); err != nil {
+		return nil, fmt.Errorf("failed to parse script list: %v, extracted: %s", err, jsonPart)
 	}
 
 	return scripts, nil
