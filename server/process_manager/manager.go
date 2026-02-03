@@ -458,12 +458,14 @@ func (sm *ScriptManager) RenameScript(scriptID string, newName string) error {
 	validNewName = strings.ReplaceAll(validNewName, "-", "_")
 
 	newDir := filepath.Join(targetBaseDir, validNewName)
+	fmt.Printf("Renaming Script: ID=%s, OldPath=%s, NewDir=%s\n", scriptID, scriptPath, newDir)
 
 	if _, err := os.Stat(newDir); err == nil {
 		return fmt.Errorf("CONFLICT_ALREADY_EXISTS:%s", validNewName)
 	}
 
 	// 1. Rename the folder
+	fmt.Printf("Step 1: Renaming folder %s -> %s\n", scriptDir, newDir)
 	if err := os.Rename(scriptDir, newDir); err != nil {
 		return fmt.Errorf("failed to rename folder: %v", err)
 	}
@@ -471,11 +473,16 @@ func (sm *ScriptManager) RenameScript(scriptID string, newName string) error {
 	// 2. Rename the main py file inside: newDir/oldName.py -> newDir/newName.py
 	oldPyPath := filepath.Join(newDir, scriptID+".py")
 	newPyPath := filepath.Join(newDir, validNewName+".py")
+	fmt.Printf("Step 2: Renaming .py file %s -> %s\n", oldPyPath, newPyPath)
 
 	if _, err := os.Stat(oldPyPath); err == nil {
 		if err := os.Rename(oldPyPath, newPyPath); err != nil {
-			return fmt.Errorf("failed to rename .py file: %v", err)
+			// Rollback folder name if file rename fails?
+			// For now just report it
+			return fmt.Errorf("failed to rename .py file inside new folder: %v", err)
 		}
+	} else {
+		fmt.Printf("Note: Main .py file %s not found inside folder, skipping file rename\n", oldPyPath)
 	}
 
 	return nil

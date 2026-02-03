@@ -75,7 +75,9 @@ export const ManagementView: React.FC = () => {
             if (err.response?.status === 409) {
                 setRenameError(t('ui.management.nameConflict') || "A script with this name already exists.");
             } else {
+                const errorMsg = err.response?.data?.error || err.message || 'Unknown error';
                 console.error("Rename failed", err);
+                setRenameError(`Error: ${errorMsg}`);
             }
         }
     };
