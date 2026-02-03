@@ -8,8 +8,20 @@ import io
 import importlib
 from pathlib import Path
 
-# 添加專案根目錄到 Python 路徑
-project_root = Path(__file__).parent
+# 確定專案根目錄 (處理 PyInstaller 凍結路徑問題)
+if getattr(sys, 'frozen', False):
+    # 如果是打包後的執行檔，__file__ 在暫存目錄，我們需要外部的 core 目錄
+    # 執行檔位於 ScriptPlatform-Windows/script-engine.exe
+    # 而 core 目錄位於 ScriptPlatform-Windows/core/
+    project_root = Path(sys.executable).parent / "core"
+else:
+    # 開發模式
+    project_root = Path(__file__).parent
+
+# 強制 stdout 使用 UTF-8 編碼，避免在 Windows 下出現編碼錯誤
+if sys.stdout.encoding != 'UTF-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 sys.path.insert(0, str(project_root))
 
 # Import existing Run Logic
