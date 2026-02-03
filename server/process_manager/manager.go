@@ -464,19 +464,10 @@ func (sm *ScriptManager) RenameScript(scriptID string, newName string) error {
 		return fmt.Errorf("CONFLICT_ALREADY_EXISTS:%s", validNewName)
 	}
 
-	// 1. Rename the folder (With retries for Windows file locks)
-	fmt.Printf("Step 1: Renaming folder %s -> %s\n", scriptDir, newDir)
-	for i := 0; i < 5; i++ {
-		err = os.Rename(scriptDir, newDir)
-		if err == nil {
-			break
-		}
-		fmt.Printf("Rename attempt %d failed: %v, retrying in 200ms...\n", i+1, err)
-		time.Sleep(200 * time.Millisecond)
-	}
-
-	if err != nil {
-		return fmt.Errorf("FAILED TO RENAME FOLDER: %v", err)
+	// 1. Copy the folder (Workaround for Windows Rename "Access is denied")
+	fmt.Printf("Step 1: Copying folder %s -> %s\n", scriptDir, newDir)
+	if err := copyDir(scriptDir, newDir); err != nil {
+		return fmt.Errorf("FAILED TO COPY FOLDER: %v", err)
 	}
 
 	// 2. Rename the main py file inside: newDir/oldName.py -> newDir/newName.py
@@ -486,14 +477,71 @@ func (sm *ScriptManager) RenameScript(scriptID string, newName string) error {
 
 	if _, err := os.Stat(oldPyPath); err == nil {
 		if err := os.Rename(oldPyPath, newPyPath); err != nil {
-			// Rollback folder name if file rename fails?
-			// For now just report it
 			return fmt.Errorf("failed to rename .py file inside new folder: %v", err)
 		}
 	} else {
 		fmt.Printf("Note: Main .py file %s not found inside folder, skipping file rename\n", oldPyPath)
 	}
 
+	// 3. Delete the old folder
+	fmt.Printf("Step 3: Deleting old folder %s\n", scriptDir)
+	if err := os.RemoveAll(scriptDir); err != nil {
+		fmt.Printf("Warning: Failed to delete old folder after copy: %v (You may need to delete it manually)\n", err)
+	}
+
+	return nil
+}
+
+// Helpers for Copying
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	if err != nil {
+		return err
+	}
+	return out.Close()
+}
+
+func copyDir(src, dst string) error {
+	info, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
+	if err := os.MkdirAll(dst, info.Mode()); err != nil {
+		return err
+	}
+
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+
+		if entry.IsDir() {
+			if err := copyDir(srcPath, dstPath); err != nil {
+				return err
+			}
+		} else {
+			if err := copyFile(srcPath, dstPath); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
