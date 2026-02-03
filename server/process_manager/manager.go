@@ -464,10 +464,19 @@ func (sm *ScriptManager) RenameScript(scriptID string, newName string) error {
 		return fmt.Errorf("CONFLICT_ALREADY_EXISTS:%s", validNewName)
 	}
 
-	// 1. Rename the folder
+	// 1. Rename the folder (With retries for Windows file locks)
 	fmt.Printf("Step 1: Renaming folder %s -> %s\n", scriptDir, newDir)
-	if err := os.Rename(scriptDir, newDir); err != nil {
-		return fmt.Errorf("failed to rename folder: %v", err)
+	for i := 0; i < 5; i++ {
+		err = os.Rename(scriptDir, newDir)
+		if err == nil {
+			break
+		}
+		fmt.Printf("Rename attempt %d failed: %v, retrying in 200ms...\n", i+1, err)
+		time.Sleep(200 * time.Millisecond)
+	}
+
+	if err != nil {
+		return fmt.Errorf("FAILED TO RENAME FOLDER: %v", err)
 	}
 
 	// 2. Rename the main py file inside: newDir/oldName.py -> newDir/newName.py
