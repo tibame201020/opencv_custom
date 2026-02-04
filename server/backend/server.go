@@ -147,6 +147,7 @@ func StartServer() {
 		api.POST("/scripts/:id/assets", uploadAsset)
 		api.POST("/scripts/:id/assets/mkdir", mkdirAsset)
 		api.POST("/scripts/:id/assets/move", moveAsset)
+		api.POST("/scripts/:id/assets/create", createFile)
 
 		// ZIP Import/Export
 		api.GET("/scripts/:id/export", exportScript)
@@ -244,6 +245,22 @@ func moveAsset(c *gin.Context) {
 	c.JSON(200, gin.H{"status": "ok"})
 }
 
+func createFile(c *gin.Context) {
+	scriptID := c.Param("id")
+	var req struct {
+		Path string `json:"path"`
+	}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request"})
+		return
+	}
+	if err := manager.CreateFileAsset(scriptID, req.Path); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"status": "ok"})
+}
+
 func getAssetRaw(c *gin.Context) {
 	scriptID := c.Param("id")
 	// For deep paths, we use a query param 'path' or handle the param carefully.
@@ -271,24 +288,24 @@ func getAssetRaw(c *gin.Context) {
 		return
 	}
 
-	imagesDir := filepath.Join(manager.CorePath, filepath.Dir(scriptPath), "images")
-	imagePath := filepath.Join(imagesDir, filename)
+	projectRoot := filepath.Join(manager.CorePath, filepath.Dir(scriptPath))
+	targetPath := filepath.Join(projectRoot, filename)
 
 	// Security check: Use absolute paths to prevent escape
-	cleanBase, _ := filepath.Abs(imagesDir)
-	cleanTarget, _ := filepath.Abs(imagePath)
+	cleanBase, _ := filepath.Abs(projectRoot)
+	cleanTarget, _ := filepath.Abs(targetPath)
 
 	if !strings.HasPrefix(cleanTarget, cleanBase) {
 		c.JSON(403, gin.H{"error": "Forbidden"})
 		return
 	}
 
-	if _, err := os.Stat(imagePath); os.IsNotExist(err) {
-		c.JSON(404, gin.H{"error": "Asset not found"})
+	if _, err := os.Stat(targetPath); os.IsNotExist(err) {
+		c.JSON(404, gin.H{"error": "File not found"})
 		return
 	}
 
-	c.File(imagePath)
+	c.File(targetPath)
 }
 
 func getDeviceScreenshot(c *gin.Context) {
@@ -326,22 +343,23 @@ func uploadAsset(c *gin.Context) {
 	relPath := c.PostForm("relPath")
 
 	if scriptID != "" {
-		// New Structure: core/script/custom/<scriptId>/images
+		// New Structure: core/script/custom/<scriptId>
 		scriptID = strings.ReplaceAll(scriptID, " ", "_")
-		baseImagesDir := filepath.Join(manager.CorePath, "script", "custom", scriptID, "images")
+		projectRoot := filepath.Join(manager.CorePath, "script", "custom", scriptID)
 
 		// Use relPath if provided, otherwise fallback to filename
 		var fullRelPath string
 		if relPath != "" {
 			fullRelPath = relPath
 		} else {
-			fullRelPath = file.Filename
+			// If no relPath, default to images/ folder for screenshots
+			fullRelPath = "images/" + file.Filename
 		}
 
-		targetPath := filepath.Join(baseImagesDir, fullRelPath)
+		targetPath := filepath.Join(projectRoot, fullRelPath)
 		targetDir = filepath.Dir(targetPath)
 		filename = filepath.Base(fullRelPath)
-		returnPath = "script/custom/" + scriptID + "/images/" + fullRelPath
+		returnPath = "script/custom/" + scriptID + "/" + fullRelPath
 	} else {
 		// Legacy: core/assets
 		targetDir = filepath.Join(manager.CorePath, "assets")
@@ -575,7 +593,8 @@ func streamLogs(c *gin.Context) {
 
 func getScriptContent(c *gin.Context) {
 	scriptID := c.Param("id")
-	content, err := manager.GetScriptContent(scriptID)
+	relPath := c.Query("path")
+	content, err := manager.GetScriptContent(scriptID, relPath)
 	if err != nil {
 		status := 500
 		if err.Error() == "script not found" {
@@ -593,18 +612,19 @@ type SaveContentRequest struct {
 
 func saveScriptContent(c *gin.Context) {
 	scriptID := c.Param("id")
+	relPath := c.Query("path")
 	var req SaveContentRequest
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": "Invalid request body"})
 		return
 	}
 
-	if err := manager.SaveScriptContent(scriptID, req.Content); err != nil {
+	if err := manager.SaveScriptContent(scriptID, relPath, req.Content); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(200, gin.H{"status": "saved"})
+	c.JSON(200, gin.H{"status": "ok"})
 }
 
 type CreateScriptRequest struct {

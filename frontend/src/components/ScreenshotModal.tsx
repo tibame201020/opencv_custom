@@ -38,7 +38,7 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
     // Asset saving state
     const [isSaving, setIsSaving] = useState(false);
-    const [savePath, setSavePath] = useState("");
+    const [savePath, setSavePath] = useState("images");
     const [existingFolders, setExistingFolders] = useState<string[]>([]);
     const [isCreatingNewFolder, setIsCreatingNewFolder] = useState(false);
     const [newFolderName, setNewFolderName] = useState("");
@@ -126,7 +126,7 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
         } else {
             setImageUrl(null);
             setIsCreatingNewFolder(false);
-            setSavePath("");
+            setSavePath("images");
         }
     }, [isOpen, deviceId, targetScriptId]);
 
@@ -249,6 +249,10 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
     const getFullRelativePath = () => {
         const finalPath = isCreatingNewFolder ? newFolderName.trim() : savePath;
         return finalPath ? `${finalPath.replace(/^\/+|\/+$/g, '')}/${filename}` : filename;
+    };
+
+    const getSnippetPath = () => {
+        return getFullRelativePath().replace(/^images\//, '');
     };
 
     const handleSaveAsset = async () => {
@@ -523,14 +527,14 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                 "rounded-xl overflow-hidden border transition-all duration-300 group selection:bg-primary/20 cursor-pointer shadow-sm",
                                 copiedId === 'click_full' ? "border-success bg-success/10" : "border-base-300 bg-base-100 hover:border-primary/50 hover:shadow-md"
                             )}
-                                onClick={() => handleCopy('click_full', `self.platform.click_image_full(f"{self.image_root}/${getFullRelativePath()}", self.deviceId)`)}
+                                onClick={() => handleCopy('click_full', `self.platform.click_image_full(f"{self.image_root}/${getSnippetPath()}", self.deviceId)`)}
                             >
                                 <div className="flex items-center justify-between px-3 py-2 bg-base-200/50 border-b border-base-200">
                                     <div className="text-[10px] uppercase tracking-widest font-bold opacity-50">Full Screen Search</div>
                                     {copiedId === 'click_full' ? <Check size={14} className="text-success animate-in zoom-in" /> : <Copy size={14} className="opacity-30 group-hover:opacity-100 transition-opacity" />}
                                 </div>
                                 <div className="p-3 font-mono text-[11px] text-base-content/80 leading-relaxed break-all">
-                                    self.platform.click_image_full(f"&#123;self.image_root&#125;/{getFullRelativePath()}", self.deviceId)
+                                    self.platform.click_image_full(f"&#123;self.image_root&#125;/{getSnippetPath()}", self.deviceId)
                                 </div>
                             </div>
 
@@ -539,14 +543,14 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                 "rounded-xl overflow-hidden border transition-all duration-300 group selection:bg-primary/20 cursor-pointer shadow-sm",
                                 copiedId === 'click_similar' ? "border-success bg-success/10" : "border-base-300 bg-base-100 hover:border-primary/50 hover:shadow-md"
                             )}
-                                onClick={() => handleCopy('click_similar', `self.platform.click_image_with_similar(f"{self.image_root}/${getFullRelativePath()}", self.default_threshold, self.deviceId)`)}
+                                onClick={() => handleCopy('click_similar', `self.platform.click_image_with_similar(f"{self.image_root}/${getSnippetPath()}", self.default_threshold, self.deviceId)`)}
                             >
                                 <div className="flex items-center justify-between px-3 py-2 bg-base-200/50 border-b border-base-200">
                                     <div className="text-[10px] uppercase tracking-widest font-bold opacity-50">Similar Search</div>
                                     {copiedId === 'click_similar' ? <Check size={14} className="text-success animate-in zoom-in" /> : <Copy size={14} className="opacity-30 group-hover:opacity-100 transition-opacity" />}
                                 </div>
                                 <div className="p-3 font-mono text-[11px] text-base-content/80 leading-relaxed break-all">
-                                    self.platform.click_image_with_similar(f"&#123;self.image_root&#125;/{getFullRelativePath()}", threshold, self.deviceId)
+                                    self.platform.click_image_with_similar(f"&#123;self.image_root&#125;/{getSnippetPath()}", threshold, self.deviceId)
                                 </div>
                             </div>
 
@@ -566,7 +570,7 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                         const x2 = Math.min(imageRef.current!.naturalWidth, Math.floor((rect.x + rect.w) * scaleX) + regionPaddingX);
                                         const y2 = Math.min(imageRef.current!.naturalHeight, Math.floor((rect.y + rect.h) * scaleY) + regionPaddingY);
 
-                                        const text = `self.platform.click_image(f"{self.image_root}/${getFullRelativePath()}", OcrRegion(${x1}, ${y1}, ${x2}, ${y2}), self.deviceId)`;
+                                        const text = `self.platform.click_image(f"{self.image_root}/${getSnippetPath().replace(/^images\//, '')}", OcrRegion(${x1}, ${y1}, ${x2}, ${y2}), self.deviceId)`;
                                         handleCopy('click_region', text);
                                     }}
                                 >
@@ -575,7 +579,7 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                         {copiedId === 'click_region' ? <Check size={14} className="text-success animate-in zoom-in" /> : <Copy size={14} className="opacity-30 group-hover:opacity-100 transition-opacity" />}
                                     </div>
                                     <div className="p-3 font-mono text-[11px] text-base-content/80 leading-relaxed break-all">
-                                        self.platform.click_image(f"&#123;self.image_root&#125;/{getFullRelativePath()}", OcrRegion(...), self.deviceId)
+                                        self.platform.click_image(f"&#123;self.image_root&#125;/{getSnippetPath().replace(/^images\//, '')}", OcrRegion(...), self.deviceId)
                                     </div>
                                 </div>
                             )}
@@ -585,14 +589,14 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                 "rounded-xl overflow-hidden border transition-all duration-300 group selection:bg-primary/20 cursor-pointer shadow-sm",
                                 copiedId === 'path' ? "border-success bg-success/10" : "border-base-300 bg-base-100 hover:border-primary/50 hover:shadow-md"
                             )}
-                                onClick={() => handleCopy('path', `f"{self.image_root}/${getFullRelativePath()}"`)}
+                                onClick={() => handleCopy('path', `f"{self.image_root}/${getSnippetPath()}"`)}
                             >
                                 <div className="flex items-center justify-between px-3 py-2 bg-base-200/50 border-b border-base-200">
                                     <div className="text-[10px] uppercase tracking-widest font-bold opacity-50">Asset Path</div>
                                     {copiedId === 'path' ? <Check size={14} className="text-success animate-in zoom-in" /> : <Copy size={14} className="opacity-30 group-hover:opacity-100 transition-opacity" />}
                                 </div>
                                 <div className="p-3 font-mono text-[11px] text-base-content/80 leading-relaxed break-all">
-                                    f"&#123;self.image_root&#125;/{getFullRelativePath()}"
+                                    f"&#123;self.image_root&#125;/{getSnippetPath()}"
                                 </div>
                             </div>
                         </div>

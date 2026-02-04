@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"script-platform/server/utils"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -204,26 +205,39 @@ func (sm *ScriptManager) GetLogChannel(runID string) (<-chan string, error) {
 	return process.Logs, nil
 }
 
-func (sm *ScriptManager) GetScriptContent(scriptID string) (string, error) {
-	// Re-fetch scripts to get dynamic paths (or cache them)
+func (sm *ScriptManager) GetScriptContent(scriptID string, relPath string) (string, error) {
 	scripts, err := sm.ListScripts()
 	if err != nil {
 		return "", err
 	}
 
-	var scriptPath string
+	var mainScriptPath string
 	for _, s := range scripts {
 		if s["id"] == scriptID {
-			scriptPath = s["path"]
+			mainScriptPath = s["path"]
 			break
 		}
 	}
 
-	if scriptPath == "" {
+	if mainScriptPath == "" {
 		return "", fmt.Errorf("script not found")
 	}
 
-	fullPath := filepath.Join(sm.CorePath, scriptPath)
+	projectRoot := filepath.Join(sm.CorePath, filepath.Dir(mainScriptPath))
+	var fullPath string
+	if relPath != "" {
+		fullPath = filepath.Join(projectRoot, relPath)
+	} else {
+		fullPath = filepath.Join(sm.CorePath, mainScriptPath)
+	}
+
+	// Security: Ensure within projectRoot
+	cleanBase, _ := filepath.Abs(projectRoot)
+	cleanTarget, _ := filepath.Abs(fullPath)
+	if !strings.HasPrefix(cleanTarget, cleanBase) {
+		return "", fmt.Errorf("security: path escape")
+	}
+
 	content, err := os.ReadFile(fullPath)
 	if err != nil {
 		return "", err
@@ -232,31 +246,37 @@ func (sm *ScriptManager) GetScriptContent(scriptID string) (string, error) {
 	return string(content), nil
 }
 
-func (sm *ScriptManager) SaveScriptContent(scriptID string, content string) error {
+func (sm *ScriptManager) SaveScriptContent(scriptID string, relPath string, content string) error {
 	scripts, err := sm.ListScripts()
 	if err != nil {
 		return err
 	}
 
-	var scriptPath string
+	var mainScriptPath string
 	for _, s := range scripts {
 		if s["id"] == scriptID {
-			scriptPath = s["path"]
+			mainScriptPath = s["path"]
 			break
 		}
 	}
 
-	if scriptPath == "" {
+	if mainScriptPath == "" {
 		return fmt.Errorf("script path not found")
 	}
 
-	fullPath := filepath.Join(sm.CorePath, scriptPath)
+	projectRoot := filepath.Join(sm.CorePath, filepath.Dir(mainScriptPath))
+	var fullPath string
+	if relPath != "" {
+		fullPath = filepath.Join(projectRoot, relPath)
+	} else {
+		fullPath = filepath.Join(sm.CorePath, mainScriptPath)
+	}
 
-	// Security check: ensure path is within core directory
-	// (Simple check, can be improved)
-	if !filepath.IsAbs(fullPath) {
-		abs, _ := filepath.Abs(fullPath)
-		fullPath = abs
+	// Security
+	cleanBase, _ := filepath.Abs(projectRoot)
+	cleanTarget, _ := filepath.Abs(fullPath)
+	if !strings.HasPrefix(cleanTarget, cleanBase) {
+		return fmt.Errorf("security: path escape")
 	}
 
 	// Write file (0644 perms)
@@ -570,13 +590,13 @@ func (sm *ScriptManager) ListAssets(scriptID string) ([]*FileNode, error) {
 		return nil, fmt.Errorf("script not found")
 	}
 
-	imagesDir := filepath.Join(sm.CorePath, filepath.Dir(scriptPath), "images")
+	projectRoot := filepath.Join(sm.CorePath, filepath.Dir(scriptPath))
 
-	if _, err := os.Stat(imagesDir); os.IsNotExist(err) {
+	if _, err := os.Stat(projectRoot); os.IsNotExist(err) {
 		return []*FileNode{}, nil
 	}
 
-	return sm.walkDir(imagesDir, ""), nil
+	return sm.walkDir(projectRoot, ""), nil
 }
 
 func (sm *ScriptManager) walkDir(fullPath, relPath string) []*FileNode {
@@ -589,7 +609,6 @@ func (sm *ScriptManager) walkDir(fullPath, relPath string) []*FileNode {
 	for _, e := range entries {
 		name := e.Name()
 		nodeRelPath := filepath.Join(relPath, name)
-		// Convert to forward slashes for frontend web compatibility
 		webRelPath := filepath.ToSlash(nodeRelPath)
 
 		node := &FileNode{
@@ -603,6 +622,15 @@ func (sm *ScriptManager) walkDir(fullPath, relPath string) []*FileNode {
 		}
 		nodes = append(nodes, node)
 	}
+
+	// Sort: Folders first, then by name
+	sort.Slice(nodes, func(i, j int) bool {
+		if nodes[i].IsDir != nodes[j].IsDir {
+			return nodes[i].IsDir // true (dir) comes before false (file)
+		}
+		return strings.ToLower(nodes[i].Name) < strings.ToLower(nodes[j].Name)
+	})
+
 	return nodes
 }
 
@@ -624,12 +652,12 @@ func (sm *ScriptManager) RenameAsset(scriptID, oldName, newName string) error {
 		return fmt.Errorf("script not found")
 	}
 
-	imagesDir := filepath.Join(sm.CorePath, filepath.Dir(scriptPath), "images")
-	oldPath := filepath.Join(imagesDir, oldName)
-	newPath := filepath.Join(imagesDir, newName)
+	projectRoot := filepath.Join(sm.CorePath, filepath.Dir(scriptPath))
+	oldPath := filepath.Join(projectRoot, oldName)
+	newPath := filepath.Join(projectRoot, newName)
 
-	// Security: Ensure we are within imagesDir
-	cleanBase, _ := filepath.Abs(imagesDir)
+	// Security: Ensure we are within projectRoot
+	cleanBase, _ := filepath.Abs(projectRoot)
 	cleanOld, _ := filepath.Abs(oldPath)
 	cleanNew, _ := filepath.Abs(newPath)
 
@@ -685,11 +713,11 @@ func (sm *ScriptManager) MkdirAsset(scriptID, relPath string) error {
 		return fmt.Errorf("script not found")
 	}
 
-	imagesDir := filepath.Join(sm.CorePath, filepath.Dir(scriptPath), "images")
-	targetPath := filepath.Join(imagesDir, relPath)
+	projectRoot := filepath.Join(sm.CorePath, filepath.Dir(scriptPath))
+	targetPath := filepath.Join(projectRoot, relPath)
 
-	// Security: Ensure we are within imagesDir
-	cleanBase, _ := filepath.Abs(imagesDir)
+	// Security: Ensure we are within projectRoot
+	cleanBase, _ := filepath.Abs(projectRoot)
 	cleanTarget, _ := filepath.Abs(targetPath)
 
 	if !strings.HasPrefix(cleanTarget, cleanBase) {
@@ -697,6 +725,39 @@ func (sm *ScriptManager) MkdirAsset(scriptID, relPath string) error {
 	}
 
 	return os.MkdirAll(targetPath, 0755)
+}
+
+func (sm *ScriptManager) CreateFileAsset(scriptID, relPath string) error {
+	scripts, err := sm.ListScripts()
+	if err != nil {
+		return err
+	}
+
+	var scriptPath string
+	for _, s := range scripts {
+		if s["id"] == scriptID {
+			scriptPath = s["path"]
+			break
+		}
+	}
+
+	if scriptPath == "" {
+		return fmt.Errorf("script not found")
+	}
+
+	projectRoot := filepath.Join(sm.CorePath, filepath.Dir(scriptPath))
+	targetPath := filepath.Join(projectRoot, relPath)
+
+	// Security: Ensure we are within projectRoot
+	cleanBase, _ := filepath.Abs(projectRoot)
+	cleanTarget, _ := filepath.Abs(targetPath)
+
+	if !strings.HasPrefix(cleanTarget, cleanBase) {
+		return fmt.Errorf("security: path escape detected")
+	}
+
+	// Create empty file
+	return os.WriteFile(targetPath, []byte(""), 0644)
 }
 
 func (sm *ScriptManager) DeleteAsset(scriptID, relPath string) error {
@@ -717,11 +778,11 @@ func (sm *ScriptManager) DeleteAsset(scriptID, relPath string) error {
 		return fmt.Errorf("script not found")
 	}
 
-	imagesDir := filepath.Join(sm.CorePath, filepath.Dir(scriptPath), "images")
-	targetPath := filepath.Join(imagesDir, relPath)
+	projectRoot := filepath.Join(sm.CorePath, filepath.Dir(scriptPath))
+	targetPath := filepath.Join(projectRoot, relPath)
 
-	// Security: Ensure we are within imagesDir
-	cleanBase, _ := filepath.Abs(imagesDir)
+	// Security: Ensure we are within projectRoot
+	cleanBase, _ := filepath.Abs(projectRoot)
 	cleanTarget, _ := filepath.Abs(targetPath)
 
 	if !strings.HasPrefix(cleanTarget, cleanBase) {

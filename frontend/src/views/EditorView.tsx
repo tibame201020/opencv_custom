@@ -47,6 +47,7 @@ export const EditorView: React.FC = () => {
     // Asset Explorer State
     const [assetExplorerWidth, setAssetExplorerWidth] = useState(250);
     const [assetRefreshTrigger, setAssetRefreshTrigger] = useState(0);
+    const [activeRelPath, setActiveRelPath] = useState<string | null>(null);
 
     const editorRef = useRef<any>(null);
     const selectedScriptIdRef = useRef<string | null>(editorSelectedScriptId);
@@ -60,13 +61,10 @@ export const EditorView: React.FC = () => {
     useEffect(() => {
         if (!editorSelectedScriptId) return;
 
-        // We fetch if:
-        // 1. It's a new ID (not the one currently tracked in ref)
-        // 2. OR the code is empty
-        if (editorSelectedScriptId !== selectedScriptIdRef.current || !editorCode) {
-            fetchScriptContent(editorSelectedScriptId);
-            selectedScriptIdRef.current = editorSelectedScriptId;
-        }
+        // Reset relative path when main script changes
+        setActiveRelPath(null);
+        fetchScriptContent(editorSelectedScriptId, null);
+        selectedScriptIdRef.current = editorSelectedScriptId;
     }, [editorSelectedScriptId]);
 
     const fetchScripts = async () => {
@@ -91,10 +89,13 @@ export const EditorView: React.FC = () => {
         }
     };
 
-    const fetchScriptContent = async (id: string) => {
+    const fetchScriptContent = async (id: string, relPath: string | null) => {
         setIsLoading(true);
         try {
-            const res = await axios.get(`${API_Base}/scripts/${id}/content`);
+            const url = relPath
+                ? `${API_Base}/scripts/${id}/content?path=${encodeURIComponent(relPath)}`
+                : `${API_Base}/scripts/${id}/content`;
+            const res = await axios.get(url);
             setEditorCode(res.data.content);
             setEditorOriginalCode(res.data.content);
             setEditorIsDirty(false);
@@ -112,7 +113,10 @@ export const EditorView: React.FC = () => {
 
         const currentCode = editorRef.current.getValue();
         try {
-            await axios.post(`${API_Base}/scripts/${targetId}/content`, { content: currentCode });
+            const url = activeRelPath
+                ? `${API_Base}/scripts/${targetId}/content?path=${encodeURIComponent(activeRelPath)}`
+                : `${API_Base}/scripts/${targetId}/content`;
+            await axios.post(url, { content: currentCode });
             setEditorOriginalCode(currentCode);
             setEditorIsDirty(false);
             // Refresh local state just in case
@@ -278,6 +282,13 @@ export const EditorView: React.FC = () => {
                     refreshKey={assetRefreshTrigger}
                     onToggle={() => setAssetExplorerCollapsed(!assetExplorerCollapsed)}
                     onResize={(w: number) => setAssetExplorerWidth(w)}
+                    onFileOpen={(path) => {
+                        if (editorIsDirty) {
+                            if (!confirm(t('ui.management.confirm') + "?")) return;
+                        }
+                        setActiveRelPath(path);
+                        fetchScriptContent(editorSelectedScriptId, path);
+                    }}
                 />
             )}
 
@@ -287,9 +298,15 @@ export const EditorView: React.FC = () => {
                 <div className="h-12 border-b border-base-300 flex items-center px-4 gap-4 bg-base-100">
                     {editorSelectedScriptId ? (
                         <>
-                            <div className="font-bold flex-1">
-                                {scripts.find(s => s.id === editorSelectedScriptId)?.name}
-                                {editorIsDirty && <span className="text-warning ml-2">*</span>}
+                            <div className="font-bold flex-1 flex items-center gap-2">
+                                <span className="opacity-40">{scripts.find(s => s.id === editorSelectedScriptId)?.name}</span>
+                                {activeRelPath && (
+                                    <>
+                                        <span className="opacity-20">/</span>
+                                        <span className="text-primary">{activeRelPath}</span>
+                                    </>
+                                )}
+                                {editorIsDirty && <span className="text-warning">*</span>}
                             </div>
 
                             <button
