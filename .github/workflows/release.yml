@@ -79,7 +79,11 @@ jobs:
           # Build frontend
           cd frontend && npm install && cd ..
           # Build Wails
-          wails build
+          if [ "${{ runner.os }}" == "Linux" ]; then
+            wails build -tags webkit2_41
+          else
+            wails build
+          fi
 
       - name: Assemble Release Package
         shell: bash
@@ -90,6 +94,9 @@ jobs:
           if [ "${{ runner.os }}" == "Windows" ]; then
             cp build/bin/ScriptPlatform.exe release_package/
             cp dist/script-engine.exe release_package/
+          elif [ "${{ runner.os }}" == "macOS" ]; then
+            cp -r build/bin/ScriptPlatform.app release_package/
+            cp dist/script-engine release_package/
           else
             cp build/bin/ScriptPlatform release_package/
             cp dist/script-engine release_package/
