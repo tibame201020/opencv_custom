@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Editor, { type OnMount } from '@monaco-editor/react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAppStore } from '../store';
@@ -73,8 +72,11 @@ export const EditorView: React.FC = () => {
 
     const fetchScripts = async () => {
         try {
-            const res = await axios.get(`${API_Base}/scripts`);
-            setScripts(res.data || []);
+            const res = await fetch(`${API_Base}/scripts`);
+            if (res.ok) {
+                const data = await res.json();
+                setScripts(data || []);
+            }
         } catch (err) {
             console.error("Failed to fetch scripts", err);
         }
@@ -82,11 +84,13 @@ export const EditorView: React.FC = () => {
 
     const fetchDevices = async () => {
         try {
-            const res = await axios.get(`${API_Base}/devices`);
-            const data = res.data || [];
-            setDevices(data);
-            if (data.length > 0 && !selectedDevice) {
-                setSelectedDevice(data[0]);
+            const res = await fetch(`${API_Base}/devices`);
+            if (res.ok) {
+                const data = await res.json();
+                setDevices(data || []);
+                if (data.length > 0 && !selectedDevice) {
+                    setSelectedDevice(data[0]);
+                }
             }
         } catch (err) {
             console.error("Failed to fetch devices", err);
@@ -96,8 +100,10 @@ export const EditorView: React.FC = () => {
     const fetchAndOpenMain = async (id: string) => {
         setIsLoading(true);
         try {
-            const res = await axios.get(`${API_Base}/scripts/${id}/content`);
-            openEditorTab(id, `${id}.py`, `${id}.py`, res.data.content, 'code');
+            const res = await fetch(`${API_Base}/scripts/${id}/content`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            openEditorTab(id, `${id}.py`, `${id}.py`, data.content, 'code');
         } catch (err) {
             console.error(err);
         } finally {
@@ -126,8 +132,19 @@ export const EditorView: React.FC = () => {
 
         setIsLoading(true);
         try {
-            const res = await axios.get(`${API_Base}/scripts/${editorSelectedScriptId}/content?path=${encodeURIComponent(path)}`);
-            openEditorTab(editorSelectedScriptId, path, path.split('/').pop() || path, res.data.content, 'code');
+            const url = isImage
+                ? `${API_Base}/scripts/${editorSelectedScriptId}/content?path=${encodeURIComponent(path)}&raw=true`
+                : `${API_Base}/scripts/${editorSelectedScriptId}/content?path=${encodeURIComponent(path)}`;
+
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            if (isImage) {
+                openEditorTab(editorSelectedScriptId, path, path.split('/').pop() || path, url, 'image');
+            } else {
+                const data = await res.json();
+                openEditorTab(editorSelectedScriptId, path, path.split('/').pop() || path, data.content, 'code');
+            }
         } catch (err) {
             console.error(err);
         } finally {
@@ -143,7 +160,14 @@ export const EditorView: React.FC = () => {
             const url = activeTab.path
                 ? `${API_Base}/scripts/${activeTab.scriptId}/content?path=${encodeURIComponent(activeTab.path)}`
                 : `${API_Base}/scripts/${activeTab.scriptId}/content`;
-            await axios.post(url, { content: currentCode });
+
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: currentCode })
+            });
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             saveEditorTab(activeTab.id);
         } catch (err) {
             console.error("Failed to save", err);
@@ -159,7 +183,11 @@ export const EditorView: React.FC = () => {
     const executeDeleteScript = async () => {
         if (!editorSelectedScriptId) return;
         try {
-            await axios.delete(`${API_Base}/scripts/${editorSelectedScriptId}`);
+            const res = await fetch(`${API_Base}/scripts/${editorSelectedScriptId}`, {
+                method: 'DELETE'
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
             // Success: close all tabs related to this script
             editorTabs.filter(t => t.scriptId === editorSelectedScriptId).forEach(t => closeEditorTab(t.id));
             setEditorSelectedScriptId(null);
@@ -167,7 +195,7 @@ export const EditorView: React.FC = () => {
             setIsDeleteModalOpen(false);
         } catch (err: any) {
             console.error("Failed to delete", err);
-            alert(t('ui.common.error') + ": " + (err.response?.data?.error || err.message));
+            alert(t('ui.common.error') + ": " + (err.message));
         }
     };
 
@@ -175,17 +203,27 @@ export const EditorView: React.FC = () => {
         if (!newScriptName.trim()) return;
         setIsCreating(true);
         try {
-            await axios.post(`${API_Base}/scripts`, {
-                name: newScriptName,
-                platform: newScriptPlatform
+            const res = await fetch(`${API_Base}/scripts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: newScriptName,
+                    platform: newScriptPlatform
+                })
             });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || `HTTP ${res.status}`);
+            }
+
             await fetchScripts();
             setIsModalOpen(false);
             setNewScriptName("");
             setNewScriptPlatform("android");
         } catch (err: any) {
             console.error("Failed to create script", err);
-            alert(t('ui.common.error') + ": " + (err.response?.data?.error || err.message));
+            alert(t('ui.common.error') + ": " + (err.message));
         } finally {
             setIsCreating(false);
         }

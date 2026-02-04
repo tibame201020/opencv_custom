@@ -111,6 +111,10 @@ func SetupRouter() *gin.Engine {
 	manager = process_manager.NewScriptManager(corePath, cmdPath, entryScript)
 
 	r := gin.Default()
+	r.Use(func(c *gin.Context) {
+		fmt.Printf("[API] %s %s\n", c.Request.Method, c.Request.URL.Path)
+		c.Next()
+	})
 
 	// Enable CORS (Still useful for standalone dev tools if any)
 	r.Use(func(c *gin.Context) {

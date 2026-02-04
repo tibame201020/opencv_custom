@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import { MoreHorizontal, Upload, Trash2, Edit2, Search, Download } from 'lucide-react';
 import { type Script } from '../store';
@@ -27,8 +26,11 @@ export const ManagementView: React.FC = () => {
     const fetchScripts = async () => {
         setIsLoading(true);
         try {
-            const res = await axios.get(`${API_Base}/scripts`);
-            setScripts(res.data);
+            const res = await fetch(`${API_Base}/scripts`);
+            if (res.ok) {
+                const data = await res.json();
+                setScripts(data);
+            }
         } catch (err) {
             console.error("Failed to fetch scripts", err);
         } finally {
@@ -49,12 +51,15 @@ export const ManagementView: React.FC = () => {
 
     const handleDelete = async (id: string) => {
         try {
-            await axios.delete(`${API_Base}/scripts/${id}`);
-            fetchScripts();
-            setDeletingScriptId(null);
+            const res = await fetch(`${API_Base}/scripts/${id}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                fetchScripts();
+                setDeletingScriptId(null);
+            }
         } catch (err) {
             console.error("Delete failed", err);
-            // In a real app we'd use a toast, but for now let's just log
         }
     };
 
@@ -65,21 +70,26 @@ export const ManagementView: React.FC = () => {
         }
 
         try {
-            await axios.post(`${API_Base}/scripts/${editingScript.id}/rename`, {
-                newName: newName
+            const res = await fetch(`${API_Base}/scripts/${editingScript.id}/rename`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ newName: newName })
             });
-            fetchScripts();
-            setIsRenameModalOpen(false);
-            setEditingScript(null);
-            setRenameError(null);
-        } catch (err: any) {
-            if (err.response?.status === 409) {
+
+            if (res.ok) {
+                fetchScripts();
+                setIsRenameModalOpen(false);
+                setEditingScript(null);
+                setRenameError(null);
+            } else if (res.status === 409) {
                 setRenameError(t('ui.management.nameConflict') || "A script with this name already exists.");
             } else {
-                const errorMsg = err.response?.data?.error || err.message || 'Unknown error';
-                console.error("Rename failed", err);
-                setRenameError(`Error: ${errorMsg}`);
+                const data = await res.json();
+                setRenameError(`Error: ${data.error || 'Unknown error'}`);
             }
+        } catch (err: any) {
+            console.error("Rename failed", err);
+            setRenameError(`Error: ${err.message}`);
         }
     };
 
@@ -95,19 +105,26 @@ export const ManagementView: React.FC = () => {
         }
 
         try {
-            await axios.post(`${API_Base}/scripts/import`, formData);
-            fetchScripts();
-            setImportConflictName(null);
-            setPendingZipFile(null);
-            setImportNewName('');
-        } catch (err: any) {
-            if (err.response?.status === 409) {
-                setImportConflictName(err.response.data.suggestedName || file.name.replace(".zip", ""));
+            const res = await fetch(`${API_Base}/scripts/import`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (res.ok) {
+                fetchScripts();
+                setImportConflictName(null);
+                setPendingZipFile(null);
+                setImportNewName('');
+            } else if (res.status === 409) {
+                const data = await res.json();
+                setImportConflictName(data.suggestedName || file.name.replace(".zip", ""));
                 setPendingZipFile(file);
-                setImportNewName(err.response.data.suggestedName + "_copy");
+                setImportNewName(data.suggestedName + "_copy");
             } else {
-                console.error("Import failed", err);
+                console.error("Import failed with status", res.status);
             }
+        } catch (err: any) {
+            console.error("Import failed", err);
         }
     };
 

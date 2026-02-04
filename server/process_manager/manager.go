@@ -207,8 +207,8 @@ func (sm *ScriptManager) GetScriptPath(scriptID string) (string, error) {
 	}
 
 	for _, s := range scripts {
-		if s["id"] == scriptID {
-			return filepath.Join(sm.CorePath, s["path"]), nil
+		if strings.EqualFold(s["id"], scriptID) {
+			return filepath.Join(sm.CorePath, filepath.FromSlash(s["path"])), nil
 		}
 	}
 
@@ -235,7 +235,7 @@ func (sm *ScriptManager) GetAssetPath(scriptID, relPath string) (string, error) 
 
 	var mainScriptPath string
 	for _, s := range scripts {
-		if s["id"] == scriptID {
+		if strings.EqualFold(s["id"], scriptID) {
 			mainScriptPath = s["path"]
 			break
 		}
@@ -275,7 +275,7 @@ func (sm *ScriptManager) GetScriptContent(scriptID string, relPath string) (stri
 
 	var mainScriptPath string
 	for _, s := range scripts {
-		if s["id"] == scriptID {
+		if strings.EqualFold(s["id"], scriptID) {
 			mainScriptPath = s["path"]
 			break
 		}
@@ -316,7 +316,7 @@ func (sm *ScriptManager) SaveScriptContent(scriptID string, relPath string, cont
 
 	var mainScriptPath string
 	for _, s := range scripts {
-		if s["id"] == scriptID {
+		if strings.EqualFold(s["id"], scriptID) {
 			mainScriptPath = s["path"]
 			break
 		}
@@ -470,7 +470,7 @@ func (sm *ScriptManager) DeleteScript(scriptID string) error {
 
 	var scriptPath string
 	for _, s := range scripts {
-		if s["id"] == scriptID {
+		if strings.EqualFold(s["id"], scriptID) {
 			scriptPath = s["path"]
 			break
 		}
@@ -516,7 +516,7 @@ func (sm *ScriptManager) RenameScript(scriptID string, newName string) error {
 
 	var scriptPath string
 	for _, s := range scripts {
-		if s["id"] == scriptID {
+		if strings.EqualFold(s["id"], scriptID) {
 			scriptPath = s["path"]
 			break
 		}
@@ -642,8 +642,9 @@ func (sm *ScriptManager) ListAssets(scriptID string) ([]*FileNode, error) {
 
 	var scriptPath string
 	for _, s := range scripts {
-		if s["id"] == scriptID {
-			scriptPath = s["path"]
+		if strings.EqualFold(s["id"], scriptID) {
+			scriptPath = filepath.FromSlash(s["path"])
+			fmt.Printf("[ListAssets] ID=%s, RawPath=%s, FixedPath=%s\n", scriptID, s["path"], scriptPath)
 			break
 		}
 	}
@@ -653,9 +654,11 @@ func (sm *ScriptManager) ListAssets(scriptID string) ([]*FileNode, error) {
 	}
 
 	projectRoot := filepath.Join(sm.CorePath, filepath.Dir(scriptPath))
+	fmt.Printf("[ListAssets] ProjectRoot=%s\n", projectRoot)
 
 	if _, err := os.Stat(projectRoot); os.IsNotExist(err) {
-		return []*FileNode{}, nil
+		fmt.Printf("[ListAssets] ProjectRoot does not exist\n")
+		return []*FileNode{}, nil // Return empty slice, not nil
 	}
 
 	return sm.walkDir(projectRoot, ""), nil
@@ -667,7 +670,7 @@ func (sm *ScriptManager) walkDir(fullPath, relPath string) []*FileNode {
 		return nil
 	}
 
-	var nodes []*FileNode
+	var nodes = make([]*FileNode, 0)
 	for _, e := range entries {
 		name := e.Name()
 		nodeRelPath := filepath.Join(relPath, name)
@@ -704,7 +707,7 @@ func (sm *ScriptManager) RenameAsset(scriptID, oldName, newName string) error {
 
 	var scriptPath string
 	for _, s := range scripts {
-		if s["id"] == scriptID {
+		if strings.EqualFold(s["id"], scriptID) {
 			scriptPath = s["path"]
 			break
 		}
@@ -765,7 +768,7 @@ func (sm *ScriptManager) MkdirAsset(scriptID, relPath string) error {
 
 	var scriptPath string
 	for _, s := range scripts {
-		if s["id"] == scriptID {
+		if strings.EqualFold(s["id"], scriptID) {
 			scriptPath = s["path"]
 			break
 		}
@@ -797,7 +800,7 @@ func (sm *ScriptManager) CreateFileAsset(scriptID, relPath string) error {
 
 	var scriptPath string
 	for _, s := range scripts {
-		if s["id"] == scriptID {
+		if strings.EqualFold(s["id"], scriptID) {
 			scriptPath = s["path"]
 			break
 		}
@@ -830,7 +833,7 @@ func (sm *ScriptManager) DeleteAsset(scriptID, relPath string) error {
 
 	var scriptPath string
 	for _, s := range scripts {
-		if s["id"] == scriptID {
+		if strings.EqualFold(s["id"], scriptID) {
 			scriptPath = s["path"]
 			break
 		}

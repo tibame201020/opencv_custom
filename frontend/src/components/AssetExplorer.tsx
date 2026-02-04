@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
 import { FileImage, Trash2, Edit2, Folder, FolderPlus, ChevronRight, ChevronDown, ListTree, ChevronLeft, FileCode, FileText, FileJson, File, FilePlus } from 'lucide-react';
 import clsx from 'clsx';
 import { useAppStore } from '../store';
@@ -110,10 +109,13 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
         if (!scriptId) return;
         setIsLoading(true);
         try {
-            const res = await axios.get(`${API_Base}/scripts/${scriptId}/assets`);
-            setAssets(res.data);
-        } catch (err) {
+            const res = await fetch(`${API_Base}/scripts/${scriptId}/assets`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            setAssets(data);
+        } catch (err: any) {
             console.error(err);
+            setToast({ message: `Load failed: ${err.message}`, type: 'error' });
         } finally {
             setIsLoading(false);
         }
@@ -127,7 +129,12 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
         const trimmedName = folderName.trim();
         const fullPath = mkdirTarget ? `${mkdirTarget}/${trimmedName}` : trimmedName;
         try {
-            await axios.post(`${API_Base}/scripts/${scriptId}/assets/mkdir`, { path: fullPath });
+            const res = await fetch(`${API_Base}/scripts/${scriptId}/assets/mkdir`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: fullPath })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             setMkdirTarget(null);
             fetchAssets();
             setToast({ message: "Folder created", type: 'success' });
@@ -143,7 +150,12 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
         const trimmedName = fileName.trim();
         const fullPath = createFileTarget ? `${createFileTarget}/${trimmedName}` : trimmedName;
         try {
-            await axios.post(`${API_Base}/scripts/${scriptId}/assets/create`, { path: fullPath });
+            const res = await fetch(`${API_Base}/scripts/${scriptId}/assets/create`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: fullPath })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             setCreateFileTarget(null);
             fetchAssets();
             setToast({ message: "File created", type: 'success' });
@@ -160,7 +172,12 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
         parts[parts.length - 1] = renameValue.trim();
         const newPath = parts.join('/');
         try {
-            await axios.post(`${API_Base}/scripts/${scriptId}/assets/move`, { oldPath: renameTarget.path, newPath });
+            const res = await fetch(`${API_Base}/scripts/${scriptId}/assets/move`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ oldPath: renameTarget.path, newPath })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             setRenameTarget(null);
             fetchAssets();
             setToast({ message: "Renamed successfully", type: 'success' });
@@ -172,7 +189,10 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
         try {
             // Encode path parts individually to avoid double encoding of slashes
             const safePath = deleteTarget.path.split('/').map(encodeURIComponent).join('/');
-            await axios.delete(`${API_Base}/scripts/${scriptId}/assets/${safePath}`);
+            const res = await fetch(`${API_Base}/scripts/${scriptId}/assets/${safePath}`, {
+                method: 'DELETE'
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             setDeleteTarget(null);
             if (selectedAsset?.path === deleteTarget.path) setSelectedAsset(null);
             fetchAssets();
@@ -183,7 +203,12 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
     const handleMove = async (oldPath: string, newPath: string) => {
         if (!scriptId || oldPath === newPath) return;
         try {
-            await axios.post(`${API_Base}/scripts/${scriptId}/assets/move`, { oldPath, newPath });
+            const res = await fetch(`${API_Base}/scripts/${scriptId}/assets/move`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ oldPath, newPath })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             fetchAssets();
             setToast({ message: "Moved successfully", type: 'success' });
         } catch (err) { setToast({ message: "Move failed", type: 'error' }); }
@@ -306,7 +331,7 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
                     }
                 }}
             >
-                {isLoading ? <div className="p-4 text-center opacity-40 text-xs">Loading...</div> : assets.map(n => renderNode(n))}
+                {isLoading ? <div className="p-4 text-center opacity-40 text-xs">Loading...</div> : (assets || []).map(n => renderNode(n))}
             </div>
 
             {/* Snippets (Only for Images) */}

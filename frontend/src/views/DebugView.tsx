@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import { Terminal, RefreshCw, Command, ChevronRight, Activity, Power, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
@@ -41,8 +40,13 @@ export const DebugView: React.FC = () => {
 
     const checkStatus = async () => {
         try {
-            const res = await axios.get(`${API_Base}/adb/status`);
-            setAdbStatus(res.data.status);
+            const res = await fetch(`${API_Base}/adb/status`);
+            if (res.ok) {
+                const data = await res.json();
+                setAdbStatus(data.status);
+            } else {
+                setAdbStatus('unknown');
+            }
         } catch (err) {
             setAdbStatus('unknown');
         }
@@ -52,7 +56,9 @@ export const DebugView: React.FC = () => {
         setIsLoading(true);
         const action = adbStatus === 'running' ? 'stop' : 'start';
         try {
-            await axios.post(`${API_Base}/adb/${action}`);
+            const res = await fetch(`${API_Base}/adb/${action}`, { method: 'POST' });
+            if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+
             addLog('system', `Requesting ADB ${action}...`);
             // Wait a bit for process to spawn/die
             setTimeout(async () => {
@@ -77,9 +83,17 @@ export const DebugView: React.FC = () => {
         addLog('input', cmd);
 
         try {
-            const res = await axios.post(`${API_Base}/adb/command`, { command: cmd });
-            if (res.data.output) {
-                addLog('output', res.data.output);
+            const res = await fetch(`${API_Base}/adb/command`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command: cmd })
+            });
+
+            if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+
+            const data = await res.json();
+            if (data.output) {
+                addLog('output', data.output);
             } else {
                 addLog('output', "(No output)");
             }
