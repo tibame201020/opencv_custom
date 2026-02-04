@@ -13,7 +13,8 @@ permissions:
   id-token: write
 
 jobs:
-  test:
+  test-windows:
+    name: Build and Test (Windows)
     runs-on: windows-latest
     
     steps:
@@ -46,41 +47,59 @@ jobs:
       - name: Run Backend Tests (Go)
         run: |
           go install github.com/jstemmer/go-junit-report/v2@latest
-          mkdir -p allure-results
+          if (!(Test-Path allure-results)) { New-Item -ItemType Directory allure-results }
           go test -v ./server/... 2>&1 | go-junit-report -set-exit-code > allure-results/go-test-report.xml
 
       - name: Run Core Tests (Python)
         run: |
           $env:PYTHONPATH="."
-          pytest core/test --alluredir=allure-results
+          python -m pytest core/test --alluredir=allure-results
 
       - name: Run Frontend Tests (Playwright)
         run: |
           cd frontend
+          $env:ALLURE_RESULTS_DIR = "../allure-results"
           npm run test:e2e
         env:
-          # Playwright config will output to ../allure-results because of its config
-          ALLURE_RESULTS_DIR: ../allure-results
+          CI: true
 
-      - name: Get Allure history
-        uses: actions/checkout@v4
+      - name: Upload Allure Results
         if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: allure-results
+          retention-days: 1
+
+  report:
+    name: Generate and Deploy Report
+    needs: test-windows
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
         continue-on-error: true
         with:
           ref: gh-pages
           path: gh-pages
 
+      - name: Download Allure Results
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-results
+          path: allure-results
+
       - name: Allure Report action from GitHub
         uses: simple-elf/allure-report-action@master
-        if: always()
         with:
           allure_results: allure-results
           gh_pages: gh-pages
           allure_report: allure-report
           allure_history: allure-history
+          keep_reports: 20
 
       - name: Deploy report to Github Pages
-        if: always()
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}

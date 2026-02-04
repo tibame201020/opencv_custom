@@ -71,3 +71,8 @@ env/
 
 # custom scripts
 core/script/custom
+
+# test reports
+allure-results
+frontend/allure-results
+actionlogs

@@ -40,15 +40,21 @@ class PatternOCR(MatchOCRAdaptor):
             res = cv2.matchTemplate(target_img, template, cv2.TM_CCOEFF_NORMED)
             
             # 尋找所有匹配度高於閾值的位置
+            found_positions = []
             while True:
                 min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
                 if max_val >= threshold:
                     match_loc = max_loc
-                    result = pattern
+                    found_positions.append(match_loc[0]) # store x coordinate
                     # 將已匹配的區域設為 0，避免重複檢測
                     cv2.rectangle(res, match_loc, (match_loc[0] + w, match_loc[1] + h), 0, -1)
                 else:
                     break
+            
+            # 根據 x 座標排序並加到結果 (簡化版，假設只有一種 pattern)
+            found_positions.sort()
+            for _ in found_positions:
+                result += pattern
         
         return result
 
