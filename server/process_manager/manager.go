@@ -23,6 +23,7 @@ type ScriptManager struct {
 	CorePath    string // Path to core directory
 	CmdPath     string // Path to python OR executable
 	EntryScript string // Path to entry.py (optional if CmdPath is self-contained)
+	cmdFactory  func(name string, arg ...string) *exec.Cmd
 }
 
 type ScriptProcess struct {
@@ -41,7 +42,13 @@ func NewScriptManager(corePath, cmdPath, entryScript string) *ScriptManager {
 		CorePath:    corePath,
 		CmdPath:     cmdPath,
 		EntryScript: entryScript,
+		cmdFactory:  exec.Command,
 	}
+}
+
+// SetCommandFactory allows overriding the command execution for testing
+func (sm *ScriptManager) SetCommandFactory(f func(name string, arg ...string) *exec.Cmd) {
+	sm.cmdFactory = f
 }
 
 func (sm *ScriptManager) ListScripts() ([]map[string]string, error) {
@@ -49,10 +56,10 @@ func (sm *ScriptManager) ListScripts() ([]map[string]string, error) {
 	if sm.EntryScript != "" {
 		// Python Mode: python entry.py list
 		scriptPath := filepath.Join(sm.CorePath, sm.EntryScript)
-		cmd = exec.Command(sm.CmdPath, scriptPath, "list")
+		cmd = sm.cmdFactory(sm.CmdPath, scriptPath, "list")
 	} else {
 		// Binary Mode: script-engine list
-		cmd = exec.Command(sm.CmdPath, "list")
+		cmd = sm.cmdFactory(sm.CmdPath, "list")
 	}
 	utils.HideConsole(cmd)
 

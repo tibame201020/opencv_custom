@@ -1,7 +1,9 @@
 package process_manager
 
 import (
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -94,5 +96,55 @@ func TestGetAssetPath_Security(t *testing.T) {
 				t.Errorf("Expected error for %s (%s, base: %s), but got none", tt.relPath, cleanTarget, cleanBase)
 			}
 		})
+	}
+}
+
+func TestListScripts_Mock(t *testing.T) {
+	sm := NewScriptManager(".", "echo", "")
+
+	// Set a mock command factory that calls our helper process
+	sm.SetCommandFactory(func(name string, arg ...string) *exec.Cmd {
+		cs := []string{"-test.run=TestHelperProcess", "--", name}
+		cs = append(cs, arg...)
+		cmd := exec.Command(os.Args[0], cs...)
+		cmd.Env = []string{"GO_WANT_HELPER_PROCESS=1"}
+		return cmd
+	})
+
+	scripts, err := sm.ListScripts()
+	if err != nil {
+		t.Fatalf("ListScripts failed: %v", err)
+	}
+
+	if len(scripts) != 1 {
+		t.Errorf("Expected 1 script, got %d", len(scripts))
+	}
+
+	if scripts[0]["id"] != "test1" {
+		t.Errorf("Expected id test1, got %s", scripts[0]["id"])
+	}
+}
+
+// TestHelperProcess is a helper for mocking exec.Command
+func TestHelperProcess(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	defer os.Exit(0)
+
+	args := os.Args
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--" {
+			args = args[i+1:]
+			break
+		}
+	}
+
+	// Logic based on arguments
+	if len(args) > 0 {
+		// If last arg is 'list', output the JSON
+		if args[len(args)-1] == "list" {
+			fmt.Printf(`[{"id":"test1", "name":"Test 1", "platform":"android"}]`)
+		}
 	}
 }

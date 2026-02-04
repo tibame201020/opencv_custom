@@ -99,7 +99,7 @@ export const useAppStore = create<AppState>()(
             language: 'zh',
             apiBaseUrl: 'http://localhost:8080/api', // Default fallback
             activeMainTab: 'execution',
-            isSidebarCollapsed: true,
+            isSidebarCollapsed: false,
             scriptTabs: [],
             activeTabId: null,
 
