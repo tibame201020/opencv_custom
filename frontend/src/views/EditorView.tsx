@@ -15,14 +15,18 @@ const API_Base = "http://localhost:8080/api";
 
 export const EditorView: React.FC = () => {
     const { t } = useTranslation();
-    const { openScriptTab, theme } = useAppStore(); // Use global theme
+    const {
+        openScriptTab, theme,
+        editorSelectedScriptId, setEditorSelectedScriptId,
+        editorCode, setEditorCode,
+        editorOriginalCode, setEditorOriginalCode,
+        editorIsDirty, setEditorIsDirty,
+        assetExplorerCollapsed, setAssetExplorerCollapsed,
+        scriptExplorerCollapsed, setScriptExplorerCollapsed
+    } = useAppStore();
     const navigate = useNavigate();
 
     const [scripts, setScripts] = useState<any[]>([]);
-    const [selectedScriptId, setSelectedScriptId] = useState<string | null>(null);
-    const [code, setCode] = useState<string>("");
-    const [originalCode, setOriginalCode] = useState<string>("");
-    const [isDirty, setIsDirty] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
     // Create Script Modal State
@@ -41,30 +45,29 @@ export const EditorView: React.FC = () => {
     const [isApiRefModalOpen, setIsApiRefModalOpen] = useState(false);
 
     // Asset Explorer State
-    const [assetExplorerCollapsed, setAssetExplorerCollapsed] = useState(false);
     const [assetExplorerWidth, setAssetExplorerWidth] = useState(250);
     const [assetRefreshTrigger, setAssetRefreshTrigger] = useState(0);
 
-    // Script Explorer State
-    const [scriptExplorerCollapsed, setScriptExplorerCollapsed] = useState(false);
-
     const editorRef = useRef<any>(null);
-    const selectedScriptIdRef = useRef<string | null>(selectedScriptId);
-
-    useEffect(() => {
-        selectedScriptIdRef.current = selectedScriptId;
-    }, [selectedScriptId]);
+    const selectedScriptIdRef = useRef<string | null>(editorSelectedScriptId);
 
     useEffect(() => {
         fetchScripts();
         fetchDevices();
     }, []);
 
+    // Handle script change - Fetch content if needed
     useEffect(() => {
-        if (selectedScriptId) {
-            fetchScriptContent(selectedScriptId);
+        if (!editorSelectedScriptId) return;
+
+        // We fetch if:
+        // 1. It's a new ID (not the one currently tracked in ref)
+        // 2. OR the code is empty
+        if (editorSelectedScriptId !== selectedScriptIdRef.current || !editorCode) {
+            fetchScriptContent(editorSelectedScriptId);
+            selectedScriptIdRef.current = editorSelectedScriptId;
         }
-    }, [selectedScriptId]);
+    }, [editorSelectedScriptId]);
 
     const fetchScripts = async () => {
         try {
@@ -92,12 +95,12 @@ export const EditorView: React.FC = () => {
         setIsLoading(true);
         try {
             const res = await axios.get(`${API_Base}/scripts/${id}/content`);
-            setCode(res.data.content);
-            setOriginalCode(res.data.content);
-            setIsDirty(false);
+            setEditorCode(res.data.content);
+            setEditorOriginalCode(res.data.content);
+            setEditorIsDirty(false);
         } catch (err) {
             console.error(err);
-            setCode("# Failed to load content");
+            setEditorCode("# Failed to load content");
         } finally {
             setIsLoading(false);
         }
@@ -110,10 +113,10 @@ export const EditorView: React.FC = () => {
         const currentCode = editorRef.current.getValue();
         try {
             await axios.post(`${API_Base}/scripts/${targetId}/content`, { content: currentCode });
-            setOriginalCode(currentCode);
-            setIsDirty(false);
+            setEditorOriginalCode(currentCode);
+            setEditorIsDirty(false);
             // Refresh local state just in case
-            setCode(currentCode);
+            setEditorCode(currentCode);
         } catch (err) {
             console.error("Failed to save", err);
             alert(t('ui.common.error'));
@@ -121,20 +124,20 @@ export const EditorView: React.FC = () => {
     };
 
     const handleDeleteScript = () => {
-        if (!selectedScriptId) return;
+        if (!editorSelectedScriptId) return;
         setIsDeleteModalOpen(true);
     };
 
     const executeDeleteScript = async () => {
-        if (!selectedScriptId) return;
+        if (!editorSelectedScriptId) return;
         try {
-            await axios.delete(`${API_Base}/scripts/${selectedScriptId}`);
+            await axios.delete(`${API_Base}/scripts/${editorSelectedScriptId}`);
 
             // Success
-            setSelectedScriptId(null);
-            setCode("");
-            setOriginalCode("");
-            setIsDirty(false);
+            setEditorSelectedScriptId(null);
+            setEditorCode("");
+            setEditorOriginalCode("");
+            setEditorIsDirty(false);
             fetchScripts();
             setIsDeleteModalOpen(false);
         } catch (err: any) {
@@ -175,8 +178,8 @@ export const EditorView: React.FC = () => {
     };
 
     const handleRun = () => {
-        if (selectedScriptId) {
-            openScriptTab(selectedScriptId);
+        if (editorSelectedScriptId) {
+            openScriptTab(editorSelectedScriptId);
             navigate('/execution');
         }
     };
@@ -229,12 +232,12 @@ export const EditorView: React.FC = () => {
                             {scripts.map(script => (
                                 <li key={script.id}>
                                     <a
-                                        className={selectedScriptId === script.id ? 'active' : ''}
+                                        className={editorSelectedScriptId === script.id ? 'active' : ''}
                                         onClick={() => {
-                                            if (isDirty) {
+                                            if (editorIsDirty) {
                                                 if (!confirm(t('ui.management.confirm') + "?")) return;
                                             }
-                                            setSelectedScriptId(script.id);
+                                            setEditorSelectedScriptId(script.id);
                                         }}
                                     >
                                         <span className="font-mono text-xs opacity-70">[{script.platform}]</span>
@@ -250,12 +253,12 @@ export const EditorView: React.FC = () => {
                         {scripts.map(script => (
                             <button
                                 key={script.id}
-                                className={`btn btn-sm btn-square ${selectedScriptId === script.id ? 'btn-primary' : 'btn-ghost'}`}
+                                className={`btn btn-sm btn-square ${editorSelectedScriptId === script.id ? 'btn-primary' : 'btn-ghost'}`}
                                 onClick={() => {
-                                    if (isDirty) {
+                                    if (editorIsDirty) {
                                         if (!confirm(t('ui.management.confirm') + "?")) return;
                                     }
-                                    setSelectedScriptId(script.id);
+                                    setEditorSelectedScriptId(script.id);
                                 }}
                                 title={script.name}
                             >
@@ -267,9 +270,9 @@ export const EditorView: React.FC = () => {
             </div>
 
             {/* Asset Explorer (Contextual) */}
-            {selectedScriptId && (
+            {editorSelectedScriptId && (
                 <AssetExplorer
-                    scriptId={selectedScriptId}
+                    scriptId={editorSelectedScriptId}
                     width={assetExplorerCollapsed ? 40 : assetExplorerWidth}
                     collapsed={assetExplorerCollapsed}
                     refreshKey={assetRefreshTrigger}
@@ -282,17 +285,17 @@ export const EditorView: React.FC = () => {
             <div className="flex-1 flex flex-col h-full overflow-hidden">
                 {/* Toolbar */}
                 <div className="h-12 border-b border-base-300 flex items-center px-4 gap-4 bg-base-100">
-                    {selectedScriptId ? (
+                    {editorSelectedScriptId ? (
                         <>
                             <div className="font-bold flex-1">
-                                {scripts.find(s => s.id === selectedScriptId)?.name}
-                                {isDirty && <span className="text-warning ml-2">*</span>}
+                                {scripts.find(s => s.id === editorSelectedScriptId)?.name}
+                                {editorIsDirty && <span className="text-warning ml-2">*</span>}
                             </div>
 
                             <button
                                 className="btn btn-sm btn-primary gap-2"
                                 onClick={handleSave}
-                                disabled={!isDirty}
+                                disabled={!editorIsDirty}
                             >
                                 <Save size={16} /> {t('ui.editor.save')}
                             </button>
@@ -305,7 +308,7 @@ export const EditorView: React.FC = () => {
                             </button>
 
                             {/* Android Tools */}
-                            {scripts.find(s => s.id === selectedScriptId)?.platform === 'android' && (
+                            {scripts.find(s => s.id === editorSelectedScriptId)?.platform === 'android' && (
                                 <div className="join border border-base-300 rounded-lg">
                                     <select
                                         className="select select-sm join-item font-mono max-w-[150px] focus:outline-none"
@@ -353,7 +356,7 @@ export const EditorView: React.FC = () => {
 
                 {/* Monaco Container */}
                 <div className="flex-1 relative">
-                    {selectedScriptId ? (
+                    {editorSelectedScriptId ? (
                         isLoading ? (
                             <div className="absolute inset-0 flex items-center justify-center">
                                 <span className="loading loading-spinner loading-lg"></span>
@@ -362,14 +365,14 @@ export const EditorView: React.FC = () => {
                             <Editor
                                 height="100%"
                                 defaultLanguage="python"
-                                path={selectedScriptId} // Helps model separation
-                                value={code}
+                                path={editorSelectedScriptId} // Helps model separation
+                                value={editorCode}
                                 // Simple mapping: if theme is 'light', 'cupcake', 'bumblebee', 'emerald', 'corporate', 'garden', 'lofi', 'pastel', 'fantasy', 'wireframe', 'cmyk', 'autumn', 'acid', 'lemonade', 'winter', 'nord' -> 'light'
                                 // else -> 'vs-dark'
                                 theme={['light', 'cupcake', 'bumblebee', 'emerald', 'corporate', 'garden', 'lofi', 'pastel', 'fantasy', 'wireframe', 'cmyk', 'autumn', 'acid', 'lemonade', 'winter', 'nord'].includes(theme) ? "light" : "vs-dark"}
                                 onChange={(value) => {
-                                    setCode(value || "");
-                                    setIsDirty(value !== originalCode);
+                                    setEditorCode(value || "");
+                                    setEditorIsDirty(value !== editorOriginalCode);
                                 }}
                                 onMount={handleEditorMount}
                                 options={{
@@ -454,7 +457,7 @@ export const EditorView: React.FC = () => {
                     setAssetRefreshTrigger(prev => prev + 1);
                 }}
                 deviceId={selectedDevice}
-                scriptId={selectedScriptId}
+                scriptId={editorSelectedScriptId}
             />
 
             <ApiRefModal

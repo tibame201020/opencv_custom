@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from './store';
@@ -11,11 +11,10 @@ import { Play, Settings as SettingsIcon, Database, ChevronLeft, ChevronRight, Fi
 import clsx from 'clsx';
 
 function App() {
-  const { theme, activeMainTab, setActiveMainTab } = useAppStore();
+  const { theme, activeMainTab, setActiveMainTab, isSidebarCollapsed, setSidebarCollapsed } = useAppStore();
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Sync activeMainTab with route
   useEffect(() => {
@@ -103,7 +102,7 @@ function App() {
         {/* Collapse Toggle (Bottom) - FULL WIDTH CLICKABLE */}
         <div className="border-t border-base-300">
           <button
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            onClick={() => setSidebarCollapsed(!isSidebarCollapsed)}
             className="w-full h-10 flex items-center justify-center opacity-50 hover:opacity-100 hover:bg-base-300/50 transition-all cursor-pointer"
             title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >

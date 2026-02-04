@@ -54,6 +54,30 @@ func getAdbPath() string {
 	return path
 }
 
+// getPythonCmd attempts to find the best python command (py -3, python, python3)
+func getPythonCmd() string {
+	// Try 'py' first (Windows Launcher)
+	cmd := exec.Command("py", "--version")
+	if err := cmd.Run(); err == nil {
+		return "py"
+	}
+
+	// Try 'python'
+	cmd = exec.Command("python", "--version")
+	if err := cmd.Run(); err == nil {
+		return "python"
+	}
+
+	// Try 'python3'
+	cmd = exec.Command("python3", "--version")
+	if err := cmd.Run(); err == nil {
+		return "python3"
+	}
+
+	// Default to 'python' and let it fail if not found
+	return "python"
+}
+
 func StartServer() {
 	cwd, _ := os.Getwd()
 
@@ -78,8 +102,8 @@ func StartServer() {
 		entryScript = ""
 	} else {
 		// Not Found -> Dev Mode
-		fmt.Println("Mode: Development (Using system python)")
-		cmdPath = "python"
+		cmdPath = getPythonCmd()
+		fmt.Printf("Mode: Development (Using detected: %s)\n", cmdPath)
 		entryScript = "entry.py"
 	}
 
@@ -116,12 +140,13 @@ func StartServer() {
 		// Asset Management
 		api.GET("/scripts/:id/assets", listAssets)
 		api.POST("/scripts/:id/assets/rename", renameAsset)
-		api.DELETE("/scripts/:id/assets/:filename", deleteAsset)
-		api.GET("/scripts/:id/assets/:filename/raw", getAssetRaw)
+		api.DELETE("/scripts/:id/assets/*filename", deleteAsset)
+		api.GET("/scripts/:id/raw-assets/*filename", getAssetRaw)
 
 		api.GET("/devices/:id/screenshot", getDeviceScreenshot)
-		api.POST("/assets", uploadAsset)
 		api.POST("/scripts/:id/assets", uploadAsset)
+		api.POST("/scripts/:id/assets/mkdir", mkdirAsset)
+		api.POST("/scripts/:id/assets/move", moveAsset)
 
 		// ZIP Import/Export
 		api.GET("/scripts/:id/export", exportScript)
@@ -174,9 +199,45 @@ func renameAsset(c *gin.Context) {
 
 func deleteAsset(c *gin.Context) {
 	scriptID := c.Param("id")
-	filename := c.Param("filename")
+	// Using Query because relPath might contain slashes which doesn't play well with Param in some Gin versions
+	// but let's stick to Param for consistency if we handle it correctly.
+	// Actually for recursive, relPath is passed in body for POST or as param.
+	relPath := c.Param("filename")
 
-	if err := manager.DeleteAsset(scriptID, filename); err != nil {
+	if err := manager.DeleteAsset(scriptID, relPath); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"status": "ok"})
+}
+
+func mkdirAsset(c *gin.Context) {
+	scriptID := c.Param("id")
+	var req struct {
+		Path string `json:"path"`
+	}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request"})
+		return
+	}
+	if err := manager.MkdirAsset(scriptID, req.Path); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"status": "ok"})
+}
+
+func moveAsset(c *gin.Context) {
+	scriptID := c.Param("id")
+	var req struct {
+		OldPath string `json:"oldPath"`
+		NewPath string `json:"newPath"`
+	}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request"})
+		return
+	}
+	if err := manager.MoveAsset(scriptID, req.OldPath, req.NewPath); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
@@ -185,9 +246,12 @@ func deleteAsset(c *gin.Context) {
 
 func getAssetRaw(c *gin.Context) {
 	scriptID := c.Param("id")
+	// For deep paths, we use a query param 'path' or handle the param carefully.
+	// Since filename param only captures one segment, let's use c.Param("filename")
+	// but if the UI sends it as a query param or we use a wildcard route, it's better.
+	// Wails/Gin wildcard route for filename: /scripts/:id/assets/*filepath
 	filename := c.Param("filename")
 
-	// Helper to find script path (duplicated logic, should refactor in manager but ok for now)
 	scripts, err := manager.ListScripts()
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
@@ -203,18 +267,18 @@ func getAssetRaw(c *gin.Context) {
 	}
 
 	if scriptPath == "" {
-		c.JSON(44, gin.H{"error": "script not found"})
+		c.JSON(404, gin.H{"error": "script not found"})
 		return
 	}
 
-	// scriptPath is relative to Core, e.g. script/custom/foo/foo.py
-	// Image is in script/custom/foo/images/filename
-	fullScriptPath := filepath.Join(manager.CorePath, scriptPath)
-	imagesDir := filepath.Join(filepath.Dir(fullScriptPath), "images")
+	imagesDir := filepath.Join(manager.CorePath, filepath.Dir(scriptPath), "images")
 	imagePath := filepath.Join(imagesDir, filename)
 
-	// Security check
-	if filepath.Dir(imagePath) != imagesDir {
+	// Security check: Use absolute paths to prevent escape
+	cleanBase, _ := filepath.Abs(imagesDir)
+	cleanTarget, _ := filepath.Abs(imagePath)
+
+	if !strings.HasPrefix(cleanTarget, cleanBase) {
 		c.JSON(403, gin.H{"error": "Forbidden"})
 		return
 	}
@@ -252,23 +316,41 @@ func uploadAsset(c *gin.Context) {
 	if scriptID == "" {
 		scriptID = c.Param("id")
 	}
-	fmt.Printf("UploadAsset Request - ScriptID: '%s'\n", scriptID)
 
-	// Resolve Core Path again just to be safe or use manager.CorePath
-	// But uploads might go to Legacy core/assets
+	// Resolve target directory
 	var targetDir string
 	var returnPath string
+	var filename string
+
+	// Try to get relPath from form (more reliable than file.Filename)
+	relPath := c.PostForm("relPath")
 
 	if scriptID != "" {
 		// New Structure: core/script/custom/<scriptId>/images
-		// Validate scriptID simple characters
 		scriptID = strings.ReplaceAll(scriptID, " ", "_")
-		targetDir = filepath.Join(manager.CorePath, "script", "custom", scriptID, "images")
-		returnPath = "script/custom/" + scriptID + "/images/" + filepath.Base(file.Filename)
+		baseImagesDir := filepath.Join(manager.CorePath, "script", "custom", scriptID, "images")
+
+		// Use relPath if provided, otherwise fallback to filename
+		var fullRelPath string
+		if relPath != "" {
+			fullRelPath = relPath
+		} else {
+			fullRelPath = file.Filename
+		}
+
+		targetPath := filepath.Join(baseImagesDir, fullRelPath)
+		targetDir = filepath.Dir(targetPath)
+		filename = filepath.Base(fullRelPath)
+		returnPath = "script/custom/" + scriptID + "/images/" + fullRelPath
 	} else {
 		// Legacy: core/assets
 		targetDir = filepath.Join(manager.CorePath, "assets")
-		returnPath = "assets/" + filepath.Base(file.Filename)
+		if relPath != "" {
+			filename = filepath.Base(relPath)
+		} else {
+			filename = filepath.Base(file.Filename)
+		}
+		returnPath = "assets/" + filename
 	}
 
 	if err := os.MkdirAll(targetDir, 0755); err != nil {
@@ -276,10 +358,16 @@ func uploadAsset(c *gin.Context) {
 		return
 	}
 
-	filename := filepath.Base(file.Filename)
-	targetPath := filepath.Join(targetDir, filename)
+	// Security check for final path
+	finalPath := filepath.Join(targetDir, filename)
+	cleanBase, _ := filepath.Abs(manager.CorePath)
+	cleanTarget, _ := filepath.Abs(finalPath)
+	if !strings.HasPrefix(cleanTarget, cleanBase) {
+		c.JSON(403, gin.H{"error": "Forbidden: Path escape"})
+		return
+	}
 
-	if err := c.SaveUploadedFile(file, targetPath); err != nil {
+	if err := c.SaveUploadedFile(file, finalPath); err != nil {
 		c.JSON(500, gin.H{"error": "Failed to save file: " + err.Error()})
 		return
 	}

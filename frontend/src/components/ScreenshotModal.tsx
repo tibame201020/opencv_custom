@@ -38,6 +38,10 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
     // Asset saving state
     const [isSaving, setIsSaving] = useState(false);
+    const [savePath, setSavePath] = useState("");
+    const [existingFolders, setExistingFolders] = useState<string[]>([]);
+    const [isCreatingNewFolder, setIsCreatingNewFolder] = useState(false);
+    const [newFolderName, setNewFolderName] = useState("");
     const [filename, setFilename] = useState(`screenshot_${new Date().getTime()}.png`);
 
     // UI/UX State
@@ -97,13 +101,34 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
         }
     };
 
+    const fetchExistingFolders = async () => {
+        if (!targetScriptId) return;
+        try {
+            const res = await axios.get(`${API_Base}/scripts/${targetScriptId}/assets`);
+            const folders: string[] = [];
+            const walk = (nodes: any[]) => {
+                nodes.forEach(n => {
+                    if (n.isDir) {
+                        folders.push(n.path);
+                        if (n.children) walk(n.children);
+                    }
+                });
+            };
+            walk(res.data);
+            setExistingFolders(folders.sort());
+        } catch (err) { console.error("Fetch folders failed", err); }
+    };
+
     useEffect(() => {
         if (isOpen && deviceId) {
             fetchScreenshot();
+            fetchExistingFolders();
         } else {
             setImageUrl(null);
+            setIsCreatingNewFolder(false);
+            setSavePath("");
         }
-    }, [isOpen, deviceId]);
+    }, [isOpen, deviceId, targetScriptId]);
 
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
@@ -221,6 +246,11 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
         return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
     };
 
+    const getFullRelativePath = () => {
+        const finalPath = isCreatingNewFolder ? newFolderName.trim() : savePath;
+        return finalPath ? `${finalPath.replace(/^\/+|\/+$/g, '')}/${filename}` : filename;
+    };
+
     const handleSaveAsset = async () => {
         if (!imageUrl) return;
 
@@ -241,13 +271,10 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
             if (!blob) throw new Error("Failed to create image blob");
 
             const formData = new FormData();
+            const fullRelativePath = getFullRelativePath();
             formData.append('file', blob, filename);
-
-            // Append active script ID if available
-            const activeTab = scriptTabs.find(t => t.tabId === activeTabId);
-            if (activeTab) {
-                // Based on previous turn instructions: "script folder".
-            }
+            formData.append('relPath', fullRelativePath);
+            formData.append('scriptId', targetScriptId || "");
 
             let url = targetScriptId ? `${API_Base}/scripts/${targetScriptId}/assets` : `${API_Base}/assets`;
 
@@ -256,6 +283,13 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
             });
 
             showToast("Asset saved successfully!");
+            if (isCreatingNewFolder) {
+                const createdPath = newFolderName.trim();
+                setSavePath(createdPath);
+                setIsCreatingNewFolder(false);
+                setNewFolderName("");
+                fetchExistingFolders();
+            }
         } catch (err: any) {
             console.error(err);
             // Handle tainted canvas error specifically if it happens despite fixes
@@ -419,15 +453,54 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                 </div>
                             </div>
 
-                            <div className="mb-4">
-                                <label className="text-[10px] uppercase opacity-50 block mb-1 font-bold">Filename</label>
-                                <input
-                                    type="text"
-                                    value={filename}
-                                    onChange={(e) => setFilename(e.target.value)}
-                                    className="input input-sm input-bordered w-full font-mono bg-base-200 selection:bg-primary/20 text-xs"
-                                    placeholder="asset_name.png"
-                                />
+                            <div className="grid grid-cols-2 gap-3 mb-4">
+                                <div>
+                                    <label className="text-[10px] uppercase opacity-50 block mb-1 font-bold">Folder Path</label>
+                                    {!isCreatingNewFolder ? (
+                                        <select
+                                            className="select select-sm select-bordered w-full font-mono bg-base-200 text-xs"
+                                            value={savePath}
+                                            onChange={(e) => {
+                                                if (e.target.value === "__NEW__") {
+                                                    setIsCreatingNewFolder(true);
+                                                } else {
+                                                    setSavePath(e.target.value);
+                                                }
+                                            }}
+                                        >
+                                            <option value="">/ (Root)</option>
+                                            {existingFolders.map(f => <option key={f} value={f}>{f}</option>)}
+                                            <option value="__NEW__">+ Create New...</option>
+                                        </select>
+                                    ) : (
+                                        <div className="relative">
+                                            <input
+                                                autoFocus
+                                                type="text"
+                                                value={newFolderName}
+                                                onChange={(e) => setNewFolderName(e.target.value)}
+                                                className="input input-sm input-bordered w-full font-mono bg-base-200 text-xs pr-8"
+                                                placeholder="New folder name..."
+                                            />
+                                            <button
+                                                className="absolute right-1 top-1 btn btn-xs btn-ghost btn-square"
+                                                onClick={() => { setIsCreatingNewFolder(false); setNewFolderName(""); }}
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="text-[10px] uppercase opacity-50 block mb-1 font-bold">Filename</label>
+                                    <input
+                                        type="text"
+                                        value={filename}
+                                        onChange={(e) => setFilename(e.target.value)}
+                                        className="input input-sm input-bordered w-full font-mono bg-base-200 text-xs"
+                                        placeholder="asset_name.png"
+                                    />
+                                </div>
                             </div>
 
                             <button
@@ -450,14 +523,14 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                 "rounded-xl overflow-hidden border transition-all duration-300 group selection:bg-primary/20 cursor-pointer shadow-sm",
                                 copiedId === 'click_full' ? "border-success bg-success/10" : "border-base-300 bg-base-100 hover:border-primary/50 hover:shadow-md"
                             )}
-                                onClick={() => handleCopy('click_full', `self.platform.click_image_full(f"{self.image_root}/${filename}", self.deviceId)`)}
+                                onClick={() => handleCopy('click_full', `self.platform.click_image_full(f"{self.image_root}/${getFullRelativePath()}", self.deviceId)`)}
                             >
                                 <div className="flex items-center justify-between px-3 py-2 bg-base-200/50 border-b border-base-200">
                                     <div className="text-[10px] uppercase tracking-widest font-bold opacity-50">Full Screen Search</div>
                                     {copiedId === 'click_full' ? <Check size={14} className="text-success animate-in zoom-in" /> : <Copy size={14} className="opacity-30 group-hover:opacity-100 transition-opacity" />}
                                 </div>
                                 <div className="p-3 font-mono text-[11px] text-base-content/80 leading-relaxed break-all">
-                                    self.platform.click_image_full(f"&#123;self.image_root&#125;/{filename}", self.deviceId)
+                                    self.platform.click_image_full(f"&#123;self.image_root&#125;/{getFullRelativePath()}", self.deviceId)
                                 </div>
                             </div>
 
@@ -466,14 +539,14 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                 "rounded-xl overflow-hidden border transition-all duration-300 group selection:bg-primary/20 cursor-pointer shadow-sm",
                                 copiedId === 'click_similar' ? "border-success bg-success/10" : "border-base-300 bg-base-100 hover:border-primary/50 hover:shadow-md"
                             )}
-                                onClick={() => handleCopy('click_similar', `self.platform.click_image_with_similar(f"{self.image_root}/${filename}", self.default_threshold, self.deviceId)`)}
+                                onClick={() => handleCopy('click_similar', `self.platform.click_image_with_similar(f"{self.image_root}/${getFullRelativePath()}", self.default_threshold, self.deviceId)`)}
                             >
                                 <div className="flex items-center justify-between px-3 py-2 bg-base-200/50 border-b border-base-200">
                                     <div className="text-[10px] uppercase tracking-widest font-bold opacity-50">Similar Search</div>
                                     {copiedId === 'click_similar' ? <Check size={14} className="text-success animate-in zoom-in" /> : <Copy size={14} className="opacity-30 group-hover:opacity-100 transition-opacity" />}
                                 </div>
                                 <div className="p-3 font-mono text-[11px] text-base-content/80 leading-relaxed break-all">
-                                    self.platform.click_image_with_similar(f"&#123;self.image_root&#125;/{filename}", threshold, self.deviceId)
+                                    self.platform.click_image_with_similar(f"&#123;self.image_root&#125;/{getFullRelativePath()}", threshold, self.deviceId)
                                 </div>
                             </div>
 
@@ -493,7 +566,7 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                         const x2 = Math.min(imageRef.current!.naturalWidth, Math.floor((rect.x + rect.w) * scaleX) + regionPaddingX);
                                         const y2 = Math.min(imageRef.current!.naturalHeight, Math.floor((rect.y + rect.h) * scaleY) + regionPaddingY);
 
-                                        const text = `self.platform.click_image(f"{self.image_root}/${filename}", OcrRegion(${x1}, ${y1}, ${x2}, ${y2}), self.deviceId)`;
+                                        const text = `self.platform.click_image(f"{self.image_root}/${getFullRelativePath()}", OcrRegion(${x1}, ${y1}, ${x2}, ${y2}), self.deviceId)`;
                                         handleCopy('click_region', text);
                                     }}
                                 >
@@ -502,7 +575,7 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                         {copiedId === 'click_region' ? <Check size={14} className="text-success animate-in zoom-in" /> : <Copy size={14} className="opacity-30 group-hover:opacity-100 transition-opacity" />}
                                     </div>
                                     <div className="p-3 font-mono text-[11px] text-base-content/80 leading-relaxed break-all">
-                                        self.platform.click_image(f"&#123;self.image_root&#125;/{filename}", OcrRegion(...), self.deviceId)
+                                        self.platform.click_image(f"&#123;self.image_root&#125;/{getFullRelativePath()}", OcrRegion(...), self.deviceId)
                                     </div>
                                 </div>
                             )}
@@ -512,14 +585,14 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                 "rounded-xl overflow-hidden border transition-all duration-300 group selection:bg-primary/20 cursor-pointer shadow-sm",
                                 copiedId === 'path' ? "border-success bg-success/10" : "border-base-300 bg-base-100 hover:border-primary/50 hover:shadow-md"
                             )}
-                                onClick={() => handleCopy('path', `f"{self.image_root}/${filename}"`)}
+                                onClick={() => handleCopy('path', `f"{self.image_root}/${getFullRelativePath()}"`)}
                             >
                                 <div className="flex items-center justify-between px-3 py-2 bg-base-200/50 border-b border-base-200">
                                     <div className="text-[10px] uppercase tracking-widest font-bold opacity-50">Asset Path</div>
                                     {copiedId === 'path' ? <Check size={14} className="text-success animate-in zoom-in" /> : <Copy size={14} className="opacity-30 group-hover:opacity-100 transition-opacity" />}
                                 </div>
                                 <div className="p-3 font-mono text-[11px] text-base-content/80 leading-relaxed break-all">
-                                    f"&#123;self.image_root&#125;/{filename}"
+                                    f"&#123;self.image_root&#125;/{getFullRelativePath()}"
                                 </div>
                             </div>
                         </div>

@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { FileImage, Trash2, Edit2, X } from 'lucide-react';
+import { FileImage, Trash2, Edit2, X, Folder, FolderPlus, ChevronRight, ChevronDown, ListTree, ChevronLeft } from 'lucide-react';
 import clsx from 'clsx';
-// import { useAppStore } from '../store'; // Not used if we don't access scriptDef
 
 const API_Base = 'http://localhost:8080/api';
 
-interface Asset {
+interface AssetNode {
     name: string;
-    path: string;
-    size?: number;
+    path: string; // Relative path from images/
+    isDir: boolean;
+    children?: AssetNode[];
 }
 
 interface AssetExplorerProps {
@@ -22,13 +22,11 @@ interface AssetExplorerProps {
 }
 
 export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, collapsed, refreshKey, onToggle, onResize }) => {
-    const [assets, setAssets] = useState<Asset[]>([]);
+    const [assets, setAssets] = useState<AssetNode[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [selectedAsset, setSelectedAsset] = useState<string | null>(null);
+    const [selectedAsset, setSelectedAsset] = useState<AssetNode | null>(null);
     const [previewAsset, setPreviewAsset] = useState<string | null>(null);
-
-    // Snippets Height State
-    const [snippetsHeight, setSnippetsHeight] = useState(200);
+    const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set([""])); // Root is empty string
 
     // Resize Refs
     const isResizingWidth = useRef(false);
@@ -36,40 +34,44 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
     const startX = useRef(0);
     const startY = useRef(0);
     const startWidth = useRef(0);
-    const startHeight = useRef(0);
+    const startHeight = useRef(200);
+    const [snippetsHeight, setSnippetsHeight] = useState(200);
 
     // Context Menu State
-    const [contextMenu, setContextMenu] = useState<{ x: number, y: number, asset: string } | null>(null);
+    const [contextMenu, setContextMenu] = useState<{ x: number, y: number, node: AssetNode } | null>(null);
 
     // Modals
-    const [renameTarget, setRenameTarget] = useState<string | null>(null);
+    const [renameTarget, setRenameTarget] = useState<AssetNode | null>(null);
     const [renameValue, setRenameValue] = useState('');
-    const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+    const [mkdirTarget, setMkdirTarget] = useState<string | null>(null); // Parent path
+    const [deleteTarget, setDeleteTarget] = useState<AssetNode | null>(null);
+    const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
 
-    // Global Mouse Handlers for Resize
+    useEffect(() => {
+        if (toast) {
+            const timer = setTimeout(() => setToast(null), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [toast]);
+
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             if (isResizingWidth.current) {
                 const deltaX = e.clientX - startX.current;
-                const newWidth = Math.max(150, Math.min(600, startWidth.current + deltaX));
-                onResize(newWidth);
+                onResize(Math.max(150, Math.min(600, startWidth.current + deltaX)));
             }
             if (isResizingHeight.current) {
-                const deltaY = startY.current - e.clientY; // Up is positive for height increase (since it's bottom panel)
-                const newHeight = Math.max(100, Math.min(600, startHeight.current + deltaY));
-                setSnippetsHeight(newHeight);
+                const deltaY = startY.current - e.clientY;
+                setSnippetsHeight(Math.max(100, Math.min(600, startHeight.current + deltaY)));
             }
         };
-
         const handleMouseUp = () => {
             isResizingWidth.current = false;
             isResizingHeight.current = false;
             document.body.style.cursor = 'default';
         };
-
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
-
         return () => {
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
@@ -97,7 +99,6 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
         else setAssets([]);
     }, [scriptId, refreshKey]);
 
-    // Close context menu on click elsewhere
     useEffect(() => {
         const handleClick = () => setContextMenu(null);
         window.addEventListener('click', handleClick);
@@ -111,73 +112,122 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
             const res = await axios.get(`${API_Base}/scripts/${scriptId}/assets`);
             setAssets(res.data);
         } catch (err) {
-            console.error("Failed to fetch assets", err);
+            console.error(err);
         } finally {
             setIsLoading(false);
         }
     };
 
+    const handleCreateFolder = async (folderName: string) => {
+        if (!scriptId || !folderName.trim()) {
+            setMkdirTarget(null);
+            return;
+        }
+        const fullPath = mkdirTarget ? `${mkdirTarget}/${folderName.trim()}` : folderName.trim();
+        try {
+            await axios.post(`${API_Base}/scripts/${scriptId}/assets/mkdir`, { path: fullPath });
+            setMkdirTarget(null);
+            fetchAssets();
+            setToast({ message: "Folder created", type: 'success' });
+        } catch (err) { setToast({ message: "Create folder failed", type: 'error' }); }
+    };
+
     const handleRename = async () => {
         if (!scriptId || !renameTarget || !renameValue.trim()) return;
+        const parts = renameTarget.path.split('/');
+        parts[parts.length - 1] = renameValue.trim();
+        const newPath = parts.join('/');
         try {
-            await axios.post(`${API_Base}/scripts/${scriptId}/assets/rename`, {
-                oldName: renameTarget,
-                newName: renameValue.trim()
-            });
+            await axios.post(`${API_Base}/scripts/${scriptId}/assets/move`, { oldPath: renameTarget.path, newPath });
             setRenameTarget(null);
             fetchAssets();
-        } catch (err) {
-            console.error(err);
-            alert("Rename failed");
-        }
+            setToast({ message: "Renamed successfully", type: 'success' });
+        } catch (err) { setToast({ message: "Rename failed", type: 'error' }); }
     };
 
     const handleDelete = async () => {
         if (!scriptId || !deleteTarget) return;
         try {
-            await axios.delete(`${API_Base}/scripts/${scriptId}/assets/${deleteTarget}`);
+            // Encode path parts individually to avoid double encoding of slashes
+            const safePath = deleteTarget.path.split('/').map(encodeURIComponent).join('/');
+            await axios.delete(`${API_Base}/scripts/${scriptId}/assets/${safePath}`);
             setDeleteTarget(null);
+            if (selectedAsset?.path === deleteTarget.path) setSelectedAsset(null);
             fetchAssets();
-            if (selectedAsset === deleteTarget) setSelectedAsset(null);
-        } catch (err) {
-            console.error(err);
-            alert("Delete failed");
-        }
+            setToast({ message: "Deleted successfully", type: 'success' });
+        } catch (err) { setToast({ message: "Delete failed", type: 'error' }); }
     };
 
-    const handleContextMenu = (e: React.MouseEvent, assetName: string) => {
-        e.preventDefault();
-        setContextMenu({ x: e.clientX, y: e.clientY, asset: assetName });
+    const handleMove = async (oldPath: string, newPath: string) => {
+        if (!scriptId || oldPath === newPath) return;
+        try {
+            await axios.post(`${API_Base}/scripts/${scriptId}/assets/move`, { oldPath, newPath });
+            fetchAssets();
+            setToast({ message: "Moved successfully", type: 'success' });
+        } catch (err) { setToast({ message: "Move failed", type: 'error' }); }
     };
 
-    // Snippets Generation
-    const getSnippets = (filename: string) => {
-        // Standardized snippet generation using self.image_root
-
-        return [
-            { label: 'Click Image', code: `self.platform.click_image(f"{self.image_root}/${filename}", OcrRegion(0, 0, 100, 100), self.deviceId)` },
-            { label: 'Find Image', code: `found, point = self.platform.find_image_full(f"{self.image_root}/${filename}", self.deviceId)` },
-            { label: 'Asset Path', code: `f"{self.image_root}/${filename}"` },
-        ];
+    const toggleFolder = (path: string) => {
+        setExpandedFolders(prev => {
+            const next = new Set(prev);
+            if (next.has(path)) next.delete(path);
+            else next.add(path);
+            return next;
+        });
     };
 
-    const [copiedSnippet, setCopiedSnippet] = useState<number | null>(null);
-    const copyToClipboard = (text: string, index: number) => {
-        navigator.clipboard.writeText(text);
-        setCopiedSnippet(index);
-        setTimeout(() => setCopiedSnippet(null), 1500);
+    const renderNode = (node: AssetNode, level: number = 0) => {
+        const isExpanded = expandedFolders.has(node.path);
+        const isSelected = selectedAsset?.path === node.path;
+
+        return (
+            <div key={node.path}>
+                <div
+                    draggable
+                    onDragStart={(e) => e.dataTransfer.setData("assetPath", node.path)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                        e.preventDefault();
+                        const source = e.dataTransfer.getData("assetPath");
+                        if (!source || source === node.path) return;
+                        const filename = source.split('/').pop();
+                        const dest = node.isDir ? `${node.path}/${filename}` : `${node.path.split('/').slice(0, -1).join('/')}/${filename}`;
+                        handleMove(source, dest);
+                    }}
+                    className={clsx(
+                        "flex items-center gap-1 px-2 py-0.5 cursor-pointer text-sm group hover:bg-base-200 transition-colors rounded-sm",
+                        isSelected && "bg-primary/20 text-primary font-bold"
+                    )}
+                    style={{ paddingLeft: `${level * 12 + 8}px` }}
+                    onClick={() => {
+                        if (node.isDir) toggleFolder(node.path);
+                        setSelectedAsset(node);
+                    }}
+                    onDoubleClick={() => !node.isDir && setPreviewAsset(node.path)}
+                    onContextMenu={(e) => {
+                        e.preventDefault();
+                        setContextMenu({ x: e.clientX, y: e.clientY, node });
+                    }}
+                >
+                    {node.isDir ? (
+                        <>
+                            {isExpanded ? <ChevronDown size={12} className="opacity-40" /> : <ChevronRight size={12} className="opacity-40" />}
+                            <Folder size={14} className="text-warning/80" />
+                        </>
+                    ) : (
+                        <FileImage size={14} className="text-info/60" />
+                    )}
+                    <span className="truncate flex-1">{node.name}</span>
+                </div>
+                {node.isDir && isExpanded && node.children?.map(child => renderNode(child, level + 1))}
+            </div>
+        );
     };
 
     if (collapsed) {
         return (
-            <div
-                className="w-10 border-r border-base-300 bg-base-200 flex flex-col items-center py-4 gap-4 cursor-pointer hover:bg-base-300/50 transition-colors"
-                onClick={onToggle}
-                title="Expand Asset Explorer"
-            >
-                <div className="tooltip tooltip-right" data-tip="Assets">
-                    <FileImage size={20} className="opacity-50" />
-                </div>
+            <div className="w-10 border-r border-base-300 bg-base-200 flex flex-col items-center py-4 gap-4 cursor-pointer hover:bg-base-300/50 transition-colors" onClick={onToggle}>
+                <div className="tooltip tooltip-right" data-tip="Assets"><ListTree size={20} className="opacity-50" /></div>
             </div>
         );
     }
@@ -185,174 +235,119 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
     return (
         <div className="flex flex-col h-full bg-base-100 border-r border-base-300 text-base-content/80 select-none relative" style={{ width }}>
             {/* Header */}
-            <div className="flex items-center justify-between px-3 h-9 bg-base-200 text-xs font-bold uppercase tracking-wider shrink-0 cursor-pointer border-b border-base-300 hover:bg-base-200/80 transition-colors" onClick={onToggle}>
-                <span className="opacity-70">Images</span>
-                <div className="flex items-center gap-1">
-                    <span className="badge badge-xs badge-ghost font-mono opacity-50">{assets.length}</span>
-                </div>
+            <div className="flex items-center justify-between px-3 h-9 bg-base-200 text-[10px] font-bold uppercase tracking-wider shrink-0 border-b border-base-300">
+                <span className="opacity-70 flex items-center gap-1" onClick={onToggle}><ChevronLeft size={14} /> Images</span>
+                <button className="btn btn-ghost btn-xs btn-square" onClick={() => setMkdirTarget("")} title="New Folder"><FolderPlus size={14} /></button>
             </div>
 
-            {/* List */}
-            <div className="flex-1 overflow-y-auto p-1 space-y-0.5 custom-scrollbar bg-base-100">
-                {isLoading && <div className="text-center p-4 opacity-50 text-xs">Loading...</div>}
-
-                {!isLoading && assets.map(asset => (
-                    <div
-                        key={asset.name}
-                        className={clsx(
-                            "flex items-center gap-2 px-2 py-1 rounded-sm cursor-pointer text-sm group transition-colors",
-                            selectedAsset === asset.name ? "bg-primary/20 text-primary font-bold" : "hover:bg-base-200 text-base-content/70"
-                        )}
-                        onClick={() => setSelectedAsset(asset.name)}
-                        onDoubleClick={() => setPreviewAsset(asset.name)}
-                        onContextMenu={(e) => handleContextMenu(e, asset.name)}
-                    >
-                        <FileImage size={14} className={clsx("shrink-0", selectedAsset === asset.name ? "text-primary" : "opacity-50 group-hover:opacity-80")} />
-                        <span className="truncate flex-1">{asset.name}</span>
-                    </div>
-                ))}
-
-                {!isLoading && assets.length === 0 && (
-                    <div className="text-center p-8 opacity-30 text-xs italic">
-                        No images found.<br />Screenshots saved will appear here.
-                    </div>
-                )}
+            {/* Tree View */}
+            <div className="flex-1 overflow-y-auto p-1 py-2 custom-scrollbar" onDragOver={e => e.preventDefault()} onDrop={e => {
+                const source = e.dataTransfer.getData("assetPath");
+                if (source) handleMove(source, source.split('/').pop() || "");
+            }}>
+                {isLoading ? <div className="p-4 text-center opacity-40 text-xs">Loading...</div> : assets.map(n => renderNode(n))}
             </div>
 
-            {/* Snippets Panel (Bottom) */}
-            {selectedAsset && (
-                <div
-                    className="min-h-[100px] border-t border-base-300 bg-base-100 flex flex-col relative shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]"
-                    style={{ height: snippetsHeight }}
-                >
-                    {/* Height Resize Handle */}
-                    <div
-                        className="absolute top-0 left-0 right-0 h-1 cursor-row-resize hover:bg-primary/50 z-10 transition-colors"
-                        onMouseDown={startResizeHeight}
-                    />
-
-                    <div className="px-3 py-2 bg-base-200 text-[10px] font-bold uppercase tracking-wider opacity-70 flex items-center gap-2 shrink-0 border-b border-base-300">
-                        <span>Snippets</span>
-                        <span className="opacity-30">/</span>
-                        <span className="truncate text-primary max-w-[120px]">{selectedAsset}</span>
+            {/* Snippets */}
+            {selectedAsset && !selectedAsset.isDir && (
+                <div className="border-t border-base-300 bg-base-100 relative shadow-2xl" style={{ height: snippetsHeight }}>
+                    <div className="absolute top-0 left-0 right-0 h-1 cursor-row-resize hover:bg-primary/50 transition-colors" onMouseDown={startResizeHeight} />
+                    <div className="px-3 py-1.5 bg-base-200 text-[9px] font-bold uppercase opacity-60 flex items-center gap-1 truncate border-b border-base-300">
+                        <FileImage size={10} /> {selectedAsset.name}
                     </div>
-                    <div className="flex-1 overflow-y-auto p-2 space-y-2 bg-base-100">
-                        {getSnippets(selectedAsset).map((snip, idx) => (
-                            <div key={idx} className="group relative">
-                                <div className="text-[10px] opacity-40 mb-1 pl-1 font-bold">{snip.label}</div>
-                                <div
-                                    className="bg-base-200 hover:bg-base-300 p-2 rounded text-[11px] font-mono break-all cursor-pointer transition-colors border border-base-300 hover:border-base-400 text-base-content/80 hover:text-base-content"
-                                    onClick={() => copyToClipboard(snip.code, idx)}
-                                >
+                    <div className="p-2 space-y-2 overflow-y-auto h-full pb-8">
+                        {[
+                            { label: 'ClickImage', code: `self.platform.click_image(f"{self.image_root}/${selectedAsset.path}", OcrRegion(0, 0, 100, 100), self.deviceId)` },
+                            { label: 'FindImage', code: `found, pt = self.platform.find_image_full(f"{self.image_root}/${selectedAsset.path}", self.deviceId)` }, // Fixed path
+                            { label: 'Path', code: `f"{self.image_root}/${selectedAsset.path}"` }
+                        ].map((snip, i) => (
+                            <div key={i}>
+                                <div className="text-[9px] opacity-40 mb-0.5">{snip.label}</div>
+                                <div className="bg-base-200 p-2 rounded text-[10px] font-mono break-all cursor-pointer hover:bg-base-300 border border-base-300" onClick={() => navigator.clipboard.writeText(snip.code)}>
                                     {snip.code}
                                 </div>
-                                {copiedSnippet === idx && (
-                                    <div className="absolute right-2 top-6 text-[10px] text-success font-bold bg-base-100 px-1 rounded shadow-sm animate-in fade-in zoom-in border border-base-200">
-                                        Copied
-                                    </div>
-                                )}
                             </div>
                         ))}
                     </div>
                 </div>
             )}
 
-            {/* Width Resize Handle */}
-            <div
-                className="absolute top-0 right-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 z-20 transition-colors"
-                onMouseDown={startResizeWidth}
-            />
+            <div className="absolute top-0 right-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 z-20" onMouseDown={startResizeWidth} />
 
             {/* Context Menu */}
             {contextMenu && (
-                <div
-                    className="fixed z-[100] bg-base-200 border border-base-300 shadow-xl rounded py-1 min-w-[150px] flex flex-col animate-in fade-in zoom-in-95 duration-100"
-                    style={{ left: contextMenu.x, top: contextMenu.y }}
-                >
-                    <button
-                        className="px-3 py-1.5 text-left text-sm hover:bg-primary/10 hover:text-primary flex items-center gap-2 transition-colors"
-                        onClick={() => {
-                            setRenameTarget(contextMenu.asset);
-                            setRenameValue(contextMenu.asset);
-                            setContextMenu(null);
-                        }}
-                    >
+                <div className="fixed z-[200] bg-base-200 border border-base-300 shadow-xl rounded py-1 min-w-[140px]" style={{ left: contextMenu.x, top: contextMenu.y }}>
+                    {contextMenu.node.isDir && (
+                        <button className="w-full px-3 py-1.5 text-left text-xs hover:bg-primary/10 flex items-center gap-2" onClick={() => setMkdirTarget(contextMenu.node.path)}>
+                            <FolderPlus size={13} /> New Subfolder
+                        </button>
+                    )}
+                    <button className="w-full px-3 py-1.5 text-left text-xs hover:bg-primary/10 flex items-center gap-2" onClick={() => { setRenameTarget(contextMenu.node); setRenameValue(contextMenu.node.name); }}>
                         <Edit2 size={13} /> Rename
                     </button>
                     <div className="h-px bg-base-300 my-1" />
-                    <button
-                        className="px-3 py-1.5 text-left text-sm hover:bg-error/10 hover:text-error text-error flex items-center gap-2 transition-colors"
-                        onClick={() => {
-                            setDeleteTarget(contextMenu.asset);
-                            setContextMenu(null);
-                        }}
-                    >
+                    <button className="w-full px-3 py-1.5 text-left text-xs text-error hover:bg-error/10 flex items-center gap-2" onClick={() => setDeleteTarget(contextMenu.node)}>
                         <Trash2 size={13} /> Delete
                     </button>
                 </div>
             )}
 
-            {/* Rename Modal */}
+            {/* Modals placeholders */}
+            {mkdirTarget !== null && (
+                <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                    <div className="bg-base-100 p-4 rounded-lg shadow-xl w-64 border border-base-300">
+                        <h3 className="text-sm font-bold mb-3">New Folder</h3>
+                        <input autoFocus className="input input-sm input-bordered w-full mb-4" onKeyDown={e => {
+                            if (e.key === 'Enter') handleCreateFolder((e.target as HTMLInputElement).value);
+                            if (e.key === 'Escape') setMkdirTarget(null);
+                        }} />
+                        <div className="flex justify-end gap-2"><button className="btn btn-xs btn-ghost" onClick={() => setMkdirTarget(null)}>Cancel</button></div>
+                    </div>
+                </div>
+            )}
+
             {renameTarget && (
-                <div className="fixed inset-0 z-[101] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    <div className="bg-base-100 border border-base-300 p-4 rounded-xl shadow-2xl w-80 text-base-content">
-                        <h3 className="font-bold text-sm mb-4">Rename Asset</h3>
-                        <input
-                            autoFocus
-                            className="w-full bg-base-200 border border-base-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary mb-4 transition-all"
-                            value={renameValue}
-                            onChange={(e) => setRenameValue(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleRename();
-                                if (e.key === 'Escape') setRenameTarget(null);
-                            }}
-                        />
-                        <div className="flex justify-end gap-2">
-                            <button className="btn btn-xs btn-ghost" onClick={() => setRenameTarget(null)}>Cancel</button>
-                            <button className="btn btn-xs btn-primary" onClick={handleRename}>Rename</button>
-                        </div>
+                <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                    <div className="bg-base-100 p-4 rounded-lg shadow-xl w-64 border border-base-300">
+                        <h3 className="text-sm font-bold mb-3">Rename</h3>
+                        <input autoFocus className="input input-sm input-bordered w-full mb-4" value={renameValue} onChange={e => setRenameValue(e.target.value)} onKeyDown={e => {
+                            if (e.key === 'Enter') handleRename();
+                            if (e.key === 'Escape') setRenameTarget(null);
+                        }} />
+                        <div className="flex justify-end gap-2"><button className="btn btn-xs btn-ghost" onClick={() => setRenameTarget(null)}>Cancel</button><button className="btn btn-xs btn-primary" onClick={handleRename}>OK</button></div>
                     </div>
                 </div>
             )}
 
-            {/* Delete Confirmation */}
             {deleteTarget && (
-                <div className="fixed inset-0 z-[101] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    <div className="bg-base-100 border border-base-300 p-4 rounded-xl shadow-2xl w-80 text-base-content">
-                        <h3 className="font-bold text-sm text-error mb-2">Delete Asset?</h3>
-                        <p className="text-xs opacity-70 mb-6">
-                            Are you sure you want to delete <span className="font-bold text-base-content">{deleteTarget}</span>? This action cannot be undone.
-                        </p>
-                        <div className="flex justify-end gap-2">
-                            <button className="btn btn-xs btn-ghost" onClick={() => setDeleteTarget(null)}>Cancel</button>
-                            <button className="btn btn-xs btn-error" onClick={handleDelete}>Delete</button>
-                        </div>
+                <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                    <div className="bg-base-100 p-4 rounded-lg shadow-xl w-64 border border-base-300">
+                        <h3 className="text-sm font-bold text-error mb-2">Delete?</h3>
+                        <p className="text-[10px] opacity-60 mb-4 truncate">{deleteTarget.path}</p>
+                        <div className="flex justify-end gap-2"><button className="btn btn-xs btn-ghost" onClick={() => setDeleteTarget(null)}>Cancel</button><button className="btn btn-xs btn-error" onClick={handleDelete}>Delete</button></div>
                     </div>
                 </div>
             )}
 
-            {/* Preview Modal */}
-            {previewAsset && scriptId && (
-                <div
-                    className="fixed inset-0 z-[101] flex items-center justify-center bg-black/80 backdrop-blur-md p-8"
-                    onClick={() => setPreviewAsset(null)}
-                >
-                    <div className="relative max-w-full max-h-full p-2 bg-base-100 rounded-xl shadow-2xl border border-base-300" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-between mb-2 px-2">
-                            <h3 className="text-sm font-bold text-base-content">{previewAsset}</h3>
-                            <button onClick={() => setPreviewAsset(null)} className="opacity-50 hover:opacity-100 btn btn-xs btn-circle btn-ghost"><X size={16} /></button>
+            {previewAsset && (
+                <div className="fixed inset-0 z-[250] bg-black/90 flex items-center justify-center p-8 backdrop-blur-md" onClick={() => setPreviewAsset(null)}>
+                    <div className="max-w-[90vw] max-h-[90vh] relative p-1 bg-base-100 rounded-lg shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center p-2 mb-2 border-b border-base-200">
+                            <span className="text-xs font-bold opacity-60">{previewAsset}</span>
+                            <button onClick={() => setPreviewAsset(null)} className="btn btn-xs btn-circle btn-ghost"><X size={14} /></button>
                         </div>
-                        <div className="bg-[url('/transparent-bg.png')] bg-repeat rounded overflow-hidden border border-base-200">
-                            {/* Use direct script asset path via API or if we have a static route. */}
-                            <img
-                                src={`${API_Base}/scripts/${scriptId}/assets/${previewAsset}/raw`}
-                                alt={previewAsset}
-                                className="max-w-[80vw] max-h-[80vh] object-contain block"
-                                onError={(e) => {
-                                    (e.target as HTMLImageElement).style.display = 'none';
-                                    alert("Preview not available (Static route missing?)");
-                                }}
-                            />
+                        <img className="max-h-[75vh] object-contain rounded" src={`${API_Base}/scripts/${scriptId}/raw-assets/${previewAsset}`} alt="preview" />
+                    </div>
+                </div>
+            )}
+
+            {/* Toast Notification */}
+            {toast && (
+                <div className="toast toast-end toast-bottom z-[300] mb-4 mr-4">
+                    <div className={clsx("alert shadow-lg py-2 px-4 transition-all duration-300",
+                        toast.type === 'success' ? "alert-success" : "alert-error")}>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold uppercase">{toast.message}</span>
                         </div>
                     </div>
                 </div>

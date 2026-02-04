@@ -36,8 +36,25 @@ interface AppState {
     setLanguage: (lang: string) => void;
 
     // Navigation
-    activeMainTab: 'execution' | 'management' | 'setting' | 'editor';
-    setActiveMainTab: (tab: 'execution' | 'management' | 'setting' | 'editor') => void;
+    activeMainTab: 'execution' | 'management' | 'setting' | 'editor' | 'debug';
+    isSidebarCollapsed: boolean;
+    setActiveMainTab: (tab: 'execution' | 'management' | 'setting' | 'editor' | 'debug') => void;
+    setSidebarCollapsed: (collapsed: boolean) => void;
+
+    // Editor State (Persisted)
+    editorSelectedScriptId: string | null;
+    editorCode: string;
+    editorOriginalCode: string;
+    editorIsDirty: boolean;
+    assetExplorerCollapsed: boolean;
+    scriptExplorerCollapsed: boolean;
+
+    setEditorSelectedScriptId: (id: string | null) => void;
+    setEditorCode: (code: string) => void;
+    setEditorOriginalCode: (code: string) => void;
+    setEditorIsDirty: (dirty: boolean) => void;
+    setAssetExplorerCollapsed: (collapsed: boolean) => void;
+    setScriptExplorerCollapsed: (collapsed: boolean) => void;
 
     // Global Data
     devices: string[];
@@ -67,6 +84,7 @@ export const useAppStore = create<AppState>()(
             theme: 'dark',
             language: 'zh',
             activeMainTab: 'execution',
+            isSidebarCollapsed: true,
             scriptTabs: [],
             activeTabId: null,
 
@@ -78,6 +96,22 @@ export const useAppStore = create<AppState>()(
             setTheme: (theme) => set({ theme }),
             setLanguage: (language) => set({ language }),
             setActiveMainTab: (tab) => set({ activeMainTab: tab }),
+            setSidebarCollapsed: (isSidebarCollapsed) => set({ isSidebarCollapsed }),
+
+            // Editor State Defaults
+            editorSelectedScriptId: null,
+            editorCode: '',
+            editorOriginalCode: '',
+            editorIsDirty: false,
+            assetExplorerCollapsed: true, // Default to collapsed as requested
+            scriptExplorerCollapsed: false,
+
+            setEditorSelectedScriptId: (id) => set({ editorSelectedScriptId: id }),
+            setEditorCode: (code) => set({ editorCode: code }),
+            setEditorOriginalCode: (code) => set({ editorOriginalCode: code }),
+            setEditorIsDirty: (dirty) => set({ editorIsDirty: dirty }),
+            setAssetExplorerCollapsed: (collapsed) => set({ assetExplorerCollapsed: collapsed }),
+            setScriptExplorerCollapsed: (collapsed) => set({ scriptExplorerCollapsed: collapsed }),
 
             openScriptTab: (scriptId, defaultName) => {
                 const { scriptTabs } = get();
@@ -146,7 +180,14 @@ export const useAppStore = create<AppState>()(
             name: 'app-storage-v2',
             partialize: (state) => ({
                 theme: state.theme,
-                language: state.language
+                language: state.language,
+                isSidebarCollapsed: state.isSidebarCollapsed,
+                editorSelectedScriptId: state.editorSelectedScriptId,
+                editorCode: state.editorCode,
+                editorOriginalCode: state.editorOriginalCode,
+                editorIsDirty: state.editorIsDirty,
+                assetExplorerCollapsed: state.assetExplorerCollapsed,
+                scriptExplorerCollapsed: state.scriptExplorerCollapsed
             }),
         }
     )

@@ -545,7 +545,14 @@ func copyDir(src, dst string) error {
 	return nil
 }
 
-func (sm *ScriptManager) ListAssets(scriptID string) ([]map[string]interface{}, error) {
+type FileNode struct {
+	Name     string      `json:"name"`
+	Path     string      `json:"path"` // Relative path from images/
+	IsDir    bool        `json:"isDir"`
+	Children []*FileNode `json:"children,omitempty"`
+}
+
+func (sm *ScriptManager) ListAssets(scriptID string) ([]*FileNode, error) {
 	scripts, err := sm.ListScripts()
 	if err != nil {
 		return nil, err
@@ -563,28 +570,40 @@ func (sm *ScriptManager) ListAssets(scriptID string) ([]map[string]interface{}, 
 		return nil, fmt.Errorf("script not found")
 	}
 
-	// Calculate images dir: script/custom/<name>/images
-	fullPath := filepath.Join(sm.CorePath, scriptPath)
-	imagesDir := filepath.Join(filepath.Dir(fullPath), "images")
+	imagesDir := filepath.Join(sm.CorePath, filepath.Dir(scriptPath), "images")
 
-	entries, err := os.ReadDir(imagesDir)
+	if _, err := os.Stat(imagesDir); os.IsNotExist(err) {
+		return []*FileNode{}, nil
+	}
+
+	return sm.walkDir(imagesDir, ""), nil
+}
+
+func (sm *ScriptManager) walkDir(fullPath, relPath string) []*FileNode {
+	entries, err := os.ReadDir(fullPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return []map[string]interface{}{}, nil
-		}
-		return nil, err
+		return nil
 	}
 
-	var assets []map[string]interface{}
+	var nodes []*FileNode
 	for _, e := range entries {
-		if !e.IsDir() {
-			assets = append(assets, map[string]interface{}{
-				"name": e.Name(),
-				"path": fmt.Sprintf("scripts/%s/assets/%s", scriptID, e.Name()), // Virtual path
-			})
+		name := e.Name()
+		nodeRelPath := filepath.Join(relPath, name)
+		// Convert to forward slashes for frontend web compatibility
+		webRelPath := filepath.ToSlash(nodeRelPath)
+
+		node := &FileNode{
+			Name:  name,
+			Path:  webRelPath,
+			IsDir: e.IsDir(),
 		}
+
+		if e.IsDir() {
+			node.Children = sm.walkDir(filepath.Join(fullPath, name), nodeRelPath)
+		}
+		nodes = append(nodes, node)
 	}
-	return assets, nil
+	return nodes
 }
 
 func (sm *ScriptManager) RenameAsset(scriptID, oldName, newName string) error {
@@ -605,23 +624,50 @@ func (sm *ScriptManager) RenameAsset(scriptID, oldName, newName string) error {
 		return fmt.Errorf("script not found")
 	}
 
-	imagesDir := filepath.Join(filepath.Dir(filepath.Join(sm.CorePath, scriptPath)), "images")
+	imagesDir := filepath.Join(sm.CorePath, filepath.Dir(scriptPath), "images")
 	oldPath := filepath.Join(imagesDir, oldName)
 	newPath := filepath.Join(imagesDir, newName)
 
-	// Validate paths are within imagesDir
-	if filepath.Dir(oldPath) != imagesDir || filepath.Dir(newPath) != imagesDir {
-		return fmt.Errorf("invalid asset path")
+	// Security: Ensure we are within imagesDir
+	cleanBase, _ := filepath.Abs(imagesDir)
+	cleanOld, _ := filepath.Abs(oldPath)
+	cleanNew, _ := filepath.Abs(newPath)
+
+	if !strings.HasPrefix(cleanOld, cleanBase) || !strings.HasPrefix(cleanNew, cleanBase) {
+		return fmt.Errorf("security: path escape detected")
 	}
 
 	if _, err := os.Stat(newPath); err == nil {
-		return fmt.Errorf("file already exists")
+		return fmt.Errorf("target already exists")
 	}
 
-	return os.Rename(oldPath, newPath)
+	// Rename Strategy: Copy + Delete (for robustness across filesystems/locks)
+	info, err := os.Stat(oldPath)
+	if err != nil {
+		return err
+	}
+
+	if info.IsDir() {
+		// Recursive copy for directory
+		if err := copyDir(oldPath, newPath); err != nil {
+			return err
+		}
+		return os.RemoveAll(oldPath)
+	} else {
+		// Single file copy
+		if err := copyFile(oldPath, newPath); err != nil {
+			return err
+		}
+		return os.Remove(oldPath)
+	}
 }
 
-func (sm *ScriptManager) DeleteAsset(scriptID, filename string) error {
+func (sm *ScriptManager) MoveAsset(scriptID, oldRelPath, newRelPath string) error {
+	// Re-use RenameAsset logic as it's essentially the same for moving
+	return sm.RenameAsset(scriptID, oldRelPath, newRelPath)
+}
+
+func (sm *ScriptManager) MkdirAsset(scriptID, relPath string) error {
 	scripts, err := sm.ListScripts()
 	if err != nil {
 		return err
@@ -639,15 +685,50 @@ func (sm *ScriptManager) DeleteAsset(scriptID, filename string) error {
 		return fmt.Errorf("script not found")
 	}
 
-	imagesDir := filepath.Join(filepath.Dir(filepath.Join(sm.CorePath, scriptPath)), "images")
-	targetPath := filepath.Join(imagesDir, filename)
+	imagesDir := filepath.Join(sm.CorePath, filepath.Dir(scriptPath), "images")
+	targetPath := filepath.Join(imagesDir, relPath)
 
-	// Validate path
-	if filepath.Dir(targetPath) != imagesDir {
-		return fmt.Errorf("invalid asset path")
+	// Security: Ensure we are within imagesDir
+	cleanBase, _ := filepath.Abs(imagesDir)
+	cleanTarget, _ := filepath.Abs(targetPath)
+
+	if !strings.HasPrefix(cleanTarget, cleanBase) {
+		return fmt.Errorf("security: path escape detected")
 	}
 
-	return os.Remove(targetPath)
+	return os.MkdirAll(targetPath, 0755)
+}
+
+func (sm *ScriptManager) DeleteAsset(scriptID, relPath string) error {
+	scripts, err := sm.ListScripts()
+	if err != nil {
+		return err
+	}
+
+	var scriptPath string
+	for _, s := range scripts {
+		if s["id"] == scriptID {
+			scriptPath = s["path"]
+			break
+		}
+	}
+
+	if scriptPath == "" {
+		return fmt.Errorf("script not found")
+	}
+
+	imagesDir := filepath.Join(sm.CorePath, filepath.Dir(scriptPath), "images")
+	targetPath := filepath.Join(imagesDir, relPath)
+
+	// Security: Ensure we are within imagesDir
+	cleanBase, _ := filepath.Abs(imagesDir)
+	cleanTarget, _ := filepath.Abs(targetPath)
+
+	if !strings.HasPrefix(cleanTarget, cleanBase) {
+		return fmt.Errorf("security: path escape detected")
+	}
+
+	return os.RemoveAll(targetPath)
 }
 
 func (sm *ScriptManager) ExportScriptZip(scriptID string, writer io.Writer) error {
