@@ -106,13 +106,17 @@ jobs:
           # Copy Dependencies
           cp -r platform-tools release_package/
           
-          # Copy Core Skeleton (Assets need to be there?)
-          # Actually we need 'core/script/custom' structure
+          # Copy Core Framework Files
           mkdir -p release_package/core/script/custom
           mkdir -p release_package/core/assets
           
-          # Copy requirements.txt just in case? Or License
-          # cp LICENSE release_package/ || true
+          cp core/script/script_interface.py release_package/core/script/
+          cp -r core/service release_package/core/
+          
+          # Initialize custom script directory with __init__ if needed
+          touch release_package/core/__init__.py
+          touch release_package/core/script/__init__.py
+          touch release_package/core/script/custom/__init__.py
 
       - name: Zip Release
         shell: bash

@@ -4,11 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { MoreHorizontal, Upload, Trash2, Edit2, Search, Download } from 'lucide-react';
 import { type Script } from '../store';
 import clsx from 'clsx';
-
-const API_Base = "http://localhost:8080/api";
+import { useAppStore } from '../store';
 
 export const ManagementView: React.FC = () => {
     const { t } = useTranslation();
+    const { apiBaseUrl } = useAppStore();
+    const API_Base = apiBaseUrl;
     const [scripts, setScripts] = useState<Script[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');

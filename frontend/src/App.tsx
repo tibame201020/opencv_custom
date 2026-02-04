@@ -11,7 +11,7 @@ import { Play, Settings as SettingsIcon, Database, ChevronLeft, ChevronRight, Fi
 import clsx from 'clsx';
 
 function App() {
-  const { theme, activeMainTab, setActiveMainTab, isSidebarCollapsed, setSidebarCollapsed } = useAppStore();
+  const { theme, activeMainTab, setActiveMainTab, isSidebarCollapsed, setSidebarCollapsed, setApiBaseUrl } = useAppStore();
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
@@ -25,10 +25,30 @@ function App() {
     }
   }, [location, setActiveMainTab]);
 
-  // Apply theme
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  // Initialize Dynamic API Port
+  useEffect(() => {
+    const initApi = async () => {
+      try {
+        // Wails Go binding call
+        // @ts-ignore
+        if (window.go && window.go.main && window.go.main.App) {
+          // @ts-ignore
+          const url = await window.go.main.App.GetApiBaseUrl();
+          if (url) {
+            setApiBaseUrl(url);
+            console.log("Backend API initialized at:", url);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to initialize dynamic API port, using default 8080", err);
+      }
+    };
+    initApi();
+  }, [setApiBaseUrl]);
 
   const navItems = [
     { id: 'execution', label: t('ui.execution.title'), icon: Play, path: '/execution' },

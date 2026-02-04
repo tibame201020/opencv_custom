@@ -4,7 +4,6 @@ import { RefreshCw, Save, MousePointer, X, Copy, RotateCcw, Check } from 'lucide
 import clsx from 'clsx';
 import { useAppStore } from '../store';
 
-const API_Base = 'http://localhost:8080/api';
 
 interface ScreenshotModalProps {
     isOpen: boolean;
@@ -16,7 +15,8 @@ interface ScreenshotModalProps {
 export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
     isOpen, onClose, deviceId, scriptId
 }) => {
-    const { activeTabId, scriptTabs } = useAppStore();
+    const { activeTabId, scriptTabs, apiBaseUrl } = useAppStore();
+    const API_Base = apiBaseUrl;
     const activeTab = scriptTabs.find(t => t.tabId === activeTabId);
 
     // Determine the target script: Preference given to prop (Editor mode) -> then active tab (Execution mode)

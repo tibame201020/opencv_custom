@@ -12,7 +12,6 @@ import { AssetExplorer } from '../components/AssetExplorer';
 import { registerPythonCompletions } from '../utils/monacoConfig';
 import clsx from 'clsx';
 
-const API_Base = "http://localhost:8080/api";
 
 export const EditorView: React.FC = () => {
     const { t } = useTranslation();
@@ -21,8 +20,11 @@ export const EditorView: React.FC = () => {
         editorSelectedScriptId, setEditorSelectedScriptId,
         editorTabs, activeEditorTabId, openEditorTab, closeEditorTab, setActiveEditorTab, updateEditorTabContent, saveEditorTab,
         assetExplorerCollapsed, setAssetExplorerCollapsed,
-        scriptExplorerCollapsed, setScriptExplorerCollapsed
+        scriptExplorerCollapsed, setScriptExplorerCollapsed,
+        apiBaseUrl
     } = useAppStore();
+
+    const API_Base = apiBaseUrl;
     const navigate = useNavigate();
 
     const [scripts, setScripts] = useState<any[]>([]);

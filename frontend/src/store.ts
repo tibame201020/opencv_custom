@@ -40,11 +40,12 @@ export interface LogMessage {
 }
 
 interface AppState {
-    // Settings
     theme: string;
     language: string;
+    apiBaseUrl: string;
     setTheme: (theme: string) => void;
     setLanguage: (lang: string) => void;
+    setApiBaseUrl: (url: string) => void;
 
     // Navigation
     activeMainTab: 'execution' | 'management' | 'setting' | 'editor' | 'debug';
@@ -96,6 +97,7 @@ export const useAppStore = create<AppState>()(
             // Defaults
             theme: 'dark',
             language: 'zh',
+            apiBaseUrl: 'http://localhost:8080/api', // Default fallback
             activeMainTab: 'execution',
             isSidebarCollapsed: true,
             scriptTabs: [],
@@ -108,6 +110,7 @@ export const useAppStore = create<AppState>()(
             // Actions
             setTheme: (theme) => set({ theme }),
             setLanguage: (language) => set({ language }),
+            setApiBaseUrl: (apiBaseUrl) => set({ apiBaseUrl }),
             setActiveMainTab: (tab) => set({ activeMainTab: tab }),
             setSidebarCollapsed: (isSidebarCollapsed) => set({ isSidebarCollapsed }),
 

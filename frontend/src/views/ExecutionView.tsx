@@ -10,8 +10,6 @@ import {
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import clsx from 'clsx';
 
-const API_Base = 'http://localhost:8080/api';
-const WS_Base = 'ws://localhost:8080/ws/logs';
 
 
 export const ExecutionView: React.FC = () => {
@@ -19,8 +17,12 @@ export const ExecutionView: React.FC = () => {
     const {
         scriptTabs, activeTabId,
         openScriptTab, closeScriptTab, setActiveScriptTab, setSubTab,
-        updateScriptStatus, appendLog, renameScriptTab, updateScriptParams
+        updateScriptStatus, appendLog, renameScriptTab, updateScriptParams,
+        apiBaseUrl
     } = useAppStore();
+
+    const API_Base = apiBaseUrl;
+    const WS_Base = apiBaseUrl.replace('http://', 'ws://').replace('/api', '/ws/logs');
 
     // UI State
     const [scripts, setScripts] = useState<Script[]>([]);

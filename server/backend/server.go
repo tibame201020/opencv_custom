@@ -3,6 +3,7 @@ package backend
 import (
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -16,11 +17,18 @@ import (
 )
 
 var (
-	manager  *process_manager.ScriptManager
-	upgrader = websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool { return true },
-	}
+	manager *process_manager.ScriptManager
+	APIPort int
+	APIURL  string
 )
+
+func GetAPIURL() string {
+	return APIURL
+}
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
+}
 
 // Helper to resolve paths relative to executable or CWD
 func resolvePath(segments ...string) string {
@@ -165,9 +173,21 @@ func StartServer() {
 
 	r.GET("/ws/logs/:id", streamLogs)
 
-	port := ":8080"
-	fmt.Printf("Server starting on %s\n", port)
-	r.Run(port)
+	// Dynamic Port Allocation
+	listener, err := net.Listen("tcp", ":0")
+	if err != nil {
+		fmt.Printf("Failed to listen on any port: %v\n", err)
+		// Fallback to 8080 if dynamic fails? probably better to crash
+		panic(err)
+	}
+
+	APIPort = listener.Addr().(*net.TCPAddr).Port
+	APIURL = fmt.Sprintf("http://localhost:%d/api", APIPort)
+
+	fmt.Printf("Server starting on %s\n", APIURL)
+
+	// Start serving using the listener
+	http.Serve(listener, r)
 }
 
 // Cleanup is called when the application shuts down
