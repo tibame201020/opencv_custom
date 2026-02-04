@@ -3,7 +3,6 @@ package backend
 import (
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -18,13 +17,7 @@ import (
 
 var (
 	manager *process_manager.ScriptManager
-	APIPort int
-	APIURL  string
 )
-
-func GetAPIURL() string {
-	return APIURL
-}
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
@@ -86,7 +79,7 @@ func getPythonCmd() string {
 	return "python"
 }
 
-func StartServer() {
+func SetupRouter() *gin.Engine {
 	cwd, _ := os.Getwd()
 
 	// Resolve Core Path
@@ -119,7 +112,7 @@ func StartServer() {
 
 	r := gin.Default()
 
-	// Enable CORS
+	// Enable CORS (Still useful for standalone dev tools if any)
 	r.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
@@ -173,21 +166,7 @@ func StartServer() {
 
 	r.GET("/ws/logs/:id", streamLogs)
 
-	// Dynamic Port Allocation
-	listener, err := net.Listen("tcp", ":0")
-	if err != nil {
-		fmt.Printf("Failed to listen on any port: %v\n", err)
-		// Fallback to 8080 if dynamic fails? probably better to crash
-		panic(err)
-	}
-
-	APIPort = listener.Addr().(*net.TCPAddr).Port
-	APIURL = fmt.Sprintf("http://localhost:%d/api", APIPort)
-
-	fmt.Printf("Server starting on %s\n", APIURL)
-
-	// Start serving using the listener
-	http.Serve(listener, r)
+	return r
 }
 
 // Cleanup is called when the application shuts down

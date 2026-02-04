@@ -69,6 +69,8 @@ env/
 *.pyo
 *.pyd
 
+.agent
+
 # custom scripts
 core/script/custom
 

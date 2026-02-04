@@ -97,7 +97,7 @@ export const useAppStore = create<AppState>()(
             // Defaults
             theme: 'dark',
             language: 'zh',
-            apiBaseUrl: 'http://localhost:8080/api', // Default fallback
+            apiBaseUrl: '/api', // Default to relative path for standard Wails/Vite proxy
             activeMainTab: 'execution',
             isSidebarCollapsed: false,
             scriptTabs: [],

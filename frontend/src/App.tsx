@@ -11,7 +11,7 @@ import { Play, Settings as SettingsIcon, Database, ChevronLeft, ChevronRight, Fi
 import clsx from 'clsx';
 
 function App() {
-  const { theme, activeMainTab, setActiveMainTab, isSidebarCollapsed, setSidebarCollapsed, setApiBaseUrl } = useAppStore();
+  const { theme, activeMainTab, setActiveMainTab, isSidebarCollapsed, setSidebarCollapsed } = useAppStore();
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
@@ -29,40 +29,9 @@ function App() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  // Initialize Dynamic API Port
   useEffect(() => {
-    const initApi = async () => {
-      let attempts = 0;
-      const maxAttempts = 5;
-
-      const attemptFetch = async () => {
-        try {
-          // Wails Go binding call
-          // @ts-ignore
-          if (window.go && window.go.main && window.go.main.App) {
-            // @ts-ignore
-            const url = await window.go.main.App.GetApiBaseUrl();
-            if (url) {
-              setApiBaseUrl(url);
-              console.log("Backend API initialized at:", url);
-              return true;
-            }
-          }
-        } catch (err) {
-          console.error("Attempt failed to initialize dynamic API port:", err);
-        }
-        return false;
-      };
-
-      while (attempts < maxAttempts) {
-        const success = await attemptFetch();
-        if (success) break;
-        attempts++;
-        await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms between retries
-      }
-    };
-    initApi();
-  }, [setApiBaseUrl]);
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   const navItems = [
     { id: 'execution', label: t('ui.execution.title'), icon: Play, path: '/execution' },
