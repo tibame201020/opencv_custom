@@ -140,9 +140,9 @@ func StartServer() {
 		api.POST("/run", runScript)
 		api.POST("/stop", stopScript)
 		api.GET("/devices", listDevices)
+
 		api.GET("/scripts/:id/content", getScriptContent)
 		api.POST("/scripts/:id/content", saveScriptContent)
-		// Existing DELETE for script
 		api.DELETE("/scripts/:id", deleteScript)
 
 		// Asset Management
@@ -203,8 +203,12 @@ func Cleanup() {
 	}
 }
 
+func normalizeID(id string) string {
+	return strings.ReplaceAll(id, " ", "_")
+}
+
 func listAssets(c *gin.Context) {
-	scriptID := c.Param("id")
+	scriptID := normalizeID(c.Param("id"))
 	assets, err := manager.ListAssets(scriptID)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
@@ -214,7 +218,7 @@ func listAssets(c *gin.Context) {
 }
 
 func renameAsset(c *gin.Context) {
-	scriptID := c.Param("id")
+	scriptID := normalizeID(c.Param("id"))
 	var req struct {
 		OldName string `json:"oldName"`
 		NewName string `json:"newName"`
@@ -232,7 +236,7 @@ func renameAsset(c *gin.Context) {
 }
 
 func deleteAsset(c *gin.Context) {
-	scriptID := c.Param("id")
+	scriptID := normalizeID(c.Param("id"))
 	// Using Query because relPath might contain slashes which doesn't play well with Param in some Gin versions
 	// but let's stick to Param for consistency if we handle it correctly.
 	// Actually for recursive, relPath is passed in body for POST or as param.
@@ -246,7 +250,7 @@ func deleteAsset(c *gin.Context) {
 }
 
 func mkdirAsset(c *gin.Context) {
-	scriptID := c.Param("id")
+	scriptID := normalizeID(c.Param("id"))
 	var req struct {
 		Path string `json:"path"`
 	}
@@ -262,7 +266,7 @@ func mkdirAsset(c *gin.Context) {
 }
 
 func moveAsset(c *gin.Context) {
-	scriptID := c.Param("id")
+	scriptID := normalizeID(c.Param("id"))
 	var req struct {
 		OldPath string `json:"oldPath"`
 		NewPath string `json:"newPath"`
@@ -279,7 +283,7 @@ func moveAsset(c *gin.Context) {
 }
 
 func createFile(c *gin.Context) {
-	scriptID := c.Param("id")
+	scriptID := normalizeID(c.Param("id"))
 	var req struct {
 		Path string `json:"path"`
 	}
@@ -295,7 +299,7 @@ func createFile(c *gin.Context) {
 }
 
 func getAssetRaw(c *gin.Context) {
-	scriptID := c.Param("id")
+	scriptID := normalizeID(c.Param("id"))
 	// For deep paths, we use a query param 'path' or handle the param carefully.
 	// Since filename param only captures one segment, let's use c.Param("filename")
 	// but if the UI sends it as a query param or we use a wildcard route, it's better.
@@ -362,9 +366,9 @@ func uploadAsset(c *gin.Context) {
 		return
 	}
 
-	scriptID := c.PostForm("scriptId")
+	scriptID := normalizeID(c.PostForm("scriptId"))
 	if scriptID == "" {
-		scriptID = c.Param("id")
+		scriptID = normalizeID(c.Param("id"))
 	}
 
 	// Resolve target directory
@@ -446,6 +450,7 @@ func runScript(c *gin.Context) {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
+	req.ScriptID = normalizeID(req.ScriptID)
 
 	runID, err := manager.RunScript(req.ScriptID, req.Params)
 	if err != nil {
@@ -625,7 +630,7 @@ func streamLogs(c *gin.Context) {
 }
 
 func getScriptContent(c *gin.Context) {
-	scriptID := c.Param("id")
+	scriptID := normalizeID(c.Param("id"))
 	relPath := c.Query("path")
 	isRaw := c.Query("raw") == "true"
 
@@ -663,7 +668,7 @@ type SaveContentRequest struct {
 }
 
 func saveScriptContent(c *gin.Context) {
-	scriptID := c.Param("id")
+	scriptID := normalizeID(c.Param("id"))
 	relPath := c.Query("path")
 	var req SaveContentRequest
 	if err := c.BindJSON(&req); err != nil {
@@ -705,7 +710,7 @@ func createScript(c *gin.Context) {
 }
 
 func deleteScript(c *gin.Context) {
-	scriptID := c.Param("id")
+	scriptID := normalizeID(c.Param("id"))
 	if err := manager.DeleteScript(scriptID); err != nil {
 		status := 500
 		if strings.Contains(err.Error(), "cannot delete") {
@@ -720,7 +725,7 @@ func deleteScript(c *gin.Context) {
 }
 
 func exportScript(c *gin.Context) {
-	scriptID := c.Param("id")
+	scriptID := normalizeID(c.Param("id"))
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s.zip", scriptID))
 	c.Header("Content-Type", "application/zip")
 
@@ -763,7 +768,7 @@ func importScript(c *gin.Context) {
 }
 
 func renameScript(c *gin.Context) {
-	scriptID := c.Param("id")
+	scriptID := normalizeID(c.Param("id"))
 	var req struct {
 		NewName string `json:"newName"`
 	}

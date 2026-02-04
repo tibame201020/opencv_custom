@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { FileImage, Trash2, Edit2, Folder, FolderPlus, ChevronRight, ChevronDown, ListTree, ChevronLeft, FileCode, FileText, FileJson, File, FilePlus } from 'lucide-react';
 import clsx from 'clsx';
-
-const API_Base = 'http://localhost:8080/api';
+import { useAppStore } from '../store';
 
 interface AssetNode {
     name: string;
@@ -23,6 +22,7 @@ interface AssetExplorerProps {
 }
 
 export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, collapsed, refreshKey, onToggle, onResize, onFileOpen }) => {
+    const { apiBaseUrl: API_Base } = useAppStore();
     const [assets, setAssets] = useState<AssetNode[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedAsset, setSelectedAsset] = useState<AssetNode | null>(null);

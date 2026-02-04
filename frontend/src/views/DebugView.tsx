@@ -3,8 +3,7 @@ import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import { Terminal, RefreshCw, Command, ChevronRight, Activity, Power, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
-
-const API_Base = "http://localhost:8080/api";
+import { useAppStore } from '../store';
 
 type AdbStatus = 'running' | 'stopped' | 'unknown';
 
@@ -17,6 +16,7 @@ interface LogEntry {
 export const DebugView: React.FC = () => {
     const { t } = useTranslation();
     // State
+    const { apiBaseUrl: API_Base } = useAppStore();
     const [adbStatus, setAdbStatus] = useState<AdbStatus>('unknown');
     const [isLoading, setIsLoading] = useState(false);
     const [commandInput, setCommandInput] = useState("");

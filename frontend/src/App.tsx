@@ -32,19 +32,33 @@ function App() {
   // Initialize Dynamic API Port
   useEffect(() => {
     const initApi = async () => {
-      try {
-        // Wails Go binding call
-        // @ts-ignore
-        if (window.go && window.go.main && window.go.main.App) {
+      let attempts = 0;
+      const maxAttempts = 5;
+
+      const attemptFetch = async () => {
+        try {
+          // Wails Go binding call
           // @ts-ignore
-          const url = await window.go.main.App.GetApiBaseUrl();
-          if (url) {
-            setApiBaseUrl(url);
-            console.log("Backend API initialized at:", url);
+          if (window.go && window.go.main && window.go.main.App) {
+            // @ts-ignore
+            const url = await window.go.main.App.GetApiBaseUrl();
+            if (url) {
+              setApiBaseUrl(url);
+              console.log("Backend API initialized at:", url);
+              return true;
+            }
           }
+        } catch (err) {
+          console.error("Attempt failed to initialize dynamic API port:", err);
         }
-      } catch (err) {
-        console.error("Failed to initialize dynamic API port, using default 8080", err);
+        return false;
+      };
+
+      while (attempts < maxAttempts) {
+        const success = await attemptFetch();
+        if (success) break;
+        attempts++;
+        await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms between retries
       }
     };
     initApi();
