@@ -241,6 +241,10 @@ func (sm *ScriptManager) GetAssetPath(scriptID, relPath string) (string, error) 
 	projectRoot := filepath.Join(sm.CorePath, filepath.Dir(mainScriptPath))
 	var fullPath string
 	if relPath != "" {
+		// Disallow absolute paths for relPath
+		if filepath.IsAbs(relPath) {
+			return "", fmt.Errorf("security: relative path cannot be absolute")
+		}
 		fullPath = filepath.Join(projectRoot, relPath)
 	} else {
 		fullPath = filepath.Join(sm.CorePath, mainScriptPath)
