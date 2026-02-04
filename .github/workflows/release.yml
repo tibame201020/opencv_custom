@@ -73,6 +73,7 @@ jobs:
           unzip -o platform-tools.zip
 
       - name: Build Wails App
+        shell: bash
         run: |
           # Ensure go.mod is tidy
           go mod tidy
