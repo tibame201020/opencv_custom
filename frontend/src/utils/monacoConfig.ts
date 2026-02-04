@@ -232,16 +232,50 @@ export const registerPythonCompletions = (monaco: any) => {
                 }
             ];
 
+            // 4. Cross-module symbols (from all open models)
+            const dynamicSuggestions: any[] = [];
+            try {
+                const allModels = monaco.editor.getModels();
+                allModels.forEach((m: any) => {
+                    const text = m.getValue();
+                    const lines = text.split('\n');
+                    lines.forEach((line: string) => {
+                        const classMatch = line.match(/^\s*class\s+([a-zA-Z_][a-zA-Z0-9_]*)/);
+                        if (classMatch) {
+                            dynamicSuggestions.push({
+                                label: classMatch[1],
+                                kind: monaco.languages.CompletionItemKind.Class,
+                                insertText: classMatch[1],
+                                detail: `Class from ${m.uri ? m.uri.path.split('/').pop() : 'unknown'}`,
+                                range: range
+                            });
+                        }
+                        const defMatch = line.match(/^\s*def\s+([a-zA-Z_][a-zA-Z0-9_]*)/);
+                        if (defMatch) {
+                            dynamicSuggestions.push({
+                                label: defMatch[1],
+                                kind: monaco.languages.CompletionItemKind.Function,
+                                insertText: defMatch[1],
+                                detail: `Function from ${m.uri ? m.uri.path.split('/').pop() : 'unknown'}`,
+                                range: range
+                            });
+                        }
+                    });
+                });
+            } catch (err) { console.error("Symbol scan failed", err); }
+
             return {
                 suggestions: [
                     ...keywordSuggestions,
                     ...builtinSuggestions,
                     ...snippetSuggestions,
-                    ...customSuggestions
+                    ...customSuggestions,
+                    ...dynamicSuggestions
                 ]
             };
         }
     });
+
 
     // 3. Hover Provider
     monaco.languages.registerHoverProvider('python', {

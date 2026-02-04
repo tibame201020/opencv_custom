@@ -5,11 +5,11 @@ from service.core.opencv.dto import OcrRegion
 class Sd_gundam_重複關卡Script(ScriptInterface):
     
     target_images = [
-            "images/繼續.png",
-            "images/下一步.png",
-            "images/再次挑戰.png",
-            "images/確定.png",
-        ]
+        "繼續.png",
+        "再次出擊.png",  # 原本是 再次挑戰.png
+        "挑戰.png",     # 這裡可能需要根據您的實際需求調整
+        "開始戰鬥.png",
+    ]
     
     def __init__(self, platform: AdbPlatform):
         self.platform = platform
@@ -23,12 +23,13 @@ class Sd_gundam_重複關卡Script(ScriptInterface):
         print(f"Device ID: {self.deviceId}")
         print(f"Image Root: {self.image_root}")
         print(f"Default Threshold: {self.default_threshold}")
-        
 
         self.platform.connect(self.deviceId)
-        # self.platform.click_image(f"{self.image_root}/繼續.png", OcrRegion(1069, 629, 1163, 693), self.deviceId)
-        self.platform.click_image("images/繼續.png", OcrRegion(1069, 629, 1163, 693), self.deviceId)
-        self.platform.click_image(f"{self.image_root}/開始戰鬥.png", OcrRegion(549, 622, 668, 680), self.deviceId)
+        
+        while True:
+            for img in self.target_images:
+                self.platform.click_image_full(f"{self.image_root}/{img}", self.deviceId)
+
         
         # --- Adb Platform Examples ---
         # self.platform.click(100, 100, self.deviceId)

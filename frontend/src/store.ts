@@ -21,6 +21,17 @@ export interface ScriptTabState {
     runId?: string; // Active backend run ID
 }
 
+export interface EditorTab {
+    id: string; // unique id (path or composite)
+    scriptId: string; // project root
+    name: string;
+    path: string | null; // relative path
+    type: 'code' | 'image';
+    content: string; // For images, this will be the URL or base64
+    originalContent: string;
+    isDirty: boolean;
+}
+
 export interface LogMessage {
     type: 'stdout' | 'stderr' | 'status' | 'error' | 'result';
     message?: string;
@@ -43,18 +54,20 @@ interface AppState {
 
     // Editor State (Persisted)
     editorSelectedScriptId: string | null;
-    editorCode: string;
-    editorOriginalCode: string;
-    editorIsDirty: boolean;
+    editorTabs: EditorTab[];
+    activeEditorTabId: string | null;
     assetExplorerCollapsed: boolean;
     scriptExplorerCollapsed: boolean;
 
     setEditorSelectedScriptId: (id: string | null) => void;
-    setEditorCode: (code: string) => void;
-    setEditorOriginalCode: (code: string) => void;
-    setEditorIsDirty: (dirty: boolean) => void;
     setAssetExplorerCollapsed: (collapsed: boolean) => void;
     setScriptExplorerCollapsed: (collapsed: boolean) => void;
+
+    openEditorTab: (scriptId: string, path: string | null, name: string, content: string, type: 'code' | 'image') => void;
+    closeEditorTab: (tabId: string) => void;
+    setActiveEditorTab: (tabId: string) => void;
+    updateEditorTabContent: (tabId: string, content: string) => void;
+    saveEditorTab: (tabId: string) => void;
 
     // Global Data
     devices: string[];
@@ -100,18 +113,66 @@ export const useAppStore = create<AppState>()(
 
             // Editor State Defaults
             editorSelectedScriptId: null,
-            editorCode: '',
-            editorOriginalCode: '',
-            editorIsDirty: false,
+            editorTabs: [],
+            activeEditorTabId: null,
             assetExplorerCollapsed: true, // Default to collapsed as requested
             scriptExplorerCollapsed: false,
 
             setEditorSelectedScriptId: (id) => set({ editorSelectedScriptId: id }),
-            setEditorCode: (code) => set({ editorCode: code }),
-            setEditorOriginalCode: (code) => set({ editorOriginalCode: code }),
-            setEditorIsDirty: (dirty) => set({ editorIsDirty: dirty }),
             setAssetExplorerCollapsed: (collapsed) => set({ assetExplorerCollapsed: collapsed }),
             setScriptExplorerCollapsed: (collapsed) => set({ scriptExplorerCollapsed: collapsed }),
+
+            openEditorTab: (scriptId, path, name, content, type) => {
+                const { editorTabs } = get();
+                const tabId = path ? `${scriptId}/${path}` : `${scriptId}/__main__`;
+
+                if (editorTabs.find(t => t.id === tabId)) {
+                    set({ activeEditorTabId: tabId });
+                    return;
+                }
+
+                const newTab: EditorTab = {
+                    id: tabId,
+                    scriptId,
+                    name,
+                    path,
+                    type,
+                    content,
+                    originalContent: content,
+                    isDirty: false
+                };
+
+                set({
+                    editorTabs: [...editorTabs, newTab],
+                    activeEditorTabId: tabId
+                });
+            },
+
+            closeEditorTab: (tabId) => {
+                const { editorTabs, activeEditorTabId } = get();
+                const newTabs = editorTabs.filter(t => t.id !== tabId);
+                let nextActiveId = activeEditorTabId;
+
+                if (activeEditorTabId === tabId) {
+                    nextActiveId = newTabs.length > 0 ? newTabs[newTabs.length - 1].id : null;
+                }
+
+                set({ editorTabs: newTabs, activeEditorTabId: nextActiveId });
+            },
+
+            setActiveEditorTab: (id) => set({ activeEditorTabId: id }),
+
+            updateEditorTabContent: (tabId, content) => set(state => ({
+                editorTabs: state.editorTabs.map(t =>
+                    t.id === tabId ? { ...t, content, isDirty: content !== t.originalContent } : t
+                )
+            })),
+
+            saveEditorTab: (tabId) => set(state => ({
+                editorTabs: state.editorTabs.map(t =>
+                    t.id === tabId ? { ...t, originalContent: t.content, isDirty: false } : t
+                )
+            })),
 
             openScriptTab: (scriptId, defaultName) => {
                 const { scriptTabs } = get();
@@ -183,9 +244,8 @@ export const useAppStore = create<AppState>()(
                 language: state.language,
                 isSidebarCollapsed: state.isSidebarCollapsed,
                 editorSelectedScriptId: state.editorSelectedScriptId,
-                editorCode: state.editorCode,
-                editorOriginalCode: state.editorOriginalCode,
-                editorIsDirty: state.editorIsDirty,
+                editorTabs: state.editorTabs,
+                activeEditorTabId: state.activeEditorTabId,
                 assetExplorerCollapsed: state.assetExplorerCollapsed,
                 scriptExplorerCollapsed: state.scriptExplorerCollapsed
             }),

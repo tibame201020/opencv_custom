@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { FileImage, Trash2, Edit2, X, Folder, FolderPlus, ChevronRight, ChevronDown, ListTree, ChevronLeft, FileCode, FileText, FileJson, File, FilePlus } from 'lucide-react';
+import { FileImage, Trash2, Edit2, Folder, FolderPlus, ChevronRight, ChevronDown, ListTree, ChevronLeft, FileCode, FileText, FileJson, File, FilePlus } from 'lucide-react';
 import clsx from 'clsx';
 
 const API_Base = 'http://localhost:8080/api';
@@ -26,7 +26,6 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
     const [assets, setAssets] = useState<AssetNode[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedAsset, setSelectedAsset] = useState<AssetNode | null>(null);
-    const [previewAsset, setPreviewAsset] = useState<string | null>(null);
     const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set([""])); // Root is empty string
 
     // Resize Refs
@@ -249,12 +248,8 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
                         setSelectedAsset(node);
                     }}
                     onDoubleClick={() => {
-                        if (!node.isDir) {
-                            if (isImageFile(node.name)) {
-                                setPreviewAsset(node.path);
-                            } else if (onFileOpen) {
-                                onFileOpen(node.path);
-                            }
+                        if (!node.isDir && onFileOpen) {
+                            onFileOpen(node.path);
                         }
                     }}
                     onContextMenu={(e) => {
@@ -413,17 +408,6 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
                 </div>
             )}
 
-            {previewAsset && isImageFile(previewAsset) && (
-                <div className="fixed inset-0 z-[250] bg-black/90 flex items-center justify-center p-8 backdrop-blur-md" onClick={() => setPreviewAsset(null)}>
-                    <div className="max-w-[90vw] max-h-[90vh] relative p-1 bg-base-100 rounded-lg shadow-2xl" onClick={e => e.stopPropagation()}>
-                        <div className="flex justify-between items-center p-2 mb-2 border-b border-base-200">
-                            <span className="text-xs font-bold opacity-60">{previewAsset}</span>
-                            <button onClick={() => setPreviewAsset(null)} className="btn btn-xs btn-circle btn-ghost"><X size={14} /></button>
-                        </div>
-                        <img className="max-h-[75vh] object-contain rounded" src={`${API_Base}/scripts/${scriptId}/raw-assets/${previewAsset}`} alt="preview" />
-                    </div>
-                </div>
-            )}
 
             {/* Toast Notification */}
             {toast && (

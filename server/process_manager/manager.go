@@ -193,6 +193,21 @@ func (sm *ScriptManager) StopScript(runID string) error {
 	return nil
 }
 
+func (sm *ScriptManager) GetScriptPath(scriptID string) (string, error) {
+	scripts, err := sm.ListScripts()
+	if err != nil {
+		return "", err
+	}
+
+	for _, s := range scripts {
+		if s["id"] == scriptID {
+			return filepath.Join(sm.CorePath, s["path"]), nil
+		}
+	}
+
+	return "", fmt.Errorf("script not found")
+}
+
 func (sm *ScriptManager) GetLogChannel(runID string) (<-chan string, error) {
 	sm.mu.RLock()
 	process, ok := sm.processes[runID]
@@ -203,6 +218,42 @@ func (sm *ScriptManager) GetLogChannel(runID string) (<-chan string, error) {
 	}
 
 	return process.Logs, nil
+}
+
+func (sm *ScriptManager) GetAssetPath(scriptID, relPath string) (string, error) {
+	scripts, err := sm.ListScripts()
+	if err != nil {
+		return "", err
+	}
+
+	var mainScriptPath string
+	for _, s := range scripts {
+		if s["id"] == scriptID {
+			mainScriptPath = s["path"]
+			break
+		}
+	}
+
+	if mainScriptPath == "" {
+		return "", fmt.Errorf("script not found")
+	}
+
+	projectRoot := filepath.Join(sm.CorePath, filepath.Dir(mainScriptPath))
+	var fullPath string
+	if relPath != "" {
+		fullPath = filepath.Join(projectRoot, relPath)
+	} else {
+		fullPath = filepath.Join(sm.CorePath, mainScriptPath)
+	}
+
+	// Security Check
+	cleanBase, _ := filepath.Abs(projectRoot)
+	cleanTarget, _ := filepath.Abs(fullPath)
+	if !strings.HasPrefix(cleanTarget, cleanBase) {
+		return "", fmt.Errorf("security: path escape")
+	}
+
+	return fullPath, nil
 }
 
 func (sm *ScriptManager) GetScriptContent(scriptID string, relPath string) (string, error) {

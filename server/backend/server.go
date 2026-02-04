@@ -170,6 +170,19 @@ func StartServer() {
 	r.Run(port)
 }
 
+// Cleanup is called when the application shuts down
+func Cleanup() {
+	fmt.Println("Performing cleanup: Killing ADB server...")
+	adbPath := getAdbPath()
+	cmd := exec.Command(adbPath, "kill-server")
+	utils.HideConsole(cmd)
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("Warning: Failed to kill ADB server during cleanup: %v\n", err)
+	} else {
+		fmt.Println("ADB server killed successfully.")
+	}
+}
+
 func listAssets(c *gin.Context) {
 	scriptID := c.Param("id")
 	assets, err := manager.ListAssets(scriptID)
@@ -594,6 +607,25 @@ func streamLogs(c *gin.Context) {
 func getScriptContent(c *gin.Context) {
 	scriptID := c.Param("id")
 	relPath := c.Query("path")
+	isRaw := c.Query("raw") == "true"
+
+	if isRaw {
+		// Serve file directly (for images)
+		// We can get the full path via manager.GetScriptPath (if it exists) or manually construct it
+		// Looking at manager.go, getScriptPath is private. Let's see if we can use another way or export it.
+		// Actually, manager.ResolvePath is available if corePath is known.
+		// Let's assume manager provides a way or we construct it here.
+		// Based on resolution in manager.go:
+		fullPath, err := manager.GetAssetPath(scriptID, relPath)
+		if err != nil {
+			c.JSON(404, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.File(fullPath)
+		return
+	}
+
 	content, err := manager.GetScriptContent(scriptID, relPath)
 	if err != nil {
 		status := 500
