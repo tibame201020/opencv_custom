@@ -1,6 +1,8 @@
 package backend
 
 import (
+	"bytes"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net/http"
@@ -720,6 +722,51 @@ func exportScript(c *gin.Context) {
 }
 
 func importScript(c *gin.Context) {
+	// Check Content-Type to handle both Multipart and JSON (Base64)
+	contentType := c.ContentType()
+
+	if strings.Contains(contentType, "application/json") {
+		var req struct {
+			Filename string `json:"filename"`
+			Data     string `json:"data"` // Base64
+			NewName  string `json:"newName"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(400, gin.H{"error": "Invalid JSON: " + err.Error()})
+			return
+		}
+
+		fmt.Printf("[Import] JSON Import: %s, Size: %d (Base64), OverrideName: %s\n", req.Filename, len(req.Data), req.NewName)
+
+		// Decode Base64
+		data, err := base64.StdEncoding.DecodeString(req.Data)
+		if err != nil {
+			// Try URL encoding fallback just in case
+			data, err = base64.URLEncoding.DecodeString(req.Data)
+			if err != nil {
+				c.JSON(400, gin.H{"error": "Invalid Base64: " + err.Error()})
+				return
+			}
+		}
+
+		reader := bytes.NewReader(data)
+		if err := manager.ImportScriptZip(reader, int64(len(data)), req.NewName); err != nil {
+			fmt.Printf("[Import] ImportScriptZip failed: %v\n", err)
+			if strings.HasPrefix(err.Error(), "CONFLICT_ALREADY_EXISTS:") {
+				c.JSON(409, gin.H{
+					"error":         "Script already exists",
+					"suggestedName": strings.TrimPrefix(err.Error(), "CONFLICT_ALREADY_EXISTS:"),
+				})
+				return
+			}
+			c.JSON(500, gin.H{"error": "Import failed: " + err.Error()})
+			return
+		}
+		c.JSON(200, gin.H{"status": "imported"})
+		return
+	}
+
+	// Fallback to Multipart
 	file, err := c.FormFile("file")
 	if err != nil {
 		fmt.Printf("[Import] Error getting form file: %v\n", err)

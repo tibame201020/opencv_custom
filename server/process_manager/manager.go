@@ -101,7 +101,7 @@ func (sm *ScriptManager) RunScript(scriptID string, params string) (string, erro
 	if sm.EntryScript != "" {
 		// Python Mode
 		scriptPath := filepath.Join(sm.CorePath, sm.EntryScript)
-		cmd = exec.CommandContext(ctx, sm.CmdPath, scriptPath, "run", "--script", scriptID)
+		cmd = exec.CommandContext(ctx, sm.CmdPath, "-u", scriptPath, "run", "--script", scriptID)
 	} else {
 		// Binary Mode: directory of binary is usually fine, or we set Cwd
 		cmd = exec.CommandContext(ctx, sm.CmdPath, "run", "--script", scriptID)
@@ -149,13 +149,11 @@ func (sm *ScriptManager) RunScript(scriptID string, params string) (string, erro
 }
 
 func (sm *ScriptManager) monitorProcess(p *ScriptProcess, stdout, stderr io.ReadCloser) {
-	defer close(p.Logs)
-
-	// Multi-reader scanner
-	// For simplicity, handle stdout only mostly, but stderr is important too
-	// We'll trust that entry.py flushes everything
+	var wg sync.WaitGroup
+	wg.Add(2)
 
 	go func() {
+		defer wg.Done()
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			p.Logs <- scanner.Text()
@@ -163,6 +161,7 @@ func (sm *ScriptManager) monitorProcess(p *ScriptProcess, stdout, stderr io.Read
 	}()
 
 	go func() {
+		defer wg.Done()
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
 			p.Logs <- fmt.Sprintf(`{"type": "stderr", "message": "%s"}`, scanner.Text())
@@ -170,6 +169,8 @@ func (sm *ScriptManager) monitorProcess(p *ScriptProcess, stdout, stderr io.Read
 	}()
 
 	err := p.Cmd.Wait()
+	wg.Wait() // Ensure all logs from scanners are channeled before final message
+
 	p.Status = "finished"
 
 	endMsg := map[string]string{
@@ -184,7 +185,7 @@ func (sm *ScriptManager) monitorProcess(p *ScriptProcess, stdout, stderr io.Read
 	jsonMsg, _ := json.Marshal(endMsg)
 	p.Logs <- string(jsonMsg)
 
-	// Cleanup happens in manager or via explicit delete
+	close(p.Logs)
 }
 
 func (sm *ScriptManager) StopScript(runID string) error {
@@ -978,7 +979,9 @@ func (sm *ScriptManager) ImportScriptZip(reader io.ReaderAt, size int64, overrid
 	}
 
 	targetDir := filepath.Join(sm.CorePath, "script", "custom", scriptName)
+	fmt.Printf("[ImportScriptZip] ScriptName: %s, TargetDir: %s\n", scriptName, targetDir)
 	if _, err := os.Stat(targetDir); err == nil {
+		fmt.Printf("[ImportScriptZip] Conflict detected at %s\n", targetDir)
 		return fmt.Errorf("CONFLICT_ALREADY_EXISTS:%s", scriptName)
 	}
 
@@ -1013,6 +1016,7 @@ func (sm *ScriptManager) ImportScriptZip(reader io.ReaderAt, size int64, overrid
 		}
 
 		targetPath := filepath.Join(targetDir, cleanName)
+
 		if f.FileInfo().IsDir() {
 			os.MkdirAll(targetPath, f.Mode())
 			continue

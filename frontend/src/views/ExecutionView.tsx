@@ -22,7 +22,18 @@ export const ExecutionView: React.FC = () => {
     } = useAppStore();
 
     const API_Base = apiBaseUrl;
-    const WS_Base = apiBaseUrl.replace('http://', 'ws://').replace('/api', '/ws/logs');
+
+    // Improved WS URL construction to handle relative/absolute paths correctly
+    const getWSBase = () => {
+        if (apiBaseUrl.startsWith('http')) {
+            return apiBaseUrl.replace('http://', 'ws://').replace('/api', '/ws/logs');
+        }
+        // Relative path case (e.g. Wails AssetServer or Vite proxy)
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        return `${protocol}//${host}/ws/logs`;
+    };
+    const WS_Base = getWSBase();
 
     // UI State
     const [scripts, setScripts] = useState<Script[]>([]);
@@ -56,8 +67,10 @@ export const ExecutionView: React.FC = () => {
     useEffect(() => {
         const fetchScripts = async () => {
             try {
-                const res = await axios.get(`${API_Base}/scripts`);
-                setScripts(res.data || []);
+                const res = await fetch(`${API_Base}/scripts`);
+                if (!res.ok) throw new Error("Failed to fetch scripts");
+                const data = await res.json();
+                setScripts(data || []);
             } catch (err) {
                 console.error("Failed to fetch scripts", err);
                 setScripts([]);
@@ -66,8 +79,10 @@ export const ExecutionView: React.FC = () => {
 
         const fetchDevices = async () => {
             try {
-                const res = await axios.get(`${API_Base}/devices`);
-                setDevices(res.data || []);
+                const res = await fetch(`${API_Base}/devices`);
+                if (!res.ok) throw new Error("Failed to fetch devices");
+                const data = await res.json();
+                setDevices(data || []);
             } catch (err) {
                 console.error("Failed to fetch devices", err);
                 setDevices([]);
@@ -136,8 +151,15 @@ export const ExecutionView: React.FC = () => {
         try {
             const params = activeTab.params ? JSON.stringify(activeTab.params) : "{}";
 
-            const res = await axios.post(`${API_Base}/run`, { scriptId: scriptId, params: params });
-            const runId = res.data.runId;
+            const res = await fetch(`${API_Base}/run`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scriptId, params })
+            });
+
+            if (!res.ok) throw new Error("Failed to start script");
+            const data = await res.json();
+            const runId = data.runId;
             updateScriptStatus(tabId, 'running', runId);
 
             // Close existing WS for this TAB instance if any
@@ -145,6 +167,7 @@ export const ExecutionView: React.FC = () => {
                 wsMap.current.get(tabId)?.close();
             }
 
+            console.log(`Connecting to WebSocket: ${WS_Base}/${runId}`);
             const ws = new WebSocket(`${WS_Base}/${runId}`);
             wsMap.current.set(tabId, ws);
 

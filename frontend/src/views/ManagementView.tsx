@@ -18,10 +18,14 @@ export const ManagementView: React.FC = () => {
     const [newName, setNewName] = useState('');
     const [renameError, setRenameError] = useState<string | null>(null);
 
-    // Import conflict states
-    const [importConflictName, setImportConflictName] = useState<string | null>(null);
+    // Import states
     const [pendingZipFile, setPendingZipFile] = useState<File | null>(null);
+    const [importConflictName, setImportConflictName] = useState<string | null>(null);
     const [importNewName, setImportNewName] = useState('');
+
+    React.useEffect(() => {
+        fetchScripts();
+    }, []);
 
     const fetchScripts = async () => {
         setIsLoading(true);
@@ -29,43 +33,32 @@ export const ManagementView: React.FC = () => {
             const res = await fetch(`${API_Base}/scripts`);
             if (res.ok) {
                 const data = await res.json();
-                setScripts(data);
+                setScripts(data || []);
             }
-        } catch (err) {
-            console.error("Failed to fetch scripts", err);
+        } catch (error) {
+            console.error('Failed to fetch scripts', error);
         } finally {
             setIsLoading(false);
         }
     };
 
-    React.useEffect(() => {
-        fetchScripts();
-    }, []);
-
-    const handleEdit = (script: Script) => {
-        setEditingScript({ ...script });
-        setNewName(script.name);
-        setRenameError(null);
-        setIsRenameModalOpen(true);
-    };
-
     const handleDelete = async (id: string) => {
         try {
-            const res = await fetch(`${API_Base}/scripts/${id}`, {
-                method: 'DELETE'
-            });
-            if (res.ok) {
-                fetchScripts();
-                setDeletingScriptId(null);
-            }
-        } catch (err) {
-            console.error("Delete failed", err);
+            await fetch(`${API_Base}/scripts/${id}`, { method: 'DELETE' });
+            fetchScripts();
+            setDeletingScriptId(null);
+        } catch (error) {
+            console.error('Failed to delete script', error);
         }
     };
 
-    const handleSaveRename = async () => {
-        if (!editingScript || !newName || newName === editingScript.name) {
-            setIsRenameModalOpen(false);
+
+    const handleRename = async () => {
+        if (!editingScript) return;
+        setRenameError(null);
+
+        if (!newName.trim()) {
+            setRenameError("Name cannot be empty");
             return;
         }
 
@@ -80,52 +73,70 @@ export const ManagementView: React.FC = () => {
                 fetchScripts();
                 setIsRenameModalOpen(false);
                 setEditingScript(null);
-                setRenameError(null);
-            } else if (res.status === 409) {
-                setRenameError(t('ui.management.nameConflict') || "A script with this name already exists.");
             } else {
-                const data = await res.json();
-                setRenameError(`Error: ${data.error || 'Unknown error'}`);
+                const err = await res.text();
+                try {
+                    const jsonErr = JSON.parse(err);
+                    setRenameError(jsonErr.error || "Rename failed");
+                } catch {
+                    setRenameError(err || "Rename failed");
+                }
             }
-        } catch (err: any) {
-            console.error("Rename failed", err);
-            setRenameError(`Error: ${err.message}`);
+        } catch (error) {
+            console.error('Failed to rename script', error);
+            setRenameError("Network error");
         }
-    };
-
-    const handleExport = (id: string) => {
-        window.open(`${API_Base}/scripts/${id}/export`, "_blank");
     };
 
     const handleImport = async (file: File, requestedNewName?: string) => {
-        const formData = new FormData();
-        formData.append("file", file);
-        if (requestedNewName) {
-            formData.append("newName", requestedNewName);
-        }
+        console.log("Preparing to upload:", file.name, "Size:", file.size);
 
-        try {
-            const res = await fetch(`${API_Base}/scripts/import`, {
-                method: 'POST',
-                body: formData
-            });
-
-            if (res.ok) {
-                fetchScripts();
-                setImportConflictName(null);
-                setPendingZipFile(null);
-                setImportNewName('');
-            } else if (res.status === 409) {
-                const data = await res.json();
-                setImportConflictName(data.suggestedName || file.name.replace(".zip", ""));
-                setPendingZipFile(file);
-                setImportNewName(data.suggestedName + "_copy");
-            } else {
-                console.error("Import failed with status", res.status);
+        // Convert file to Base64 to bypass Wails/WebView2 FormData issues
+        // Issue: multipart/form-data bodies are being stripped (Size 0) in Wails Proxy
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+            // Handle empty file case
+            if (!reader.result) {
+                console.error("FileReader result is empty");
+                return;
             }
-        } catch (err: any) {
-            console.error("Import failed", err);
-        }
+            const base64String = (reader.result as string).split(',')[1];
+
+            try {
+                // Send as JSON with Base64 data
+                const res = await fetch(`${API_Base}/scripts/import`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        filename: file.name,
+                        data: base64String,
+                        newName: requestedNewName || undefined
+                    })
+                });
+
+                if (res.ok) {
+                    fetchScripts();
+                    setImportConflictName(null);
+                    setPendingZipFile(null);
+                    setImportNewName('');
+                } else if (res.status === 409) {
+                    const data = await res.json();
+                    setImportConflictName(data.suggestedName || file.name.replace(".zip", ""));
+                    setPendingZipFile(file);
+                    setImportNewName(data.suggestedName + "_copy");
+                } else {
+                    console.error("Import failed with status", res.status);
+                }
+            } catch (err: any) {
+                console.error("Import failed", err);
+            }
+        };
+        reader.onerror = (error) => {
+            console.error("Error reading file:", error);
+        };
     };
 
     const filtered = scripts.filter(s =>
@@ -134,293 +145,216 @@ export const ManagementView: React.FC = () => {
     );
 
     return (
-        <div className="flex flex-col h-full bg-base-100/50">
-            {/* Professional Glass Header */}
-            <div className="glass-header px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary shadow-inner">
-                        <MoreHorizontal size={24} />
-                    </div>
-                    <div>
-                        <h1 className="text-2xl font-black tracking-tight text-gradient">{t('ui.management.title')}</h1>
-                        <p className="text-[11px] font-bold uppercase tracking-[0.2em] opacity-40 leading-none mt-1">
-                            Library Infrastructure / {scripts.length} Total Scripts
-                        </p>
-                    </div>
+        <div className="p-6 h-full flex flex-col bg-base-100">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-6">
+                <div>
+                    <h1 className="text-2xl font-bold text-base-content flex items-center gap-2">
+                        <MoreHorizontal className="w-8 h-8 text-primary" />
+                        {t('management.title', 'Management')}
+                    </h1>
+                    <p className="text-base-content/60 text-sm mt-1">
+                        {t('management.subtitle', 'LIBRARY INFRASTRUCTURE')} / {scripts.length} {t('management.totalScripts', 'TOTAL SCRIPTS')}
+                    </p>
                 </div>
-
-                <div className="flex items-center gap-3">
-                    <div className="relative group">
-                        <div className="absolute inset-x-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-primary/50 to-transparent scale-x-0 group-focus-within:scale-x-100 transition-transform duration-500" />
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-30 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
+                <div className="flex gap-3">
+                    <div className="relative">
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40" />
                         <input
                             type="text"
-                            placeholder={t('ui.management.search')}
-                            className="input input-sm bg-base-300/30 border-none focus:ring-0 w-full md:w-64 pl-10 focus:bg-base-300/50 transition-all rounded-lg font-medium"
+                            placeholder={t('management.searchPlaceholder', 'Search Script...')}
+                            className="input input-sm input-bordered pl-9 w-64 bg-base-200"
                             value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
+                            onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-
-                    <div className="h-4 w-[1px] bg-white/5 mx-2 hidden md:block" />
-
-                    <label htmlFor="import-script" className="btn btn-sm btn-primary gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all px-4">
-                        <Upload size={16} />
-                        <span className="hidden sm:inline font-bold">{t('ui.management.upload')}</span>
+                    <label className="btn btn-sm btn-primary gap-2 cursor-pointer">
+                        <Upload className="w-4 h-4" />
+                        {t('management.upload', 'Upload Script (ZIP)')}
+                        <input
+                            type="file"
+                            accept=".zip"
+                            className="hidden"
+                            onChange={(e) => {
+                                if (e.target.files?.[0]) {
+                                    handleImport(e.target.files[0]);
+                                    e.target.value = ''; // Reset
+                                }
+                            }}
+                        />
                     </label>
-                    <input
-                        type="file"
-                        id="import-script"
-                        className="hidden"
-                        accept=".zip"
-                        value=""
-                        onChange={e => {
-                            const file = e.target.files?.[0];
-                            if (file) handleImport(file);
-                        }}
-                    />
                 </div>
             </div>
 
-            {/* Content Area */}
-            <div className="flex-1 overflow-y-auto p-6 md:p-8">
+            {/* Content using Grid instead of Table for Modern Card UI */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 overflow-y-auto pb-4">
                 {isLoading ? (
-                    <div className="flex flex-col items-center justify-center h-full py-20 gap-4">
-                        <div className="relative">
-                            <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <span className="w-8 h-8 bg-primary/10 rounded-full animate-pulse" />
-                            </div>
-                        </div>
-                        <p className="text-sm font-black uppercase tracking-widest opacity-30">Synchronizing Data...</p>
-                    </div>
+                    // Skeleton Loading
+                    Array.from({ length: 4 }).map((_, i) => (
+                        <div key={i} className="card bg-base-200 shadow-sm animate-pulse h-40"></div>
+                    ))
                 ) : filtered.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full py-20 border-2 border-dashed border-white/5 rounded-3xl bg-base-200/20 backdrop-blur-sm">
-                        <div className="w-20 h-20 bg-base-100/50 rounded-2xl flex items-center justify-center mb-6 shadow-xl">
-                            <Search size={40} className="text-base-content/10" />
-                        </div>
-                        <h3 className="text-xl font-black">No Results Found</h3>
-                        <p className="text-base-content/40 mt-1 max-w-xs text-center text-sm">Attempt to refine your persistent search parameters or upload a new asset module.</p>
+                    <div className="col-span-full h-64 flex flex-col items-center justify-center text-base-content/40 border-2 border-dashed border-base-300 rounded-xl">
+                        <MoreHorizontal className="w-12 h-12 mb-2 opacity-50" />
+                        <p>{t('management.noScripts', 'No scripts found')}</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-                        {filtered.map(script => (
-                            <div key={script.id} className="glass-card rounded-3xl p-6 hover-lift group relative overflow-hidden flex flex-col">
-                                {/* Platform Status Dot */}
-                                <div className="absolute top-0 right-0 p-1">
-                                    <div className={clsx(
-                                        "w-20 h-20 absolute -top-10 -right-10 blur-2xl opacity-10",
-                                        script.platform === 'android' ? "bg-success" : "bg-info"
-                                    )} />
-                                </div>
-
-                                <div className="flex items-start justify-between mb-6 relative z-10">
-                                    <div className={clsx(
-                                        "px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm",
-                                        script.platform === 'android' ? "bg-success/20 text-success" : "bg-info/20 text-info"
-                                    )}>
+                    filtered.map((script) => (
+                        <div key={script.id} className="card bg-base-200 shadow-sm hover:shadow-md transition-all border border-base-300 group">
+                            <div className="card-body p-5">
+                                <div className="flex justify-between items-start">
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="card-title text-lg truncate" title={script.name}>
+                                            {script.name}
+                                        </h3>
+                                        <p className="text-xs text-base-content/50 uppercase tracking-wider font-mono mt-1 truncate">
+                                            ID: {script.id}
+                                        </p>
+                                    </div>
+                                    <div className="badge badge-neutral badge-outline text-xs">
                                         {script.platform}
                                     </div>
-                                    <div className="flex items-center gap-1.5 backdrop-blur-md bg-white/5 p-1 rounded-xl border border-white/5">
-                                        <button
-                                            onClick={() => handleExport(script.id)}
-                                            className="btn btn-ghost btn-xs btn-circle hover:bg-primary/20 hover:text-primary transition-all p-0"
-                                            title={t('ui.management.export')}
-                                        >
-                                            <Download size={14} />
-                                        </button>
-
-                                        {script.path?.startsWith('script/custom/') ? (
-                                            <>
-                                                <button
-                                                    onClick={() => handleEdit(script)}
-                                                    className="btn btn-ghost btn-xs btn-circle hover:bg-info/20 hover:text-info transition-all p-0"
-                                                    title={t('ui.management.rename')}
-                                                >
-                                                    <Edit2 size={14} />
-                                                </button>
-                                                <button
-                                                    onClick={() => setDeletingScriptId(script.id)}
-                                                    className="btn btn-ghost btn-xs btn-circle hover:bg-error/20 hover:text-error transition-all p-0"
-                                                    title={t('ui.management.delete')}
-                                                >
-                                                    <Trash2 size={14} />
-                                                </button>
-                                            </>
-                                        ) : (
-                                            <div className="w-6 h-6 flex items-center justify-center opacity-20" title={t('ui.management.systemScript')}>
-                                                <MoreHorizontal size={14} />
-                                            </div>
-                                        )}
-                                    </div>
                                 </div>
 
-                                <div className="space-y-1 relative z-10 flex-1">
-                                    <h3 className="text-lg font-black tracking-tight leading-tight group-hover:text-primary transition-colors truncate">
-                                        {script.name}
-                                    </h3>
-                                    <p className="text-sm text-base-content/50 font-medium line-clamp-3 leading-relaxed">
-                                        {script.description || "Experimental automation script module waiting for configuration parameters."}
-                                    </p>
-                                </div>
+                                <p className="text-sm text-base-content/70 mt-3 line-clamp-2 h-10">
+                                    {script.description || t('management.noDescription', 'No description provided')}
+                                </p>
 
-                                <div className="mt-8 pt-5 border-t border-white/5 flex items-center justify-between relative z-10 font-bold uppercase tracking-widest">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-5 h-5 bg-white/5 rounded-md flex items-center justify-center">
-                                            <span className="text-[8px] font-black opacity-30 leading-none">ID</span>
-                                        </div>
-                                        <span className="text-[10px] font-mono text-base-content/20 font-bold uppercase tracking-widest">{script.id}</span>
-                                    </div>
-                                    {!script.path?.startsWith('script/custom/') && (
-                                        <span className="text-[8px] opacity-20 bg-white/5 px-2 py-0.5 rounded uppercase">{t('ui.management.systemScript')}</span>
-                                    )}
+                                <div className="card-actions justify-end mt-4 pt-4 border-t border-base-content/10">
+                                    <button
+                                        className="btn btn-ghost btn-xs text-warning tooltip tooltip-bottom"
+                                        data-tip={t('management.rename', 'Rename')}
+                                        onClick={() => {
+                                            setEditingScript(script);
+                                            setNewName(script.name);
+                                            setRenameError(null);
+                                            setIsRenameModalOpen(true);
+                                        }}
+                                    >
+                                        <Edit2 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <a
+                                        href={`${API_Base}/scripts/${script.id}/download`}
+                                        download
+                                        className="btn btn-ghost btn-xs text-info tooltip tooltip-bottom"
+                                        data-tip={t('management.export', 'Export')}
+                                    >
+                                        <Download className="w-3.5 h-3.5" />
+                                    </a>
+                                    <button
+                                        className="btn btn-ghost btn-xs text-error tooltip tooltip-bottom"
+                                        data-tip={t('management.delete', 'Delete')}
+                                        onClick={() => setDeletingScriptId(script.id)}
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
                                 </div>
                             </div>
-                        ))}
-                    </div>
+                        </div>
+                    ))
                 )}
             </div>
 
-            {/* Premium Modals */}
-            {isRenameModalOpen && editingScript && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 premium-blur animate-in fade-in duration-300">
-                    <div className="modal-box max-w-sm glass-card p-0 overflow-hidden animate-in zoom-in-95 duration-300">
-                        <div className="p-6 border-b border-white/5 bg-gradient-to-br from-primary/10 to-transparent">
-                            <h3 className="font-black text-xl flex items-center gap-3">
-                                <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center text-primary">
-                                    <Edit2 size={16} />
-                                </div>
-                                {t('ui.management.renameScript')}
-                            </h3>
-                        </div>
-
-                        <div className="p-6 space-y-6">
-                            <div className="form-control w-full">
-                                <label className="label">
-                                    <span className="label-text text-[11px] font-black uppercase tracking-widest opacity-40">Transformation Path</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    className="input bg-base-300/30 border-white/5 focus:border-primary/50 w-full font-bold h-12"
-                                    value={newName}
-                                    onChange={e => {
-                                        setNewName(e.target.value);
-                                        if (renameError) setRenameError(null);
-                                    }}
-                                    autoFocus
-                                    onKeyDown={e => e.key === 'Enter' && handleSaveRename()}
-                                />
-                                {renameError ? (
-                                    <label className="label">
-                                        <span className="label-text-alt text-error font-black uppercase tracking-tighter">{renameError}</span>
-                                    </label>
-                                ) : (
-                                    <label className="label">
-                                        <span className="label-text-alt opacity-30 text-[10px] font-medium">{t('ui.management.renameHelp')}</span>
-                                    </label>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="p-6 flex items-center justify-end gap-3 bg-base-300/20">
-                            <button className="btn btn-ghost btn-sm font-black uppercase tracking-widest text-[11px]" onClick={() => setIsRenameModalOpen(false)}>
-                                {t('ui.management.cancel')}
-                            </button>
-                            <button
-                                className="btn btn-primary btn-sm px-6 font-black uppercase tracking-widest text-[11px] shadow-lg shadow-primary/20"
-                                onClick={handleSaveRename}
-                                disabled={!newName || newName === editingScript.name}
-                            >
-                                {t('ui.management.confirm')}
-                            </button>
-                        </div>
+            {/* Rename Modal */}
+            <dialog className={clsx("modal", isRenameModalOpen && "modal-open")}>
+                <div className="modal-box">
+                    <h3 className="font-bold text-lg mb-4">{t('management.renameModalTitle', 'Rename Script')}</h3>
+                    <div className="form-control w-full">
+                        <label className="label">
+                            <span className="label-text">{t('management.scriptName', 'Script Name')}</span>
+                        </label>
+                        <input
+                            type="text"
+                            className={clsx("input input-bordered w-full", renameError && "input-error")}
+                            value={newName}
+                            onChange={(e) => setNewName(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleRename();
+                            }}
+                            autoFocus
+                        />
+                        {renameError && (
+                            <label className="label">
+                                <span className="label-text-alt text-error">{renameError}</span>
+                            </label>
+                        )}
+                    </div>
+                    <div className="modal-action">
+                        <button className="btn" onClick={() => setIsRenameModalOpen(false)}>
+                            {t('common.cancel', 'Cancel')}
+                        </button>
+                        <button className="btn btn-primary" onClick={handleRename}>
+                            {t('common.save', 'Save')}
+                        </button>
                     </div>
                 </div>
-            )}
+                <form method="dialog" className="modal-backdrop">
+                    <button onClick={() => setIsRenameModalOpen(false)}>close</button>
+                </form>
+            </dialog>
 
-            {/* Delete Modal Premium */}
-            {deletingScriptId && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 premium-blur animate-in fade-in duration-300">
-                    <div className="modal-box max-w-sm glass-card p-0 overflow-hidden border-error/20 animate-in zoom-in-95 duration-300">
-                        <div className="p-6 border-b border-error/10 bg-gradient-to-br from-error/10 to-transparent">
-                            <h3 className="font-black text-xl text-error flex items-center gap-3">
-                                <div className="w-8 h-8 bg-error/20 rounded-lg flex items-center justify-center">
-                                    <Trash2 size={16} />
-                                </div>
-                                {t('ui.management.confirmDelete')}
-                            </h3>
-                        </div>
-                        <div className="p-6">
-                            <p className="text-sm font-bold opacity-70 leading-relaxed mb-1">
-                                {t('ui.management.deleteWarning')}
-                            </p>
-                            <div className="bg-error/10 px-4 py-2 rounded-xl mb-6 font-black text-error text-center tracking-tight">
-                                "{scripts.find(s => s.id === deletingScriptId)?.name}"
-                            </div>
-                            <p className="text-[10px] font-black uppercase tracking-widest opacity-30 text-center">
-                                {t('ui.management.deleteWarningDetail')}
-                            </p>
-                        </div>
-                        <div className="p-6 flex items-center justify-end gap-3 bg-base-300/20">
-                            <button className="btn btn-ghost btn-sm font-black uppercase tracking-widest text-[11px]" onClick={() => setDeletingScriptId(null)}>
-                                {t('ui.management.cancel')}
-                            </button>
-                            <button className="btn btn-error btn-sm px-6 font-black uppercase tracking-widest text-[11px] text-error-content shadow-lg shadow-error/20" onClick={() => handleDelete(deletingScriptId)}>
-                                {t('ui.management.deletePermanently')}
-                            </button>
-                        </div>
+            {/* Delete Confirmation Modal */}
+            <dialog className={clsx("modal", deletingScriptId && "modal-open")}>
+                <div className="modal-box">
+                    <h3 className="font-bold text-lg text-error">{t('management.deleteTitle', 'Delete Script')}</h3>
+                    <p className="py-4">
+                        {t('management.deleteConfirm', 'Are you sure you want to delete this script? This action cannot be undone.')}
+                    </p>
+                    <div className="modal-action">
+                        <button className="btn" onClick={() => setDeletingScriptId(null)}>
+                            {t('common.cancel', 'Cancel')}
+                        </button>
+                        <button
+                            className="btn btn-error"
+                            onClick={() => deletingScriptId && handleDelete(deletingScriptId)}
+                        >
+                            {t('common.delete', 'Delete')}
+                        </button>
                     </div>
                 </div>
-            )}
+            </dialog>
 
-            {/* Import Conflict Premium */}
-            {importConflictName && pendingZipFile && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 premium-blur animate-in fade-in duration-300">
-                    <div className="modal-box max-w-sm glass-card p-0 overflow-hidden border-warning/20 animate-in zoom-in-95 duration-300">
-                        <div className="p-6 border-b border-warning/10 bg-gradient-to-br from-warning/10 to-transparent">
-                            <h3 className="font-black text-xl text-warning flex items-center gap-3">
-                                <div className="w-8 h-8 bg-warning/20 rounded-lg flex items-center justify-center">
-                                    <Upload size={16} />
-                                </div>
-                                {t('ui.management.nameConflict')}
-                            </h3>
-                        </div>
-                        <div className="p-6 space-y-6">
-                            <p className="text-xs font-bold opacity-60 leading-relaxed">
-                                {t('ui.management.importConflictText')}
-                                <span className="block mt-2 font-black text-warning underline underline-offset-4 decoration-2">"{importConflictName}"</span>
-                            </p>
-
-                            <div className="form-control w-full">
-                                <input
-                                    type="text"
-                                    className="input bg-base-300/30 border-white/5 focus:border-warning/50 w-full font-bold h-12"
-                                    value={importNewName}
-                                    onChange={e => setImportNewName(e.target.value)}
-                                    placeholder={t('ui.management.renameTo')}
-                                    autoFocus
-                                    onKeyDown={e => e.key === 'Enter' && handleImport(pendingZipFile, importNewName)}
-                                />
-                            </div>
-                        </div>
-                        <div className="p-6 flex items-center justify-end gap-3 bg-base-300/20">
-                            <button className="btn btn-ghost btn-sm font-black uppercase tracking-widest text-[11px]" onClick={() => {
+            {/* Import Conflict Modal */}
+            <dialog className={clsx("modal", importConflictName && "modal-open")}>
+                <div className="modal-box">
+                    <h3 className="font-bold text-lg text-warning">{t('management.conflictTitle', 'Script Conflict')}</h3>
+                    <p className="py-2">
+                        {t('management.conflictMessage', 'A script with this name already exists.')}
+                    </p>
+                    <div className="form-control w-full mt-2">
+                        <label className="label">
+                            <span className="label-text">{t('management.newName', 'Save as new name')}</span>
+                        </label>
+                        <input
+                            type="text"
+                            className="input input-bordered w-full"
+                            value={importNewName}
+                            onChange={(e) => setImportNewName(e.target.value)}
+                        />
+                    </div>
+                    <div className="modal-action">
+                        <button
+                            className="btn"
+                            onClick={() => {
                                 setImportConflictName(null);
                                 setPendingZipFile(null);
-                            }}>
-                                {t('ui.management.cancel')}
-                            </button>
-                            <button
-                                className="btn btn-warning btn-sm px-6 font-black uppercase tracking-widest text-[11px] shadow-lg shadow-warning/20"
-                                onClick={() => handleImport(pendingZipFile, importNewName)}
-                                disabled={!importNewName || importNewName === importConflictName}
-                            >
-                                {t('ui.management.importAsNew')}
-                            </button>
-                        </div>
+                            }}
+                        >
+                            {t('common.cancel', 'Cancel')}
+                        </button>
+                        <button
+                            className="btn btn-primary"
+                            onClick={() => {
+                                if (pendingZipFile && importNewName) {
+                                    handleImport(pendingZipFile, importNewName);
+                                }
+                            }}
+                        >
+                            {t('common.confirm', 'Confirm')}
+                        </button>
                     </div>
                 </div>
-            )}
+            </dialog>
         </div>
     );
 };
