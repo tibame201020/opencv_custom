@@ -722,20 +722,24 @@ func exportScript(c *gin.Context) {
 func importScript(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
-		c.JSON(400, gin.H{"error": "No file uploaded"})
+		fmt.Printf("[Import] Error getting form file: %v\n", err)
+		c.JSON(400, gin.H{"error": "No file uploaded: " + err.Error()})
 		return
 	}
 
 	f, err := file.Open()
 	if err != nil {
+		fmt.Printf("[Import] Error opening file: %v\n", err)
 		c.JSON(500, gin.H{"error": "Failed to open file"})
 		return
 	}
 	defer f.Close()
 
 	newName := c.PostForm("newName")
+	fmt.Printf("[Import] Importing file: %s, Size: %d, OverrideName: %s\n", file.Filename, file.Size, newName)
 
 	if err := manager.ImportScriptZip(f, file.Size, newName); err != nil {
+		fmt.Printf("[Import] ImportScriptZip failed: %v\n", err)
 		if strings.HasPrefix(err.Error(), "CONFLICT_ALREADY_EXISTS:") {
 			c.JSON(409, gin.H{
 				"error":         "Script already exists",

@@ -991,18 +991,24 @@ func (sm *ScriptManager) ImportScriptZip(reader io.ReaderAt, size int64, overrid
 
 	for _, f := range zr.File {
 		// Normalize paths: remove top-level folder prefix if present
+		// ZIP uses forward slashes.
 		cleanName := f.Name
 		parts := strings.Split(f.Name, "/")
 		if len(parts) > 1 && parts[0] == originalScriptName {
 			cleanName = strings.Join(parts[1:], "/")
 		}
 
+		// IMPORTANT: Normalize to OS separators (Backslash on Windows)
+		// This ensures filepath.Join doesn't confuse the joined path for a single filename with embedded slashes
+		cleanName = filepath.FromSlash(cleanName)
+
 		if cleanName == "" {
 			continue
 		}
 
 		// Ensure .py file matches the new script name if overridden
-		if strings.HasSuffix(cleanName, ".py") && !strings.Contains(cleanName, "/") {
+		// Logic: If it's a python file at the root (no separators), rename it.
+		if strings.HasSuffix(cleanName, ".py") && filepath.Dir(cleanName) == "." {
 			cleanName = scriptName + ".py"
 		}
 
