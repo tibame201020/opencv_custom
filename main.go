@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"embed"
+	"net"
 	"net/http"
 	"script-platform/server/backend"
 
@@ -21,14 +22,27 @@ func main() {
 	// Setup API Router
 	router := backend.SetupRouter()
 
-	// Start a background listener on fixed port 8080 for Dev Mode (e.g. Vite proxy)
-	// We don't care if it fails in Prod or if the port is busy, as Wails will use the Handler directly.
-	go func() {
-		_ = http.ListenAndServe(":8080", router)
-	}()
+	// Start a background listener for WebSockets/API
+	// We use a real TCP port because WebView2 doesn't support WebSockets on virtual origins (wails.localhost)
+	ln, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		// If 8080 is taken, pick any free port
+		ln, err = net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			println("Critical Error: Could not find any free port for backend")
+		}
+	}
+
+	if ln != nil {
+		app.WSPort = ln.Addr().(*net.TCPAddr).Port
+		println("Backend listening on port:", app.WSPort)
+		go func() {
+			_ = http.Serve(ln, router)
+		}()
+	}
 
 	// Create application with options
-	err := wails.Run(&options.App{
+	err = wails.Run(&options.App{
 		Title:  "Script Platform",
 		Width:  1280,
 		Height: 800,

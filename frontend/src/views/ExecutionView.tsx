@@ -25,21 +25,46 @@ export const ExecutionView: React.FC = () => {
 
     // Improved WS URL construction to handle relative/absolute paths correctly
     const getWSBase = () => {
+        // Priority 1: Real TCP Port (necessary for Release Mode where wails.localhost doesn't support WS upgrade)
+        if (wsPort) {
+            return `ws://127.0.0.1:${wsPort}/ws/logs`;
+        }
+
+        // Priority 2: Absolute API Base (Dev Mode with full URL)
         if (apiBaseUrl.startsWith('http')) {
             return apiBaseUrl.replace('http://', 'ws://').replace('/api', '/ws/logs');
         }
-        // Relative path case (e.g. Wails AssetServer or Vite proxy)
+
+        // Priority 3: Current Origin (Dev Mode / Standard Proxy)
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = window.location.host;
         return `${protocol}//${host}/ws/logs`;
     };
-    const WS_Base = getWSBase();
 
     // UI State
     const [scripts, setScripts] = useState<Script[]>([]);
     const [devices, setDevices] = useState<string[]>([]);
+    const [wsPort, setWsPort] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [isDrawerOpen, setIsDrawerOpen] = useState(true);
+
+    useEffect(() => {
+        // Fetch real TCP port from backend (necessary for Release Mode WebSockets)
+        const fetchWSPort = async () => {
+            try {
+                // @ts-ignore
+                if (window.go?.main?.App?.GetWSPort) {
+                    // @ts-ignore
+                    const port = await window.go.main.App.GetWSPort();
+                    console.log("Detected Backend WS Port:", port);
+                    setWsPort(port);
+                }
+            } catch (err) {
+                console.warn("Failed to detect WS port via Wails Bind", err);
+            }
+        };
+        fetchWSPort();
+    }, []);
 
     // Renaming State
     const [editingTabId, setEditingTabId] = useState<string | null>(null);
@@ -167,8 +192,9 @@ export const ExecutionView: React.FC = () => {
                 wsMap.current.get(tabId)?.close();
             }
 
-            console.log(`Connecting to WebSocket: ${WS_Base}/${runId}`);
-            const ws = new WebSocket(`${WS_Base}/${runId}`);
+            const wsBase = getWSBase();
+            console.log(`Connecting to WebSocket: ${wsBase}/${runId}`);
+            const ws = new WebSocket(`${wsBase}/${runId}`);
             wsMap.current.set(tabId, ws);
 
             ws.onmessage = (event) => {
