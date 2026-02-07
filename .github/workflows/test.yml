@@ -108,6 +108,7 @@ jobs:
           cp -r docs/* public/
           mkdir public/report
           cp -r allure-history/* public/report/
+          echo '<!DOCTYPE html><meta http-equiv="refresh" content="0; url=${{ github.run_number }}/index.html">' > public/report/index.html
 
       - name: Deploy to Github Pages
         uses: peaceiris/actions-gh-pages@v3
