@@ -295,8 +295,13 @@ func (sm *ScriptManager) StopScript(runID string) error {
 		return fmt.Errorf("process not found")
 	}
 
-	process.Cancel() // Kills the context, thus the process
-	return utils.KillProcess(process.Cmd)
+	// Important: Call KillProcess FIRST.
+	// On Windows, KillProcess uses `taskkill /T` to kill the process tree.
+	// If we call process.Cancel() first, the context kills the parent process immediately (via os.Process.Kill),
+	// causing taskkill to fail finding the parent PID to trace and kill children (orphans).
+	err := utils.KillProcess(process.Cmd)
+	process.Cancel() // Always cancel the context to release resources
+	return err
 }
 
 func (sm *ScriptManager) GetScriptPath(scriptID string) (string, error) {
