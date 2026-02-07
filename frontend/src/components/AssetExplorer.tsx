@@ -292,7 +292,7 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
                     )}
                     <span className="truncate flex-1">{node.name}</span>
                 </div>
-                {node.isDir && isExpanded && node.children?.map(child => renderNode(child, level + 1))}
+                {node.isDir && isExpanded && (node.children || []).map(child => renderNode(child, level + 1))}
             </div>
         );
     };
@@ -309,8 +309,9 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
         <div className="flex flex-col h-full bg-base-100 border-r border-base-300 text-base-content/80 select-none relative" style={{ width }}>
             {/* Header */}
             <div className="flex items-center justify-between px-3 h-9 bg-base-200 text-[10px] font-bold uppercase tracking-wider shrink-0 border-b border-base-300">
-                <span className="opacity-70 flex items-center gap-1 cursor-pointer hover:text-primary transition-colors" onClick={onToggle}><ChevronLeft size={14} /> Explorer</span>
+                <span className="opacity-70 flex items-center gap-1 cursor-pointer hover:text-primary transition-colors" onClick={onToggle}><ChevronLeft size={14} /> EXPLORER <span className="opacity-40 ml-1 font-mono">[{scriptId}]</span></span>
                 <div className="flex items-center gap-1">
+                    <button className="btn btn-ghost btn-xs btn-square" onClick={fetchAssets} title="Refresh"><ListTree size={14} className="text-primary" /></button>
                     <button className="btn btn-ghost btn-xs btn-square" onClick={() => setCreateFileTarget("")} title="New File"><FilePlus size={14} /></button>
                     <button className="btn btn-ghost btn-xs btn-square" onClick={() => setMkdirTarget("")} title="New Folder"><FolderPlus size={14} /></button>
                 </div>
@@ -331,7 +332,30 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
                     }
                 }}
             >
-                {isLoading ? <div className="p-4 text-center opacity-40 text-xs">Loading...</div> : (assets || []).map(n => renderNode(n))}
+                {isLoading ? (
+                    <div className="p-4 text-center opacity-40 text-xs flex flex-col items-center gap-2">
+                        <span className="loading loading-spinner loading-xs text-primary"></span>
+                        Loading...
+                    </div>
+                ) : (
+                    Array.isArray(assets) ? (
+                        assets.length > 0 ? (
+                            assets.map(n => renderNode(n))
+                        ) : (
+                            <div className="p-8 text-center opacity-30 text-[10px] mt-10 space-y-2">
+                                <Folder size={32} className="mx-auto mb-2 opacity-50" strokeWidth={1} />
+                                <div className="font-bold">EMPTY DIRECTORY</div>
+                                <div className="opacity-50 font-mono text-[8px] break-all">ID: {scriptId}</div>
+                                <div className="opacity-50 font-mono text-[8px] break-all">URL: {`${API_Base}/scripts/${scriptId}/assets`}</div>
+                            </div>
+                        )
+                    ) : (
+                        <div className="p-8 text-center text-error text-[10px] mt-10 space-y-2">
+                            <div className="font-bold">DATA ERROR</div>
+                            <div className="opacity-50 font-mono text-[8px] break-all">ID: {scriptId}</div>
+                        </div>
+                    )
+                )}
             </div>
 
             {/* Snippets (Only for Images) */}
@@ -343,9 +367,9 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
                     </div>
                     <div className="p-2 space-y-2 overflow-y-auto h-full pb-8">
                         {[
-                            { label: 'ClickImage', code: `self.platform.click_image(f"{self.image_root}/${selectedAsset.path.replace(/^images\//, '')}", OcrRegion(0, 0, 100, 100), self.deviceId)` },
-                            { label: 'FindImage', code: `found, pt = self.platform.find_image_full(f"{self.image_root}/${selectedAsset.path.replace(/^images\//, '')}", self.deviceId)` }, // Fixed path
-                            { label: 'Path', code: `f"{self.image_root}/${selectedAsset.path.replace(/^images\//, '')}"` }
+                            { label: 'Tap', code: `self.tap("${selectedAsset.path.replace(/^images\//, '')}")` },
+                            { label: 'Find', code: `found, pt = self.find("${selectedAsset.path.replace(/^images\//, '')}")` },
+                            { label: 'Name', code: `"${selectedAsset.path.replace(/^images\//, '')}"` }
                         ].map((snip, i) => (
                             <div key={i}>
                                 <div className="text-[9px] opacity-40 mb-0.5">{snip.label}</div>

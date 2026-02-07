@@ -9,11 +9,13 @@ interface ScreenshotModalProps {
     isOpen: boolean;
     onClose: () => void;
     deviceId: string;
+    platform?: 'android' | 'desktop';
     scriptId?: string | null;
+    onApply?: (region: { x1: number, y1: number, x2: number, y2: number }) => void;
 }
 
 export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
-    isOpen, onClose, deviceId, scriptId
+    isOpen, onClose, deviceId, platform = 'android', scriptId, onApply
 }) => {
     const { activeTabId, scriptTabs, apiBaseUrl } = useAppStore();
     const API_Base = apiBaseUrl;
@@ -77,12 +79,18 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
     };
 
     const fetchScreenshot = async () => {
-        if (!deviceId) return;
+        if (!deviceId && platform === 'android') return;
         setLoading(true);
         setError(null);
         try {
             // Add timestamp to prevent caching
-            const url = `${API_Base}/devices/${deviceId}/screenshot?t=${new Date().getTime()}`;
+            let url = "";
+            if (platform === 'android') {
+                url = `${API_Base}/devices/${deviceId}/screenshot?t=${new Date().getTime()}`;
+            } else {
+                url = `${API_Base}/desktop/screenshot?t=${new Date().getTime()}`;
+            }
+
             // Preload image to ensure it's valid
             const img = new Image();
             img.crossOrigin = "anonymous"; // Enable CORS
@@ -92,7 +100,7 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                 setLoading(false);
             };
             img.onerror = () => {
-                setError("Failed to load screenshot. Is device connected?");
+                setError(platform === 'android' ? "Failed to load screenshot. Is device connected?" : "Failed to load desktop screenshot.");
                 setLoading(false);
             };
         } catch (err) {
@@ -274,16 +282,27 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
             if (!blob) throw new Error("Failed to create image blob");
 
-            const formData = new FormData();
-            const fullRelativePath = getFullRelativePath();
-            formData.append('file', blob, filename);
-            formData.append('relPath', fullRelativePath);
-            formData.append('scriptId', targetScriptId || "");
+            // Convert blob to Base64
+            const base64Data = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const res = reader.result as string;
+                    resolve(res.split(',')[1]);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
 
+            const fullRelativePath = getFullRelativePath();
             let url = targetScriptId ? `${API_Base}/scripts/${targetScriptId}/assets` : `${API_Base}/assets`;
 
-            await axios.post(url, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
+            await axios.post(url, {
+                filename: filename,
+                data: base64Data,
+                relPath: fullRelativePath,
+                scriptId: targetScriptId || ""
+            }, {
+                headers: { 'Content-Type': 'application/json' }
             });
 
             showToast("Asset saved successfully!");
@@ -318,8 +337,8 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                 {/* Header */}
                 <div className="h-14 px-4 border-b border-base-200 flex items-center justify-between shrink-0 bg-base-100 cursor-move">
                     <div className="flex items-center gap-3">
-                        <h3 className="font-bold text-lg">Device Screenshot</h3>
-                        <div className="badge badge-neutral font-mono">{deviceId}</div>
+                        <h3 className="font-bold text-lg">{onApply ? "Region Picker" : "Device Screenshot"}</h3>
+                        <div className="badge badge-neutral font-mono">{platform === 'android' ? deviceId : 'Desktop'}</div>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -511,13 +530,35 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                 onClick={handleSaveAsset}
                                 disabled={isSaving || !imageUrl}
                                 className={clsx(
-                                    "btn btn-primary btn-sm w-full gap-2 shadow-lg transition-all mb-6",
+                                    "btn btn-primary btn-sm w-full gap-2 shadow-lg transition-all mb-3",
                                     isSaving && "loading"
                                 )}
                             >
                                 <Save size={16} />
                                 {isSaving ? "Saving..." : "Save to Assets"}
                             </button>
+
+                            {onApply && getSelectionRect() && getSelectionRect()!.w > 5 && (
+                                <button
+                                    className="btn btn-success btn-sm w-full gap-2 shadow-lg animate-in zoom-in duration-300 mb-6"
+                                    onClick={() => {
+                                        const rect = getSelectionRect()!;
+                                        const scaleX = imageRef.current!.naturalWidth / imageRef.current!.getBoundingClientRect().width;
+                                        const scaleY = imageRef.current!.naturalHeight / imageRef.current!.getBoundingClientRect().height;
+
+                                        const x1 = Math.max(0, Math.floor(rect.x * scaleX));
+                                        const y1 = Math.max(0, Math.floor(rect.y * scaleY));
+                                        const x2 = Math.min(imageRef.current!.naturalWidth, Math.floor((rect.x + rect.w) * scaleX));
+                                        const y2 = Math.min(imageRef.current!.naturalHeight, Math.floor((rect.y + rect.h) * scaleY));
+
+                                        onApply({ x1, y1, x2, y2 });
+                                        onClose();
+                                    }}
+                                >
+                                    <Check size={16} />
+                                    Apply to Parameter
+                                </button>
+                            )}
                         </div>
 
                         <h4 className="font-bold text-sm uppercase opacity-50 mb-3">Code Snippets</h4>
@@ -527,14 +568,14 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                 "rounded-xl overflow-hidden border transition-all duration-300 group selection:bg-primary/20 cursor-pointer shadow-sm",
                                 copiedId === 'click_full' ? "border-success bg-success/10" : "border-base-300 bg-base-100 hover:border-primary/50 hover:shadow-md"
                             )}
-                                onClick={() => handleCopy('click_full', `self.platform.click_image_full(f"{self.image_root}/${getSnippetPath()}", self.deviceId)`)}
+                                onClick={() => handleCopy('click_full', `self.tap("${getSnippetPath()}")`)}
                             >
                                 <div className="flex items-center justify-between px-3 py-2 bg-base-200/50 border-b border-base-200">
                                     <div className="text-[10px] uppercase tracking-widest font-bold opacity-50">Full Screen Search</div>
                                     {copiedId === 'click_full' ? <Check size={14} className="text-success animate-in zoom-in" /> : <Copy size={14} className="opacity-30 group-hover:opacity-100 transition-opacity" />}
                                 </div>
                                 <div className="p-3 font-mono text-[11px] text-base-content/80 leading-relaxed break-all">
-                                    self.platform.click_image_full(f"&#123;self.image_root&#125;/{getSnippetPath()}", self.deviceId)
+                                    self.tap("&#123;getSnippetPath()&#125;")
                                 </div>
                             </div>
 
@@ -543,14 +584,14 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                 "rounded-xl overflow-hidden border transition-all duration-300 group selection:bg-primary/20 cursor-pointer shadow-sm",
                                 copiedId === 'click_similar' ? "border-success bg-success/10" : "border-base-300 bg-base-100 hover:border-primary/50 hover:shadow-md"
                             )}
-                                onClick={() => handleCopy('click_similar', `self.platform.click_image_with_similar(f"{self.image_root}/${getSnippetPath()}", self.default_threshold, self.deviceId)`)}
+                                onClick={() => handleCopy('click_similar', `self.tap("${getSnippetPath()}", threshold=0.9)`)}
                             >
                                 <div className="flex items-center justify-between px-3 py-2 bg-base-200/50 border-b border-base-200">
                                     <div className="text-[10px] uppercase tracking-widest font-bold opacity-50">Similar Search</div>
                                     {copiedId === 'click_similar' ? <Check size={14} className="text-success animate-in zoom-in" /> : <Copy size={14} className="opacity-30 group-hover:opacity-100 transition-opacity" />}
                                 </div>
                                 <div className="p-3 font-mono text-[11px] text-base-content/80 leading-relaxed break-all">
-                                    self.platform.click_image_with_similar(f"&#123;self.image_root&#125;/{getSnippetPath()}", threshold, self.deviceId)
+                                    self.tap("&#123;getSnippetPath()&#125;", threshold=0.9)
                                 </div>
                             </div>
 
@@ -570,7 +611,7 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                         const x2 = Math.min(imageRef.current!.naturalWidth, Math.floor((rect.x + rect.w) * scaleX) + regionPaddingX);
                                         const y2 = Math.min(imageRef.current!.naturalHeight, Math.floor((rect.y + rect.h) * scaleY) + regionPaddingY);
 
-                                        const text = `self.platform.click_image(f"{self.image_root}/${getSnippetPath().replace(/^images\//, '')}", OcrRegion(${x1}, ${y1}, ${x2}, ${y2}), self.deviceId)`;
+                                        const text = `self.tap("${getSnippetPath()}", region=OcrRegion(${x1}, ${y1}, ${x2}, ${y2}))`;
                                         handleCopy('click_region', text);
                                     }}
                                 >
@@ -579,7 +620,7 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                         {copiedId === 'click_region' ? <Check size={14} className="text-success animate-in zoom-in" /> : <Copy size={14} className="opacity-30 group-hover:opacity-100 transition-opacity" />}
                                     </div>
                                     <div className="p-3 font-mono text-[11px] text-base-content/80 leading-relaxed break-all">
-                                        self.platform.click_image(f"&#123;self.image_root&#125;/{getSnippetPath().replace(/^images\//, '')}", OcrRegion(...), self.deviceId)
+                                        self.tap("&#123;getSnippetPath()&#125;", region=OcrRegion(...))
                                     </div>
                                 </div>
                             )}
@@ -589,14 +630,14 @@ export const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                                 "rounded-xl overflow-hidden border transition-all duration-300 group selection:bg-primary/20 cursor-pointer shadow-sm",
                                 copiedId === 'path' ? "border-success bg-success/10" : "border-base-300 bg-base-100 hover:border-primary/50 hover:shadow-md"
                             )}
-                                onClick={() => handleCopy('path', `f"{self.image_root}/${getSnippetPath()}"`)}
+                                onClick={() => handleCopy('path', `"${getSnippetPath()}"`)}
                             >
                                 <div className="flex items-center justify-between px-3 py-2 bg-base-200/50 border-b border-base-200">
-                                    <div className="text-[10px] uppercase tracking-widest font-bold opacity-50">Asset Path</div>
+                                    <div className="text-[10px] uppercase tracking-widest font-bold opacity-50">Snippet Name</div>
                                     {copiedId === 'path' ? <Check size={14} className="text-success animate-in zoom-in" /> : <Copy size={14} className="opacity-30 group-hover:opacity-100 transition-opacity" />}
                                 </div>
                                 <div className="p-3 font-mono text-[11px] text-base-content/80 leading-relaxed break-all">
-                                    f"&#123;self.image_root&#125;/{getSnippetPath()}"
+                                    "&#123;getSnippetPath()&#125;"
                                 </div>
                             </div>
                         </div>

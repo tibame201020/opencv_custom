@@ -95,44 +95,6 @@ class StdoutHook:
 
 # --- Script Runners (Ported from run_script.py) ---
 
-def run_robot_script():
-    from script.robot.robot_script import RobotScript
-    open_cv_service = OpenCvService()
-    robot_platform = RobotPlatform(open_cv_service)
-    robot_script = RobotScript(robot_platform)
-    robot_script.execute()
-
-def run_gear_script():
-    from script.gearScript.gear_script import GearScript
-    open_cv_service = OpenCvService()
-    adb = Adb()
-    adb_platform = AdbPlatform(adb, open_cv_service)
-    gear_script = GearScript(adb_platform)
-    gear_script.execute()
-
-def run_evil_hunter_script():
-    from script.evilHunter.evil_hunter_script import EvilHunterScript
-    open_cv_service = OpenCvService()
-    adb = Adb()
-    adb_platform = AdbPlatform(adb, open_cv_service)
-    evil_hunter_script = EvilHunterScript(adb_platform)
-    evil_hunter_script.execute()
-
-def run_chaos_dream_script():
-    from script.chaosDream.chaos_dream_script import ChaosDreamScript
-    open_cv_service = OpenCvService()
-    adb = Adb()
-    adb_platform = AdbPlatform(adb, open_cv_service)
-    chaos_dream_script = ChaosDreamScript(adb_platform)
-    chaos_dream_script.execute()
-
-def run_adb_test():
-    open_cv_service = OpenCvService()
-    adb = Adb()
-    adb_platform = AdbPlatform(adb, open_cv_service)
-    devices = adb_platform.get_devices()
-    print(f"Found {len(devices)} devices: {devices}")
-
 def run_test_log():
     """Simulates a task with verbose logging"""
     print("Starting Test Log Stream...")
@@ -211,108 +173,98 @@ def cmd_run(args):
     sys.stdout = StdoutHook()
 
     script_id = args.script
+    params_dict = {}
+    try:
+        params_dict = json.loads(args.params)
+    except:
+        pass
     
     try:
         if script_id == "test_log":
             run_test_log()
-        elif script_id == "robot":
-            run_robot_script()
-        elif script_id == "gear":
-            run_gear_script()
-        elif script_id == "evil_hunter":
-            run_evil_hunter_script()
-        elif script_id == "chaos_dream":
-            run_chaos_dream_script()
-        elif script_id == "adb_test":
-            run_adb_test()
-        else:
-            # Try to load dynamic custom script
-            try:
-                # Check for New Structure: script/custom/<id>/<id>.py
-                new_struct_path = project_root / "script" / "custom" / script_id / f"{script_id}.py"
-                # Check for Old Structure: script/custom/<id>.py
-                old_struct_path = project_root / "script" / "custom" / f"{script_id}.py"
+            return
+            
+        # Try to load dynamic custom script
+        # Check for New Structure: script/custom/<id>/<id>.py
+        new_struct_path = project_root / "script" / "custom" / script_id / f"{script_id}.py"
+        # Check for Old Structure: script/custom/<id>.py
+        old_struct_path = project_root / "script" / "custom" / f"{script_id}.py"
+        
+        module_name = ""
+        if new_struct_path.exists():
+             module_name = f"script.custom.{script_id}.{script_id}"
+        elif old_struct_path.exists():
+             module_name = f"script.custom.{script_id}"
+        
+        if module_name:
+            module = importlib.import_module(module_name)
+            
+            # Find the Script class (ends with 'Script')
+            script_class = None
+            for attr_name in dir(module):
+                if attr_name.endswith("Script") and attr_name not in ["ScriptInterface", "Script"]:
+                    script_class = getattr(module, attr_name)
+                    break
+            
+            if not script_class:
+                for attr_name in dir(module):
+                    attr = getattr(module, attr_name)
+                    if isinstance(attr, type) and hasattr(attr, 'execute'):
+                        script_class = attr
+                        break
+                        
+            if script_class:
+                # Heuristic: Determine platform
+                is_desktop = False
+                script_file_path = new_struct_path if new_struct_path.exists() else old_struct_path
+                try:
+                    content = script_file_path.read_text(encoding='utf-8')
+                    if "RobotPlatform" in content or "pyautogui" in content:
+                        is_desktop = True
+                except: pass
                 
-                module_name = ""
+                print(f"Running v2.1.0 script: {script_id} (Platform: {'Desktop' if is_desktop else 'Android'})")
+                open_cv_service = OpenCvService()
                 
-                if new_struct_path.exists():
-                     module_name = f"script.custom.{script_id}.{script_id}"
-                elif old_struct_path.exists():
-                     module_name = f"script.custom.{script_id}"
-                
-                if module_name:
-                    module = importlib.import_module(module_name)
+                if is_desktop:
+                    from service.platform.robot.robot_platform import RobotPlatform
+                    platform = RobotPlatform(open_cv_service)
+                else:
+                    from service.platform.adb.adb_platform import AdbPlatform
+                    from service.platform.adb.adb import Adb
                     
-                    # Find class that ends with 'Script'
-                    script_class = None
-                    for attr_name in dir(module):
-                        if attr_name.endswith("Script") and attr_name != "ScriptInterface":
-                            script_class = getattr(module, attr_name)
-                            break
+                    device_id = params_dict.get("deviceId")
+                    adb = Adb(device_id)
+                    if device_id:
+                        print(f"Target Device: {device_id}")
+                        adb.connect()
                     
-                    if not script_class:
-                        # Fallback: look for a class that has 'execute' method
-                        for attr_name in dir(module):
-                            attr = getattr(module, attr_name)
-                            if isinstance(attr, type) and hasattr(attr, 'execute'):
-                                script_class = attr
-                                break
-                                
-                    if script_class:
-                        # Determine platform based on imports or class attributes
-                        # Simple heuristic: Check if RobotPlatform is imported in the module
-                        is_desktop = False
-                        if "RobotPlatform" in dir(module):
-                            is_desktop = True
-                        
-                        # Or check source code text for robustness
-                        # (Since imports might be aliased)
-                        
-                        print(f"Running custom script: {script_id} (Platform: {'Desktop' if is_desktop else 'Android'})")
-                        open_cv_service = OpenCvService()
-                        
-                        if is_desktop:
-                            from service.platform.robot.robot_platform import RobotPlatform
-                            robot_platform = RobotPlatform(open_cv_service)
-                            script_instance = script_class(robot_platform)
-                        else:
-                            # Parse params to get device_id
-                            import json
-                            params_dict = {}
-                            try:
-                                params_dict = json.loads(args.params)
-                            except:
-                                pass
-                            
-                            device_id = params_dict.get("deviceId")
-                            adb = Adb(device_id)
-                            if device_id:
-                                print(f"Connecting to device: {device_id}")
-                                adb.connect()
-                                
-                            adb_platform = AdbPlatform(adb, open_cv_service)
-                            script_instance = script_class(adb_platform)
-                            
-                        # Inject deviceId if available
-                        if 'device_id' in locals() and device_id:
-                            script_instance.deviceId = device_id
-                            
-                        script_instance.execute()
-                        return
+                    platform = AdbPlatform(adb, open_cv_service)
+                    # Inject deviceId for backward compatibility
+                    if device_id:
+                        platform.set_device_id(device_id)
+                
+                # Instantiate and run
+                script_instance = script_class(platform)
+                
+                # Support Legacy attribute injection
+                if not is_desktop and 'device_id' in locals() and device_id:
+                    script_instance.deviceId = device_id
+                
+                # Execute
+                script_instance.execute()
+                return
 
-                print(f"Unknown script: {script_id}")
-                sys.exit(1)
-            except ImportError as ie:
-                 print(f"Failed to import custom script {script_id}: {ie}")
-                 import traceback
-                 traceback.print_exc(file=sys.stdout)
-                 sys.exit(1)
+        print(f"Unknown script: {script_id}")
+        sys.exit(1)
+            
     except KeyboardInterrupt:
-        print("Script stopped by user.")
+        print("\nScript stopped by user.")
     except Exception as e:
         print(f"Script Error: {str(e)}")
         import traceback
         traceback.print_exc(file=sys.stdout)
+        sys.exit(1)
 
 def main():
     parser = argparse.ArgumentParser(description="Script Runner Entry Point")

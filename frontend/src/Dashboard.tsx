@@ -14,8 +14,8 @@ interface LogMessage {
     data?: any;
 }
 
-const API_Base = 'http://localhost:8080/api';
-const WS_Base = 'ws://localhost:8080/ws/logs';
+const API_Base = 'http://localhost:12857/api';
+const WS_Base = 'ws://localhost:12857/ws/logs';
 
 export const Dashboard: React.FC = () => {
     const [scripts, setScripts] = useState<Script[]>([]);

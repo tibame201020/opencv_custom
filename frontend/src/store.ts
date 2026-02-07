@@ -57,6 +57,7 @@ interface AppState {
     editorSelectedScriptId: string | null;
     editorTabs: EditorTab[];
     activeEditorTabId: string | null;
+    activeEditorTabIdPerProject: Record<string, string | null>; // Remember active tab per project
     assetExplorerCollapsed: boolean;
     scriptExplorerCollapsed: boolean;
 
@@ -71,8 +72,12 @@ interface AppState {
     saveEditorTab: (tabId: string) => void;
 
     // Global Data
+    scripts: Script[];
     devices: string[];
+    setScripts: (scripts: Script[]) => void;
     setDevices: (devices: string[]) => void;
+    fetchScripts: () => Promise<void>;
+    fetchDevices: () => Promise<void>;
 
     // Execution Module State
     scriptTabs: ScriptTabState[];
@@ -103,9 +108,37 @@ export const useAppStore = create<AppState>()(
             scriptTabs: [],
             activeTabId: null,
 
-            // State
+            // Global Data
+            scripts: [],
             devices: [],
+            setScripts: (scripts) => set({ scripts }),
             setDevices: (devices) => set({ devices }),
+
+            fetchScripts: async () => {
+                const { apiBaseUrl } = get();
+                try {
+                    const res = await fetch(`${apiBaseUrl}/scripts`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        set({ scripts: data || [] });
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch scripts", err);
+                }
+            },
+
+            fetchDevices: async () => {
+                const { apiBaseUrl } = get();
+                try {
+                    const res = await fetch(`${apiBaseUrl}/devices`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        set({ devices: data || [] });
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch devices", err);
+                }
+            },
 
             // Actions
             setTheme: (theme) => set({ theme }),
@@ -118,19 +151,38 @@ export const useAppStore = create<AppState>()(
             editorSelectedScriptId: null,
             editorTabs: [],
             activeEditorTabId: null,
+            activeEditorTabIdPerProject: {},
             assetExplorerCollapsed: true, // Default to collapsed as requested
             scriptExplorerCollapsed: false,
 
-            setEditorSelectedScriptId: (id) => set({ editorSelectedScriptId: id }),
             setAssetExplorerCollapsed: (collapsed) => set({ assetExplorerCollapsed: collapsed }),
             setScriptExplorerCollapsed: (collapsed) => set({ scriptExplorerCollapsed: collapsed }),
 
+            setEditorSelectedScriptId: (id) => set(state => {
+                // When project changes, switch the active global tab to the one remembered for this project
+                const nextActiveTabId = id ? state.activeEditorTabIdPerProject[id] || null : null;
+                return {
+                    editorSelectedScriptId: id,
+                    activeEditorTabId: nextActiveTabId
+                };
+            }),
+
             openEditorTab: (scriptId, path, name, content, type) => {
-                const { editorTabs } = get();
+                const { editorTabs, activeEditorTabIdPerProject } = get();
                 const tabId = path ? `${scriptId}/${path}` : `${scriptId}/__main__`;
 
-                if (editorTabs.find(t => t.id === tabId)) {
-                    set({ activeEditorTabId: tabId });
+                const existingTab = editorTabs.find(t => t.id === tabId);
+                if (existingTab) {
+                    set({
+                        editorTabs: editorTabs.map(t =>
+                            t.id === tabId ? { ...t, content, originalContent: content, isDirty: false } : t
+                        ),
+                        activeEditorTabId: tabId,
+                        activeEditorTabIdPerProject: {
+                            ...activeEditorTabIdPerProject,
+                            [scriptId]: tabId
+                        }
+                    });
                     return;
                 }
 
@@ -147,23 +199,61 @@ export const useAppStore = create<AppState>()(
 
                 set({
                     editorTabs: [...editorTabs, newTab],
-                    activeEditorTabId: tabId
+                    activeEditorTabId: tabId,
+                    activeEditorTabIdPerProject: {
+                        ...activeEditorTabIdPerProject,
+                        [scriptId]: tabId
+                    }
                 });
             },
 
             closeEditorTab: (tabId) => {
-                const { editorTabs, activeEditorTabId } = get();
-                const newTabs = editorTabs.filter(t => t.id !== tabId);
-                let nextActiveId = activeEditorTabId;
+                const { editorTabs, activeEditorTabId, activeEditorTabIdPerProject } = get();
+                const closedTab = editorTabs.find(t => t.id === tabId);
+                if (!closedTab) return;
 
+                const newTabs = editorTabs.filter(t => t.id !== tabId);
+                const scriptId = closedTab.scriptId;
+
+                // Update global active tab if needed
+                let nextActiveId = activeEditorTabId;
                 if (activeEditorTabId === tabId) {
-                    nextActiveId = newTabs.length > 0 ? newTabs[newTabs.length - 1].id : null;
+                    const projectTabs = newTabs.filter(t => t.scriptId === scriptId);
+                    if (projectTabs.length > 0) {
+                        nextActiveId = projectTabs[0].id;
+                    } else {
+                        nextActiveId = newTabs.length > 0 ? newTabs[newTabs.length - 1].id : null;
+                    }
                 }
 
-                set({ editorTabs: newTabs, activeEditorTabId: nextActiveId });
+                // Update project-specific active tab map
+                let nextProjectActiveId = activeEditorTabIdPerProject[scriptId];
+                if (nextProjectActiveId === tabId) {
+                    const projectTabs = newTabs.filter(t => t.scriptId === scriptId);
+                    nextProjectActiveId = projectTabs.length > 0 ? projectTabs[0].id : null;
+                }
+
+                set({
+                    editorTabs: newTabs,
+                    activeEditorTabId: nextActiveId,
+                    activeEditorTabIdPerProject: {
+                        ...activeEditorTabIdPerProject,
+                        [scriptId]: nextProjectActiveId
+                    }
+                });
             },
 
-            setActiveEditorTab: (id) => set({ activeEditorTabId: id }),
+            setActiveEditorTab: (id) => set(state => {
+                const tab = state.editorTabs.find(t => t.id === id);
+                if (!tab) return { activeEditorTabId: id };
+                return {
+                    activeEditorTabId: id,
+                    activeEditorTabIdPerProject: {
+                        ...state.activeEditorTabIdPerProject,
+                        [tab.scriptId]: id
+                    }
+                };
+            }),
 
             updateEditorTabContent: (tabId, content) => set(state => ({
                 editorTabs: state.editorTabs.map(t =>
@@ -249,6 +339,7 @@ export const useAppStore = create<AppState>()(
                 editorSelectedScriptId: state.editorSelectedScriptId,
                 editorTabs: state.editorTabs,
                 activeEditorTabId: state.activeEditorTabId,
+                activeEditorTabIdPerProject: state.activeEditorTabIdPerProject,
                 assetExplorerCollapsed: state.assetExplorerCollapsed,
                 scriptExplorerCollapsed: state.scriptExplorerCollapsed
             }),

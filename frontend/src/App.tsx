@@ -11,24 +11,34 @@ import { Play, Settings as SettingsIcon, Database, ChevronLeft, ChevronRight, Fi
 import clsx from 'clsx';
 
 function App() {
-  const { theme, activeMainTab, setActiveMainTab, isSidebarCollapsed, setSidebarCollapsed } = useAppStore();
+  const { theme, activeMainTab, setActiveMainTab, isSidebarCollapsed, setSidebarCollapsed, fetchScripts, fetchDevices } = useAppStore();
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Global Data Fetching & Polling
+  useEffect(() => {
+    fetchScripts();
+    fetchDevices();
+
+    // Remove high-frequency device polling per user request
+    const scriptInterval = setInterval(fetchScripts, 60000); // Reduce script polling too if desired
+
+    return () => {
+      clearInterval(scriptInterval);
+    };
+  }, [fetchScripts, fetchDevices]);
 
   // Sync activeMainTab with route
   useEffect(() => {
     const path = location.pathname.split('/')[1];
     const validTabs = ['execution', 'editor', 'management', 'setting', 'debug'];
     if (path && validTabs.includes(path)) {
-      setActiveMainTab(path as 'execution' | 'editor' | 'management' | 'setting');
+      setActiveMainTab(path as 'execution' | 'editor' | 'management' | 'setting' | 'debug');
     }
   }, [location, setActiveMainTab]);
 
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
-
+  // Theme synchronization
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);

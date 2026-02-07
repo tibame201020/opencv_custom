@@ -12,152 +12,74 @@ interface ApiMethod {
 
 const API_DATA: ApiMethod[] = [
     {
+        name: 'tap',
+        params: 'image_name: str, threshold: float = None, region: OcrRegion = None',
+        desc: '在螢幕搜尋圖片並點擊。路徑會自動補完成 images/ 目錄。',
+        example: 'self.tap("login_button.png")',
+        platform: 'both'
+    },
+    {
+        name: 'find',
+        params: 'image_name: str, threshold: float = None, region: OcrRegion = None',
+        desc: '搜尋圖片並回傳結果 (Found, Point)。',
+        example: 'found, pt = self.find("target.png")\nif found:\n    self.click(pt[0], pt[1])',
+        platform: 'both'
+    },
+    {
+        name: 'wait_tap',
+        params: 'image_name: str, timeout: int = 10',
+        desc: '等待圖片出現並點擊，直到超時。',
+        example: 'self.wait_tap("start_icon.png", timeout=15)',
+        platform: 'both'
+    },
+    {
         name: 'click',
-        params: 'x: float, y: float, device_id: str = None',
-        desc: '點擊座標 (x, y)',
-        example: 'self.platform.click(100, 200, self.deviceId)',
-        platform: 'android'
+        params: 'x: float, y: float',
+        desc: '點擊螢幕上的座標 (x, y)。',
+        example: 'self.click(500, 300)',
+        platform: 'both'
     },
     {
         name: 'swipe',
-        params: 'x1, y1, x2, y2, device_id: str = None',
-        desc: '滑動 (不指定持續時間)',
-        example: 'self.platform.swipe(100, 100, 200, 500, self.deviceId)',
+        params: 'x1, y1, x2, y2, duration: int = 500',
+        desc: '從點 A 滑動到點 B。',
+        example: 'self.swipe(100, 500, 100, 100, duration=300)',
         platform: 'android'
     },
     {
-        name: 'swipe_with_duration',
-        params: 'x1, y1, x2, y2, duration_ms: int, device_id: str = None',
-        desc: '滑動 (指定毫秒)',
-        example: 'self.platform.swipe_with_duration(100, 100, 200, 500, 300, self.deviceId)',
-        platform: 'android'
+        name: 'ocr_text',
+        params: 'path: str, region: OcrRegion',
+        desc: '在指定圖片或螢幕區域進行文字辨識。',
+        example: 'text = self.ocr_text("screenshot.png", OcrRegion(0, 0, 200, 50))',
+        platform: 'both'
     },
     {
-        name: 'type_text',
-        params: 'text: str, device_id: str = None',
-        desc: '輸入文字',
-        example: 'self.platform.type_text("Hello", self.deviceId)',
-        platform: 'android'
+        name: 'sleep',
+        params: 'seconds: float',
+        desc: '暫停腳本執行。',
+        example: 'self.sleep(2.5)',
+        platform: 'both'
+    },
+    {
+        name: 'log',
+        params: 'message: str, type: str = "info"',
+        desc: '輸出日誌到控制台。',
+        example: 'self.log("任務完成")',
+        platform: 'both'
     },
     {
         name: 'key_event',
-        params: 'adb_key_code: str, device_id: str = None',
-        desc: '發送按鍵事件 (如 KEYCODE_HOME)',
-        example: 'self.platform.key_event("KEYCODE_BACK", self.deviceId)',
-        platform: 'android'
-    },
-    {
-        name: 'click_image',
-        params: 'image_path: str, region: OcrRegion, device_id: str = None',
-        desc: '在指定區域尋找並點擊圖片',
-        example: 'self.platform.click_image(f"{self.image_root}/btn.png", OcrRegion(0, 0, 100, 100), self.deviceId)',
-        platform: 'android'
-    },
-    {
-        name: 'find_image_full',
-        params: 'image_path: str, device_id: str = None',
-        desc: '全螢幕尋找圖片',
-        example: 'found, point = self.platform.find_image_full(f"{self.image_root}/target.png", self.deviceId)',
-        platform: 'android'
-    },
-    {
-        name: 'click_image_full',
-        params: 'image_path: str, device_id: str = None',
-        desc: '全螢幕尋找並點擊圖片 (回傳 bool)',
-        example: 'success = self.platform.click_image_full(f"{self.image_root}/btn.png", self.deviceId)',
-        platform: 'android'
-    },
-    {
-        name: 'click_image_with_similar',
-        params: 'image_path: str, similar: float, device_id: str = None',
-        desc: '全螢幕尋找並點擊圖片 (指定相似度)',
-        example: 'self.platform.click_image_with_similar(f"{self.image_root}/btn.png", 0.9, self.deviceId)',
-        platform: 'android'
-    },
-    {
-        name: 'take_snapshot',
-        params: 'device_id: str = None',
-        desc: '取得截圖物件 (OpenCV Mat)',
-        example: 'mat = self.platform.take_snapshot(self.deviceId)',
+        params: 'adb_key_code: str',
+        desc: '發送 Android 按鍵事件。',
+        example: 'self.key_event("KEYCODE_BACK")',
         platform: 'android'
     },
     {
         name: 'start_app',
-        params: 'package: str, device_id: str = None',
-        desc: '啟動應用程式',
-        example: 'self.platform.start_app("com.example.app", self.deviceId)',
+        params: 'package: str',
+        desc: '啟動指定的應用程式套件。',
+        example: 'self.start_app("com.android.settings")',
         platform: 'android'
-    },
-    {
-        name: 'stop_app',
-        params: 'package: str, device_id: str = None',
-        desc: '強制停止應用程式',
-        example: 'self.platform.stop_app("com.example.app", self.deviceId)',
-        platform: 'android'
-    },
-    {
-        name: 'exec',
-        params: 'command: str',
-        desc: '發送原生 ADB 命令。會自動注入目前裝置 ID 並解析 adb 執行檔路徑。',
-        example: 'self.platform.exec("adb shell wm size")',
-        platform: 'android'
-    },
-    {
-        name: 'adb: Get Model',
-        params: '',
-        desc: '取得行動裝置型號',
-        example: 'model = self.platform.exec("adb shell getprop ro.product.model")',
-        platform: 'android'
-    },
-    {
-        name: 'adb: Package Activity',
-        params: '',
-        desc: '取得目前前景運行的 Activity',
-        example: 'activity = self.platform.exec("adb shell dumpsys window | grep mCurrentFocus")',
-        platform: 'android'
-    },
-    {
-        name: 'adb: List Packages',
-        params: '',
-        desc: '列出所有已安裝的套件',
-        example: 'packages = self.platform.exec("adb shell pm list packages")',
-        platform: 'android'
-    },
-    {
-        name: 'adb: Screenshot (Pull)',
-        params: '',
-        desc: '使用原生命令截圖到裝置並拉回電腦',
-        example: 'self.platform.exec("adb shell screencap -p /sdcard/s.png")\nself.platform.exec("adb pull /sdcard/s.png .")',
-        platform: 'android'
-    },
-    {
-        name: 'adb: Unlock Screen',
-        params: '',
-        desc: '模擬按下電源鍵與解鎖',
-        example: 'self.platform.exec("adb shell input keyevent 26")\nself.platform.exec("adb shell input keyevent 82")',
-        platform: 'android'
-    },
-    {
-        name: 'sleep',
-        params: 'seconds: int',
-        desc: '程式暫停 (秒)',
-        example: 'self.platform.sleep(1)',
-        platform: 'both'
-    },
-    // Desktop
-    {
-        name: 'mouse_move',
-        params: 'x: int, y: int',
-        desc: '移動滑鼠 (Desktop)',
-        example: 'self.platform.mouse_move(500, 500)',
-        platform: 'desktop'
-    },
-    {
-        name: 'click',
-        params: 'x: int, y: int',
-        desc: '點擊滑鼠 (Desktop)',
-        example: 'self.platform.click(500, 500)',
-        platform: 'desktop'
     }
 ];
 

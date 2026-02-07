@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
-import { useAppStore, type Script } from '../store';
+import { useAppStore } from '../store';
 import {
     Play, Square, Search, X, Monitor, Smartphone,
     Terminal, Sliders, ChevronRight, ChevronLeft,
-    Trash2, ArrowDown, ArrowUp, WrapText, Filter, XCircle, Download
+    Trash2, ArrowDown, ArrowUp, WrapText, Filter, XCircle, Download,
+    RefreshCw
 } from 'lucide-react';
+import { ScreenshotModal } from '../components/ScreenshotModal';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import clsx from 'clsx';
 
@@ -18,7 +20,7 @@ export const ExecutionView: React.FC = () => {
         scriptTabs, activeTabId,
         openScriptTab, closeScriptTab, setActiveScriptTab, setSubTab,
         updateScriptStatus, appendLog, renameScriptTab, updateScriptParams,
-        apiBaseUrl
+        apiBaseUrl, scripts, devices, fetchDevices
     } = useAppStore();
 
     const API_Base = apiBaseUrl;
@@ -42,11 +44,28 @@ export const ExecutionView: React.FC = () => {
     };
 
     // UI State
-    const [scripts, setScripts] = useState<Script[]>([]);
-    const [devices, setDevices] = useState<string[]>([]);
     const [wsPort, setWsPort] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isRegionPickerOpen, setIsRegionPickerOpen] = useState(false);
+
+    const handleRegionSelect = (tabId: string, region: { x1: number, y1: number, x2: number, y2: number }) => {
+        updateScriptParams(tabId, {
+            region: region
+        });
+    };
     const [isDrawerOpen, setIsDrawerOpen] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    // Correcting the handleRefresh:
+    const onRefreshClick = async () => {
+        if (isRefreshing) return;
+        setIsRefreshing(true);
+        try {
+            await fetchDevices();
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
 
     useEffect(() => {
         // Fetch real TCP port from backend (necessary for Release Mode WebSockets)
@@ -88,35 +107,6 @@ export const ExecutionView: React.FC = () => {
         setTimeout(() => setToastMessage(null), 3000);
     };
 
-    // Fetch scripts
-    useEffect(() => {
-        const fetchScripts = async () => {
-            try {
-                const res = await fetch(`${API_Base}/scripts`);
-                if (!res.ok) throw new Error("Failed to fetch scripts");
-                const data = await res.json();
-                setScripts(data || []);
-            } catch (err) {
-                console.error("Failed to fetch scripts", err);
-                setScripts([]);
-            }
-        };
-
-        const fetchDevices = async () => {
-            try {
-                const res = await fetch(`${API_Base}/devices`);
-                if (!res.ok) throw new Error("Failed to fetch devices");
-                const data = await res.json();
-                setDevices(data || []);
-            } catch (err) {
-                console.error("Failed to fetch devices", err);
-                setDevices([]);
-            }
-        };
-
-        fetchDevices();
-        fetchScripts();
-    }, []);
 
     // Helper: Find Script Definition
     const getScriptDef = (scriptId: string) => scripts.find(s => s.id === scriptId);
@@ -444,15 +434,24 @@ export const ExecutionView: React.FC = () => {
                                                         <span className="font-bold">Target Device ID</span>
                                                     </label>
                                                     {getScriptDef(activeTab.scriptId)?.platform === 'android' ? (
-                                                        <select
-                                                            className="select select-bordered w-full font-mono"
-                                                            value={activeTab.params?.deviceId || ''}
-                                                            onChange={(e) => updateScriptParams(activeTab.tabId, { deviceId: e.target.value })}
-                                                        >
-                                                            <option value="" disabled>Select a device</option>
-                                                            {devices?.map(d => <option key={d} value={d}>{d}</option>)}
-                                                            {devices.length === 0 && <option value="" disabled>No devices found (Is ADB running?)</option>}
-                                                        </select>
+                                                        <div className="flex gap-2">
+                                                            <select
+                                                                className="select select-bordered flex-1 font-mono"
+                                                                value={activeTab.params?.deviceId || ''}
+                                                                onChange={(e) => updateScriptParams(activeTab.tabId, { deviceId: e.target.value })}
+                                                            >
+                                                                <option value="" disabled>Select a device</option>
+                                                                {devices?.map(d => <option key={d} value={d}>{d}</option>)}
+                                                                {devices.length === 0 && <option value="" disabled>No devices found (Is ADB running?)</option>}
+                                                            </select>
+                                                            <button
+                                                                className="btn btn-square btn-outline opacity-40 hover:opacity-100"
+                                                                onClick={(e) => { e.preventDefault(); onRefreshClick(); }}
+                                                                title="Refresh Devices"
+                                                            >
+                                                                <RefreshCw size={16} className={clsx(isRefreshing && "animate-spin")} />
+                                                            </button>
+                                                        </div>
                                                     ) : (
                                                         <div className="text-sm opacity-50 italic px-1">Not required for Desktop platform</div>
                                                     )}
@@ -460,6 +459,7 @@ export const ExecutionView: React.FC = () => {
 
                                             </div>
                                         </div>
+                                        {/* OPENCV & OCR Settings removed as per user request (not supported yet) */}
                                     </div>
                                 ) : (
                                     <LogConsole
@@ -518,6 +518,16 @@ export const ExecutionView: React.FC = () => {
                         <span>{toastMessage}</span>
                     </div>
                 </div>
+            )}
+            {/* Region Picker Modal */}
+            {activeTab && (
+                <ScreenshotModal
+                    isOpen={isRegionPickerOpen}
+                    onClose={() => setIsRegionPickerOpen(false)}
+                    deviceId={activeTab.params.deviceId || ''}
+                    platform={getScriptDef(activeTab.scriptId)?.platform}
+                    onApply={(region) => handleRegionSelect(activeTab.tabId, region)}
+                />
             )}
         </div>
     );

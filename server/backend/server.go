@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"script-platform/server/process_manager"
 	"script-platform/server/utils"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -151,6 +153,7 @@ func SetupRouter() *gin.Engine {
 		api.GET("/scripts/:id/raw-assets/*filename", getAssetRaw)
 
 		api.GET("/devices/:id/screenshot", getDeviceScreenshot)
+		api.GET("/desktop/screenshot", getDesktopScreenshot)
 		api.POST("/scripts/:id/assets", uploadAsset)
 		api.POST("/scripts/:id/assets/mkdir", mkdirAsset)
 		api.POST("/scripts/:id/assets/move", moveAsset)
@@ -158,6 +161,7 @@ func SetupRouter() *gin.Engine {
 
 		// ZIP Import/Export
 		api.GET("/scripts/:id/export", exportScript)
+		api.GET("/scripts/:id/download", exportScript)
 		api.POST("/scripts/import", importScript)
 
 		// Rename
@@ -185,6 +189,11 @@ func Cleanup() {
 		fmt.Printf("Warning: Failed to kill ADB server during cleanup: %v\n", err)
 	} else {
 		fmt.Println("ADB server killed successfully.")
+	}
+
+	// Kill Persistent Python Bridge
+	if manager != nil {
+		manager.StopBridge()
 	}
 }
 
@@ -344,10 +353,105 @@ func getDeviceScreenshot(c *gin.Context) {
 	c.Data(200, "image/png", output)
 }
 
+func getDesktopScreenshot(c *gin.Context) {
+	// 1. Try to use Persistent Python Bridge (Phase 2 Optimization)
+	if err := manager.EnsureBridge(); err == nil {
+		url := manager.GetBridgeURL("/screenshot")
+		client := http.Client{Timeout: 2 * time.Second}
+		resp, err := client.Get(url)
+		if err == nil && resp.StatusCode == 200 {
+			defer resp.Body.Close()
+			data, err := io.ReadAll(resp.Body)
+			if err == nil {
+				c.Data(200, "image/png", data)
+				return
+			}
+		}
+		fmt.Printf("Warning: Python Bridge failed, falling back: %v\n", err)
+	}
+
+	// 2. Fallback to legacy helper (Cold Start)
+	cmdPath := getPythonCmd()
+	helperPath := filepath.Join(manager.CorePath, "service", "platform", "robot", "screenshot_helper.py")
+
+	cmd := exec.Command(cmdPath, helperPath)
+	utils.HideConsole(cmd)
+
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Desktop screenshot failed: " + err.Error()})
+		return
+	}
+
+	c.Data(200, "image/png", out.Bytes())
+}
+
 func uploadAsset(c *gin.Context) {
+	// Support JSON/Base64 for Wails compatibility
+	if strings.Contains(strings.ToLower(c.ContentType()), "application/json") || strings.Contains(strings.ToLower(c.Request.Header.Get("Content-Type")), "application/json") {
+		var req struct {
+			Filename string `json:"filename"`
+			Data     string `json:"data"` // Base64
+			RelPath  string `json:"relPath"`
+			ScriptId string `json:"scriptId"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(400, gin.H{"error": "Invalid JSON: " + err.Error()})
+			return
+		}
+
+		data, err := base64.StdEncoding.DecodeString(req.Data)
+		if err != nil {
+			c.JSON(400, gin.H{"error": "Invalid Base64: " + err.Error()})
+			return
+		}
+
+		scriptID := normalizeID(req.ScriptId)
+		if scriptID == "" {
+			scriptID = normalizeID(c.Param("id"))
+		}
+
+		// Resolve target directory
+		var targetDir string
+		var filename string
+
+		if scriptID != "" {
+			scriptID = strings.ReplaceAll(scriptID, " ", "_")
+			projectRoot := filepath.Join(manager.CorePath, "script", "custom", scriptID)
+
+			fullRelPath := req.RelPath
+			if fullRelPath == "" {
+				fullRelPath = "images/" + req.Filename
+			}
+
+			targetPath := filepath.Join(projectRoot, fullRelPath)
+			targetDir = filepath.Dir(targetPath)
+			filename = filepath.Base(fullRelPath)
+		} else {
+			targetDir = filepath.Join(manager.CorePath, "assets")
+			filename = filepath.Base(req.Filename)
+		}
+
+		if err := os.MkdirAll(targetDir, 0755); err != nil {
+			c.JSON(500, gin.H{"error": "Failed to create directory"})
+			return
+		}
+
+		if err := os.WriteFile(filepath.Join(targetDir, filename), data, 0644); err != nil {
+			c.JSON(500, gin.H{"error": "Failed to save file"})
+			return
+		}
+
+		c.JSON(200, gin.H{"status": "ok"})
+		return
+	}
+
 	file, err := c.FormFile("file")
 	if err != nil {
-		c.JSON(400, gin.H{"error": "No file uploaded"})
+		c.JSON(400, gin.H{"error": "No file uploaded (Check Content-Type)"})
 		return
 	}
 
@@ -723,9 +827,7 @@ func exportScript(c *gin.Context) {
 
 func importScript(c *gin.Context) {
 	// Check Content-Type to handle both Multipart and JSON (Base64)
-	contentType := c.ContentType()
-
-	if strings.Contains(contentType, "application/json") {
+	if strings.Contains(strings.ToLower(c.ContentType()), "application/json") || strings.Contains(strings.ToLower(c.Request.Header.Get("Content-Type")), "application/json") {
 		var req struct {
 			Filename string `json:"filename"`
 			Data     string `json:"data"` // Base64

@@ -10,5 +10,5 @@ start "AutoScript Frontend" cmd /k "npm run dev"
 cd ..
 
 echo Platform started!
-echo Backend: http://localhost:8080
+echo Backend: http://localhost:12857
 echo Frontend: http://localhost:5173

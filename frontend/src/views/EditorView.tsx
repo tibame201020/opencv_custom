@@ -3,7 +3,7 @@ import Editor, { type OnMount } from '@monaco-editor/react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAppStore } from '../store';
-import { Save, Play, FileCode, Plus, Trash2, Camera, HelpCircle, ChevronLeft, ChevronRight, X, File, FileCheck } from 'lucide-react';
+import { Save, Play, FileCode, Plus, Trash2, Camera, HelpCircle, ChevronLeft, ChevronRight, X, File, FileCheck, RefreshCw } from 'lucide-react';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ScreenshotModal } from '../components/ScreenshotModal';
 import { ApiRefModal } from '../components/ApiRefModal';
@@ -20,13 +20,12 @@ export const EditorView: React.FC = () => {
         editorTabs, activeEditorTabId, openEditorTab, closeEditorTab, setActiveEditorTab, updateEditorTabContent, saveEditorTab,
         assetExplorerCollapsed, setAssetExplorerCollapsed,
         scriptExplorerCollapsed, setScriptExplorerCollapsed,
-        apiBaseUrl
+        apiBaseUrl, scripts, devices, fetchScripts, fetchDevices
     } = useAppStore();
 
     const API_Base = apiBaseUrl;
     const navigate = useNavigate();
 
-    const [scripts, setScripts] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(false);
 
     // Create Script Modal State
@@ -36,7 +35,6 @@ export const EditorView: React.FC = () => {
     const [isCreating, setIsCreating] = useState(false);
 
     // Android Workflow State
-    const [devices, setDevices] = useState<string[]>([]);
     const [selectedDevice, setSelectedDevice] = useState<string>("");
     const [isScreenshotModalOpen, setIsScreenshotModalOpen] = useState(false);
 
@@ -47,61 +45,56 @@ export const EditorView: React.FC = () => {
     // Asset Explorer State
     const [assetExplorerWidth, setAssetExplorerWidth] = useState(250);
     const [assetRefreshTrigger, setAssetRefreshTrigger] = useState(0);
+    const [isRefreshingDevices, setIsRefreshingDevices] = useState(false);
+
+    const handleRefreshDevices = async () => {
+        if (isRefreshingDevices) return;
+        setIsRefreshingDevices(true);
+        try {
+            await fetchDevices();
+        } finally {
+            setIsRefreshingDevices(false);
+        }
+    };
 
     const editorRef = useRef<any>(null);
     const activeTab = editorTabs.find(t => t.id === activeEditorTabId);
 
-    useEffect(() => {
-        fetchScripts();
-        fetchDevices();
-    }, []);
+    // Toast State
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const [toastType, setToastType] = useState<'info' | 'error'>('info');
 
-    // Handle initial script selection if none
-    useEffect(() => {
-        if (!editorSelectedScriptId && scripts.length > 0) {
-            // Optional: Auto-select first? Better let user decide.
-        }
-    }, [scripts]);
+    const showToast = (msg: string, type: 'info' | 'error' = 'info') => {
+        setToastMessage(msg);
+        setToastType(type);
+        setTimeout(() => setToastMessage(null), 3000);
+    };
+
 
     // When project changes, if no tab is open for it, open main.py
     useEffect(() => {
-        if (editorSelectedScriptId && editorTabs.filter(t => t.scriptId === editorSelectedScriptId).length === 0) {
-            fetchAndOpenMain(editorSelectedScriptId);
-        }
-    }, [editorSelectedScriptId]);
-
-    const fetchScripts = async () => {
-        try {
-            const res = await fetch(`${API_Base}/scripts`);
-            if (res.ok) {
-                const data = await res.json();
-                setScripts(data || []);
+        if (editorSelectedScriptId) {
+            const projectTabs = editorTabs.filter(t => t.scriptId === editorSelectedScriptId);
+            if (projectTabs.length === 0) {
+                fetchAndOpenMain(editorSelectedScriptId);
+            } else if (!activeEditorTabId || editorTabs.find(t => t.id === activeEditorTabId)?.scriptId !== editorSelectedScriptId) {
+                // If the global active tab belongs to another project, try to activate the first tab of current project
+                setActiveEditorTab(projectTabs[0].id);
             }
-        } catch (err) {
-            console.error("Failed to fetch scripts", err);
         }
-    };
-
-    const fetchDevices = async () => {
-        try {
-            const res = await fetch(`${API_Base}/devices`);
-            if (res.ok) {
-                const data = await res.json();
-                setDevices(data || []);
-                if (data.length > 0 && !selectedDevice) {
-                    setSelectedDevice(data[0]);
-                }
-            }
-        } catch (err) {
-            console.error("Failed to fetch devices", err);
-        }
-    };
+    }, [editorSelectedScriptId, editorTabs, activeEditorTabId, setActiveEditorTab]);
 
     const fetchAndOpenMain = async (id: string) => {
         setIsLoading(true);
         try {
             const res = await fetch(`${API_Base}/scripts/${id}/content`);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (!res.ok) {
+                if (res.status === 404) {
+                    console.warn("Main content not found, script might be deleted.");
+                    setEditorSelectedScriptId(null);
+                }
+                throw new Error(`HTTP ${res.status}`);
+            }
             const data = await res.json();
             openEditorTab(id, `${id}.py`, `${id}.py`, data.content, 'code');
         } catch (err) {
@@ -137,7 +130,14 @@ export const EditorView: React.FC = () => {
                 : `${API_Base}/scripts/${editorSelectedScriptId}/content?path=${encodeURIComponent(path)}`;
 
             const res = await fetch(url);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (!res.ok) {
+                if (res.status === 404) {
+                    // Close tab if file is missing
+                    closeEditorTab(existingId);
+                    showToast?.(t('ui.common.error') + ": File not found", 'error');
+                }
+                throw new Error(`HTTP ${res.status}`);
+            }
 
             if (isImage) {
                 openEditorTab(editorSelectedScriptId, path, path.split('/').pop() || path, url, 'image');
@@ -349,6 +349,13 @@ export const EditorView: React.FC = () => {
                                             <option value="" disabled>Device</option>
                                             {devices?.map(d => <option key={d} value={d}>{d}</option>)}
                                         </select>
+                                        <button
+                                            className="btn btn-xs join-item btn-ghost h-7 w-8"
+                                            onClick={() => handleRefreshDevices()}
+                                            title="Refresh Devices"
+                                        >
+                                            <RefreshCw size={12} className={clsx(isRefreshingDevices && "animate-spin")} />
+                                        </button>
                                         <button className="btn btn-xs join-item btn-ghost h-7 w-8" onClick={() => setIsScreenshotModalOpen(true)} disabled={!selectedDevice}>
                                             <Camera size={12} />
                                         </button>
@@ -370,9 +377,8 @@ export const EditorView: React.FC = () => {
                     )}
                 </header>
 
-                {/* 2. Editor Tab Bar */}
                 <div className="h-9 bg-base-200 border-b border-base-300 flex items-center overflow-x-auto overflow-y-hidden no-scrollbar shrink-0">
-                    {editorTabs.map(tab => (
+                    {editorTabs.filter(t => t.scriptId === editorSelectedScriptId).map(tab => (
                         <div
                             key={tab.id}
                             className={clsx(
@@ -495,6 +501,17 @@ export const EditorView: React.FC = () => {
             <ConfirmModal isOpen={isDeleteModalOpen} title={t('ui.management.delete')} message={t('ui.management.deleteWarning')} onConfirm={executeDeleteScript} onCancel={() => setIsDeleteModalOpen(false)} type="danger" confirmText={t('ui.management.delete')} />
             <ScreenshotModal isOpen={isScreenshotModalOpen} onClose={() => { setIsScreenshotModalOpen(false); setAssetRefreshTrigger(prev => prev + 1); }} deviceId={selectedDevice} scriptId={editorSelectedScriptId} />
             <ApiRefModal isOpen={isApiRefModalOpen} onClose={() => setIsApiRefModalOpen(false)} />
+
+            {/* Toast Notifications */}
+            {toastMessage && (
+                <div className="toast toast-bottom toast-end z-[9999]">
+                    <div className={clsx("active:scale-95 transition-transform alert shadow-lg font-bold border-none",
+                        toastType === 'error' ? "alert-error text-error-content" : "alert-info text-info-content"
+                    )}>
+                        <span>{toastMessage}</span>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

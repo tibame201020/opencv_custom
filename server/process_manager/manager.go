@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,6 +25,15 @@ type ScriptManager struct {
 	CmdPath     string // Path to python OR executable
 	EntryScript string // Path to entry.py (optional if CmdPath is self-contained)
 	cmdFactory  func(name string, arg ...string) *exec.Cmd
+
+	// Optimization: Metadata Cache
+	cachedScripts []map[string]string
+	lastCache     time.Time
+	cacheTTL      time.Duration
+
+	// Optimization: Persistent Python Bridge
+	bridgeCmd  *exec.Cmd
+	bridgePort int
 }
 
 type ScriptProcess struct {
@@ -43,15 +53,38 @@ func NewScriptManager(corePath, cmdPath, entryScript string) *ScriptManager {
 		CmdPath:     cmdPath,
 		EntryScript: entryScript,
 		cmdFactory:  exec.Command,
+		cacheTTL:    30 * time.Second, // Cache for 30 seconds
+		bridgePort:  5001,             // Fixed or random port
 	}
 }
 
 // SetCommandFactory allows overriding the command execution for testing
+func (sm *ScriptManager) invalidateCacheLocked() {
+	sm.cachedScripts = nil
+	sm.lastCache = time.Time{}
+}
+
 func (sm *ScriptManager) SetCommandFactory(f func(name string, arg ...string) *exec.Cmd) {
 	sm.cmdFactory = f
 }
 
 func (sm *ScriptManager) ListScripts() ([]map[string]string, error) {
+	sm.mu.RLock()
+	if time.Since(sm.lastCache) < sm.cacheTTL && sm.cachedScripts != nil {
+		defer sm.mu.RUnlock()
+		return sm.cachedScripts, nil
+	}
+	sm.mu.RUnlock()
+
+	// Cache miss or expired
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	// Double check under write lock
+	if time.Since(sm.lastCache) < sm.cacheTTL && sm.cachedScripts != nil {
+		return sm.cachedScripts, nil
+	}
+
 	var cmd *exec.Cmd
 	if sm.EntryScript != "" {
 		// Python Mode: python entry.py list
@@ -64,12 +97,14 @@ func (sm *ScriptManager) ListScripts() ([]map[string]string, error) {
 	utils.HideConsole(cmd)
 
 	output, err := cmd.CombinedOutput()
+	rawOutput := string(output)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list scripts: %v, output: %s", err, string(output))
+		fmt.Printf("[ListScripts] Error output: %s\n", rawOutput)
+		return nil, fmt.Errorf("failed to list scripts: %v, output: %s", err, rawOutput)
 	}
+	fmt.Printf("[ListScripts] Raw output first 100 chars: %.100s\n", rawOutput)
 
 	// Robust JSON extraction: Find the first '[' and last ']'
-	// This helps ignore noise like "Added new directory to watcher" or warnings
 	raw := string(output)
 	start := strings.Index(raw, "[")
 	end := strings.LastIndex(raw, "]")
@@ -85,7 +120,70 @@ func (sm *ScriptManager) ListScripts() ([]map[string]string, error) {
 		return nil, fmt.Errorf("failed to parse script list: %v, extracted: %s", err, jsonPart)
 	}
 
+	// Update Cache
+	sm.cachedScripts = scripts
+	sm.lastCache = time.Now()
+
 	return scripts, nil
+}
+
+func (sm *ScriptManager) EnsureBridge() error {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	if sm.bridgeCmd != nil && sm.bridgeCmd.Process != nil {
+		// Check if still alive
+		if err := sm.bridgeCmd.Process.Signal(os.Interrupt); err == nil {
+			// Alive (or at least responding to signal)
+			return nil
+		}
+		// Died or unresponsive, restart
+		sm.bridgeCmd = nil
+	}
+
+	bridgePath := filepath.Join(sm.CorePath, "service", "platform", "robot", "python_bridge.py")
+	portStr := fmt.Sprintf("%d", sm.bridgePort)
+
+	cmd := exec.Command(sm.CmdPath, bridgePath, portStr)
+	utils.HideConsole(cmd)
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start python bridge: %v", err)
+	}
+
+	sm.bridgeCmd = cmd
+
+	// Wait for health check (max 5 seconds)
+	url := fmt.Sprintf("http://127.0.0.1:%d/health", sm.bridgePort)
+	client := http.Client{Timeout: 500 * time.Millisecond}
+
+	start := time.Now()
+	for time.Since(start) < 5*time.Second {
+		resp, err := client.Get(url)
+		if err == nil && resp.StatusCode == 200 {
+			resp.Body.Close()
+			fmt.Printf("Python Bridge started on port %d\n", sm.bridgePort)
+			return nil
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+
+	return fmt.Errorf("python bridge failed to respond to health check")
+}
+
+func (sm *ScriptManager) GetBridgeURL(endpoint string) string {
+	return fmt.Sprintf("http://127.0.0.1:%d%s", sm.bridgePort, endpoint)
+}
+
+func (sm *ScriptManager) StopBridge() error {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	if sm.bridgeCmd != nil {
+		fmt.Println("Stopping Python Bridge...")
+		return utils.KillProcess(sm.bridgeCmd)
+	}
+	return nil
 }
 
 func (sm *ScriptManager) RunScript(scriptID string, params string) (string, error) {
@@ -198,7 +296,7 @@ func (sm *ScriptManager) StopScript(runID string) error {
 	}
 
 	process.Cancel() // Kills the context, thus the process
-	return nil
+	return utils.KillProcess(process.Cmd)
 }
 
 func (sm *ScriptManager) GetScriptPath(scriptID string) (string, error) {
@@ -396,9 +494,8 @@ from service.core.opencv.dto import OcrRegion
 
 class %s(ScriptInterface):
     def __init__(self, platform: RobotPlatform):
-        self.platform = platform
+        super().__init__(platform)
         self.platform_type = "desktop"
-        super().__init__()
 
     def execute(self):
         print(f"Starting %s (Desktop)...")
@@ -425,9 +522,8 @@ from service.core.opencv.dto import OcrRegion
 
 class %s(ScriptInterface):
     def __init__(self, platform: AdbPlatform):
-        self.platform = platform
+        super().__init__(platform)
         self.platform_type = "android"
-        super().__init__()
 
     def execute(self):
         print(f"Starting %s (Android)...")
@@ -459,6 +555,11 @@ class %s(ScriptInterface):
         print("Done.")
 `, className, validName)
 	}
+
+	// Invalidate Cache
+	sm.mu.Lock()
+	sm.invalidateCacheLocked()
+	sm.mu.Unlock()
 
 	return os.WriteFile(fullPath, []byte(template), 0644)
 }
@@ -502,11 +603,18 @@ func (sm *ScriptManager) DeleteScript(scriptID string) error {
 
 	if scriptName == parentName && strings.HasPrefix(cleanPath, "script/custom/") {
 		// It is the new structure, remove the folder
-		return os.RemoveAll(parentDir)
+		err = os.RemoveAll(parentDir)
 	} else {
 		// Legacy flat file structure or just safety fallback
-		return os.Remove(fullPath)
+		err = os.Remove(fullPath)
 	}
+
+	// Invalidate Cache
+	sm.mu.Lock()
+	sm.invalidateCacheLocked()
+	sm.mu.Unlock()
+
+	return err
 }
 
 func (sm *ScriptManager) RenameScript(scriptID string, newName string) error {
@@ -572,6 +680,11 @@ func (sm *ScriptManager) RenameScript(scriptID string, newName string) error {
 		fmt.Printf("Warning: Failed to delete old folder after copy: %v (You may need to delete it manually)\n", err)
 	}
 
+	// Invalidate Cache
+	sm.mu.Lock()
+	sm.invalidateCacheLocked()
+	sm.mu.Unlock()
+
 	return nil
 }
 
@@ -636,8 +749,10 @@ type FileNode struct {
 }
 
 func (sm *ScriptManager) ListAssets(scriptID string) ([]*FileNode, error) {
+	fmt.Printf("[ListAssets] Requested ID: %s\n", scriptID)
 	scripts, err := sm.ListScripts()
 	if err != nil {
+		fmt.Printf("[ListAssets] ListScripts error: %v\n", err)
 		return nil, err
 	}
 
@@ -645,24 +760,30 @@ func (sm *ScriptManager) ListAssets(scriptID string) ([]*FileNode, error) {
 	for _, s := range scripts {
 		if strings.EqualFold(s["id"], scriptID) {
 			scriptPath = filepath.FromSlash(s["path"])
-			fmt.Printf("[ListAssets] ID=%s, RawPath=%s, FixedPath=%s\n", scriptID, s["path"], scriptPath)
+			fmt.Printf("[ListAssets] Match found: ID=%s, Path=%s\n", s["id"], scriptPath)
 			break
 		}
 	}
 
 	if scriptPath == "" {
+		fmt.Printf("[ListAssets] Script ID %s not found in listed scripts\n", scriptID)
 		return nil, fmt.Errorf("script not found")
 	}
 
 	projectRoot := filepath.Join(sm.CorePath, filepath.Dir(scriptPath))
-	fmt.Printf("[ListAssets] ProjectRoot=%s\n", projectRoot)
+	fmt.Printf("[ListAssets] Final ProjectRoot: %s\n", projectRoot)
 
 	if _, err := os.Stat(projectRoot); os.IsNotExist(err) {
-		fmt.Printf("[ListAssets] ProjectRoot does not exist\n")
+		fmt.Printf("[ListAssets] ERROR: ProjectRoot does not exist: %s\n", projectRoot)
 		return []*FileNode{}, nil // Return empty slice, not nil
 	}
 
-	return sm.walkDir(projectRoot, ""), nil
+	assets := sm.walkDir(projectRoot, "")
+	if assets == nil {
+		assets = []*FileNode{}
+	}
+	fmt.Printf("[ListAssets] WalkDir returned %d assets\n", len(assets))
+	return assets, nil
 }
 
 func (sm *ScriptManager) walkDir(fullPath, relPath string) []*FileNode {
@@ -918,6 +1039,9 @@ func (sm *ScriptManager) ExportScriptZip(scriptID string, writer io.Writer) erro
 }
 
 func (sm *ScriptManager) ImportScriptZip(reader io.ReaderAt, size int64, overrideName string) error {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
 	zr, err := zip.NewReader(reader, size)
 	if err != nil {
 		return err
@@ -1048,5 +1172,6 @@ func (sm *ScriptManager) ImportScriptZip(reader io.ReaderAt, size int64, overrid
 		}
 	}
 
+	sm.invalidateCacheLocked()
 	return nil
 }

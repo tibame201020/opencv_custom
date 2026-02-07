@@ -3,7 +3,7 @@ Robot 平台服務 - 使用 pyautogui 控制本機桌面
 """
 import uuid
 import os
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 import numpy as np
 import pyautogui
 from PIL import Image
@@ -15,54 +15,66 @@ from service.core.opencv.dto import MatchPattern
 
 
 class RobotPlatform(PlatformService):
-    """Robot 平台服務類別"""
+    """Robot 平台服務類別 (Desktop)"""
     
     def __init__(self, open_cv_service: OpenCvService):
-        super().__init__()
-        self.open_cv_service = open_cv_service
+        super().__init__(open_cv_service)
+        # 停用 pyautogui 的安全故障 (自定義腳本可能需要移動到角落)
+        pyautogui.FAILSAFE = False
     
-    def get_open_cv_service(self) -> OpenCvService:
-        """取得 OpenCV 服務實例"""
-        return self.open_cv_service
+    # --- 平台生命週期 ---
     
-    def snapshot(self, save_path: str) -> str:
-        """
-        使用 Robot 截取螢幕快照
-        
-        Args:
-            save_path: 儲存快照影像路徑
-            
-        Returns:
-            儲存的影像絕對路徑
-        """
-        # 使用 pyautogui 截圖
-        screenshot = pyautogui.screenshot()
-        # 轉換為 OpenCV 格式並儲存
-        screenshot_np = np.array(screenshot)
-        screenshot_bgr = cv2.cvtColor(screenshot_np, cv2.COLOR_RGB2BGR)
-        cv2.imwrite(save_path, screenshot_bgr)
-        return os.path.abspath(save_path)
-    
-    def find_image(self, target_image_path: str) -> MatchPattern:
-        """
-        在螢幕上尋找目標影像
-        
-        Args:
-            target_image_path: 目標影像路徑
-            
-        Returns:
-            MatchPattern 物件
-        """
-        snapshot_image_name = f"{uuid.uuid4()}.png"
-        snapshot_path = self.snapshot(snapshot_image_name)
-        
+    def start(self) -> bool:
+        return True
+
+    def stop(self) -> bool:
+        return True
+
+    # --- 平台原子操作實作 ---
+
+    def snapshot(self) -> Optional[np.ndarray]:
+        """獲取螢幕截圖 Mat (BGR 格式)"""
         try:
-            snapshot_mat = MatUtility.get_mat_from_file(snapshot_path)
-            target_mat = MatUtility.get_mat_from_file(target_image_path)
-            result = self.open_cv_service.find_match(snapshot_mat, target_mat)
-            return result
-        finally:
-            # 清理臨時檔案
-            if os.path.exists(snapshot_path):
-                os.remove(snapshot_path)
+            screenshot = pyautogui.screenshot()
+            screenshot_np = np.array(screenshot)
+            # RGB 轉 BGR
+            return cv2.cvtColor(screenshot_np, cv2.COLOR_RGB2BGR)
+        except Exception as e:
+            print(f"[Robot] Snapshot failed: {e}")
+            return None
+
+    def click(self, x: int, y: int) -> bool:
+        """點擊本機座標"""
+        try:
+            pyautogui.click(x, y)
+            return True
+        except Exception:
+            return False
+
+    def swipe(self, x1: int, y1: int, x2: int, y2: int, duration: int = 500) -> bool:
+        """模擬拖曳/滑動"""
+        try:
+            # duration 轉為秒
+            pyautogui.moveTo(x1, y1)
+            pyautogui.dragTo(x2, y2, duration=duration/1000.0)
+            return True
+        except Exception:
+            return False
+
+    def type_text(self, text: str) -> bool:
+        """模擬鍵盤文字輸入"""
+        try:
+            pyautogui.write(text)
+            return True
+        except Exception:
+            return False
+
+    def key_event(self, key_code: Union[int, str]) -> bool:
+        """模擬按鍵事件"""
+        try:
+            # pyautogui.press 支援 'enter', 'esc' 等字串
+            pyautogui.press(str(key_code))
+            return True
+        except Exception:
+            return False
 

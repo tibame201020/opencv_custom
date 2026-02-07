@@ -24,9 +24,9 @@ func main() {
 
 	// Start a background listener for WebSockets/API
 	// We use a real TCP port because WebView2 doesn't support WebSockets on virtual origins (wails.localhost)
-	ln, err := net.Listen("tcp", ":8080")
+	ln, err := net.Listen("tcp", ":12857")
 	if err != nil {
-		// If 8080 is taken, pick any free port
+		// If 12857 is taken, pick any free port
 		ln, err = net.Listen("tcp", "127.0.0.1:0")
 		if err != nil {
 			println("Critical Error: Could not find any free port for backend")

@@ -3,13 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { MoreHorizontal, Upload, Trash2, Edit2, Search, Download } from 'lucide-react';
 import { type Script } from '../store';
 import clsx from 'clsx';
+import axios from 'axios';
 import { useAppStore } from '../store';
 
 export const ManagementView: React.FC = () => {
     const { t } = useTranslation();
-    const { apiBaseUrl } = useAppStore();
+    const { apiBaseUrl, scripts, fetchScripts } = useAppStore();
     const API_Base = apiBaseUrl;
-    const [scripts, setScripts] = useState<Script[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
@@ -23,29 +23,24 @@ export const ManagementView: React.FC = () => {
     const [importConflictName, setImportConflictName] = useState<string | null>(null);
     const [importNewName, setImportNewName] = useState('');
 
+    // Progress state
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+
     React.useEffect(() => {
-        fetchScripts();
+        handleFetch();
     }, []);
 
-    const fetchScripts = async () => {
+    const handleFetch = async () => {
         setIsLoading(true);
-        try {
-            const res = await fetch(`${API_Base}/scripts`);
-            if (res.ok) {
-                const data = await res.json();
-                setScripts(data || []);
-            }
-        } catch (error) {
-            console.error('Failed to fetch scripts', error);
-        } finally {
-            setIsLoading(false);
-        }
+        await fetchScripts();
+        setIsLoading(false);
     };
 
     const handleDelete = async (id: string) => {
         try {
             await fetch(`${API_Base}/scripts/${id}`, { method: 'DELETE' });
-            fetchScripts();
+            handleFetch();
             setDeletingScriptId(null);
         } catch (error) {
             console.error('Failed to delete script', error);
@@ -70,7 +65,7 @@ export const ManagementView: React.FC = () => {
             });
 
             if (res.ok) {
-                fetchScripts();
+                handleFetch();
                 setIsRenameModalOpen(false);
                 setEditingScript(null);
             } else {
@@ -89,54 +84,63 @@ export const ManagementView: React.FC = () => {
     };
 
     const handleImport = async (file: File, requestedNewName?: string) => {
-        console.log("Preparing to upload:", file.name, "Size:", file.size);
+        console.log("Preparing to upload (Base64):", file.name, "Size:", file.size);
 
-        // Convert file to Base64 to bypass Wails/WebView2 FormData issues
-        // Issue: multipart/form-data bodies are being stripped (Size 0) in Wails Proxy
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = async () => {
-            // Handle empty file case
-            if (!reader.result) {
-                console.error("FileReader result is empty");
-                return;
-            }
-            const base64String = (reader.result as string).split(',')[1];
+        setIsUploading(true);
+        setUploadProgress(0);
 
-            try {
-                // Send as JSON with Base64 data
-                const res = await fetch(`${API_Base}/scripts/import`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        filename: file.name,
-                        data: base64String,
-                        newName: requestedNewName || undefined
-                    })
-                });
+        try {
+            // Read file as Base64
+            const base64Data = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const res = reader.result as string;
+                    resolve(res.split(',')[1]);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
 
-                if (res.ok) {
-                    fetchScripts();
-                    setImportConflictName(null);
-                    setPendingZipFile(null);
-                    setImportNewName('');
-                } else if (res.status === 409) {
-                    const data = await res.json();
-                    setImportConflictName(data.suggestedName || file.name.replace(".zip", ""));
-                    setPendingZipFile(file);
-                    setImportNewName(data.suggestedName + "_copy");
-                } else {
-                    console.error("Import failed with status", res.status);
+            const res = await axios.post(`${API_Base}/scripts/import`, {
+                filename: file.name,
+                data: base64Data,
+                newName: requestedNewName || ''
+            }, {
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                onUploadProgress: (progressEvent) => {
+                    const total = progressEvent.total || (base64Data.length);
+                    const percentCompleted = Math.round((progressEvent.loaded * 100) / total);
+                    setUploadProgress(Math.min(percentCompleted, 99));
                 }
-            } catch (err: any) {
+            });
+
+            if (res.status === 200) {
+                setUploadProgress(100);
+                // Give it a moment to show 100%
+                await new Promise(resolve => setTimeout(resolve, 300));
+                handleFetch();
+                setImportConflictName(null);
+                setPendingZipFile(null);
+                setImportNewName('');
+            }
+        } catch (err: any) {
+            if (err.response && err.response.status === 409) {
+                const data = err.response.data;
+                setImportConflictName(data.suggestedName || file.name.replace(".zip", ""));
+                setPendingZipFile(file);
+                setImportNewName(data.suggestedName + "_copy");
+            } else {
                 console.error("Import failed", err);
             }
-        };
-        reader.onerror = (error) => {
-            console.error("Error reading file:", error);
-        };
+        } finally {
+            // Ensure modal stays visible for at least 800ms total for better UX
+            setTimeout(() => {
+                setIsUploading(false);
+                setUploadProgress(0);
+            }, 500);
+        }
     };
 
     const filtered = scripts.filter(s =>
@@ -234,7 +238,7 @@ export const ManagementView: React.FC = () => {
                                         <Edit2 className="w-3.5 h-3.5" />
                                     </button>
                                     <a
-                                        href={`${API_Base}/scripts/${script.id}/download`}
+                                        href={`${API_Base}/scripts/${script.id}/export`}
                                         download
                                         className="btn btn-ghost btn-xs text-info tooltip tooltip-bottom"
                                         data-tip={t('management.export', 'Export')}
@@ -352,6 +356,24 @@ export const ManagementView: React.FC = () => {
                         >
                             {t('common.confirm', 'Confirm')}
                         </button>
+                    </div>
+                </div>
+            </dialog>
+            {/* Progress Modal */}
+            <dialog className={clsx("modal", isUploading && "modal-open")}>
+                <div className="modal-box text-center max-w-sm">
+                    <h3 className="font-bold text-lg mb-2">{t('management.uploading', 'Importing Script...')}</h3>
+                    <p className="text-sm text-base-content/60 mb-6">
+                        {uploadProgress < 100 ? t('management.uploading_desc', 'Uploading files...') : t('management.processing_desc', 'Processing ZIP archive...')}
+                    </p>
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="relative w-full h-4 bg-base-300 rounded-full overflow-hidden">
+                            <div
+                                className="absolute top-0 left-0 h-full bg-primary transition-all duration-300 ease-out"
+                                style={{ width: `${uploadProgress}%` }}
+                            />
+                        </div>
+                        <span className="text-2xl font-bold font-mono text-primary">{uploadProgress}%</span>
                     </div>
                 </div>
             </dialog>
