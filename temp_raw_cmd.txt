@@ -1,1 +1,0 @@
-[{"id": "Gearscript", "name": "Gearscript", "platform": "android", "description": "User custom script", "path": "script/custom/Gearscript/Gearscript.py"}, {"id": "sd_gundam_重複關卡", "name": "Sd_gundam_重複關卡", "platform": "android", "description": "User custom script", "path": "script/custom/sd_gundam_重複關卡/sd_gundam_重複關卡.py"}]
