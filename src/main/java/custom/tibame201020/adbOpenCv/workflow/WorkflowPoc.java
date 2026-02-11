@@ -6,6 +6,9 @@ import java.util.function.Predicate;
 
 /**
  * n8n workflow POC - 驗證簡易工作流引擎架構
+ * 支援：1. Convert Node - 數據轉換節點
+ * 2. If Node - 條件判斷節點
+ * 3. Sub Workflow Node - 支援子工作流作為節點，用於組合 for/while/case 等
  */
 public class WorkflowPoc {
 
@@ -19,7 +22,7 @@ public class WorkflowPoc {
 
     static void demo1SimpleConvertWorkflow() {
         System.out.println("--- Demo 1: Simple Convert Workflow ---");
-        Workflow workflow = new Workflow();
+        Workflow<Object, Object> workflow = new Workflow<>();
         
         WorkflowNode node1 = WorkflowNode.createConvertNode("n1", "toUpperCase", 
             s -> ((String)s).toUpperCase());
@@ -29,7 +32,7 @@ public class WorkflowPoc {
         workflow.addNode(node1).addNode(node2)
                 .addEdge(new WorkflowEdge("e1", "n1", "n2", "success"));
         
-        ExecutionResult result = new FlowEngine(workflow).execute("hello");
+        ExecutionResult<Object> result = new FlowEngine<>(workflow).execute("hello");
         System.out.println("Input: hello");
         System.out.println("Output: " + result.output());
         System.out.println("Execution path: " + result.executionPath());
@@ -38,7 +41,7 @@ public class WorkflowPoc {
 
     static void demo2ConvertAndIfWorkflow() {
         System.out.println("--- Demo 2: Convert + If Workflow ---");
-        Workflow workflow = new Workflow();
+        Workflow<Object, Object> workflow = new Workflow<>();
         
         WorkflowNode node1 = WorkflowNode.createConvertNode("n1", "toLowerCase",
             s -> ((String)s).toLowerCase());
@@ -55,11 +58,11 @@ public class WorkflowPoc {
                 .addEdge(new WorkflowEdge("e3", "nIf", "nPath2", "false"));
         
         System.out.println("--- Test 1: Long string ---");
-        ExecutionResult result1 = new FlowEngine(workflow).execute("HELLO WORLD");
+        ExecutionResult<Object> result1 = new FlowEngine<>(workflow).execute("HELLO WORLD");
         System.out.println("Input: HELLO WORLD -> Output: " + result1.output());
         
         System.out.println("--- Test 2: Short string ---");
-        ExecutionResult result2 = new FlowEngine(workflow).execute("HI");
+        ExecutionResult<Object> result2 = new FlowEngine<>(workflow).execute("HI");
         System.out.println("Input: HI -> Output: " + result2.output());
         System.out.println();
     }
@@ -67,20 +70,20 @@ public class WorkflowPoc {
     static void demo3SubWorkflowAsNode() {
         System.out.println("--- Demo 3: Sub Workflow as Node (For Loop Demo) ---");
         
-        Workflow subWorkflow = new Workflow();
+        Workflow<Object, Object> subWorkflow = new Workflow<>();
         subWorkflow.addNode(WorkflowNode.createConvertNode("sub1", "uppercase", 
                 s -> ((String)s).toUpperCase()))
                    .addNode(WorkflowNode.createConvertNode("sub2", "addUnderscore", 
                 s -> s + "_"))
                    .addEdge(new WorkflowEdge("subE1", "sub1", "sub2", "success"));
         
-        Workflow mainWorkflow = new Workflow();
+        Workflow<Object, Object> mainWorkflow = new Workflow<>();
         WorkflowNode subNode = WorkflowNode.createSubWorkflowNode("subWf", "forEachChar", 
             subWorkflow, input -> {
                 String s = (String) input;
                 StringBuilder result = new StringBuilder();
                 for (String ch : s.split("")) {
-                    result.append(new FlowEngine(subWorkflow).execute(ch).output());
+                    result.append(new FlowEngine<>(subWorkflow).execute(ch).output());
                 }
                 return result.toString();
             });
@@ -89,7 +92,7 @@ public class WorkflowPoc {
                     .addNode(subNode)
                     .addEdge(new WorkflowEdge("e1", "m1", "subWf", "success"));
         
-        ExecutionResult result = new FlowEngine(mainWorkflow).execute("abc");
+        ExecutionResult<Object> result = new FlowEngine<>(mainWorkflow).execute("abc");
         System.out.println("Input: abc");
         System.out.println("Output: " + result.output());
         System.out.println("Execution path: " + result.executionPath());
@@ -99,19 +102,19 @@ public class WorkflowPoc {
     static void demo4CaseWhenWithSubWorkflow() {
         System.out.println("--- Demo 4: Case When with Sub Workflow ---");
         
-        Workflow caseEven = new Workflow();
+        Workflow<Object, Object> caseEven = new Workflow<>();
         caseEven.addNode(WorkflowNode.createConvertNode("ce1", "toEvenMsg", 
             input -> "EVEN: " + input));
         
-        Workflow caseOdd = new Workflow();
+        Workflow<Object, Object> caseOdd = new Workflow<>();
         caseOdd.addNode(WorkflowNode.createConvertNode("co1", "toOddMsg", 
             input -> "ODD: " + input));
         
-        Workflow caseThree = new Workflow();
+        Workflow<Object, Object> caseThree = new Workflow<>();
         caseThree.addNode(WorkflowNode.createConvertNode("ct1", "toThreeMsg", 
             input -> "DIVISIBLE BY 3: " + input));
         
-        Workflow mainWorkflow = new Workflow();
+        Workflow<Object, Object> mainWorkflow = new Workflow<>();
         mainWorkflow.addNode(WorkflowNode.createIfNode("if1", "isEven", 
             input -> ((Integer) input) % 2 == 0))
                     .addNode(WorkflowNode.createSubWorkflowNode("case1", "caseEven", caseEven, input -> input))
@@ -126,89 +129,89 @@ public class WorkflowPoc {
         
         System.out.println("--- Test numbers with case logic ---");
         for (int num : new int[]{2, 3, 9, 10}) {
-            System.out.println("Input: " + num + " -> Output: " + new FlowEngine(mainWorkflow).execute(num).output());
+            System.out.println("Input: " + num + " -> Output: " + new FlowEngine<>(mainWorkflow).execute(num).output());
         }
         System.out.println();
     }
 }
 
-class WorkflowEdge {
-    String id, fromNodeId, toNodeId, condition;
-    WorkflowEdge(String id, String fromNodeId, String toNodeId, String condition) {
-        this.id = id; this.fromNodeId = fromNodeId;
-        this.toNodeId = toNodeId; this.condition = condition;
-    }
-    public String id() { return id; }
-    public String fromNodeId() { return fromNodeId; }
-    public String toNodeId() { return toNodeId; }
-    public String condition() { return condition; }
-}
+// ========== 核心數據結構 ==========
 
-class NodeOutput {
-    boolean result; Object output;
-    NodeOutput(boolean result, Object output) {
-        this.result = result; this.output = output;
-    }
-    public boolean result() { return result; }
-    public Object output() { return output; }
-}
+/** 工作流邊 - 連接兩個節點 */
+record WorkflowEdge(String id, String fromNodeId, String toNodeId, String condition) {}
 
-class NodeArg {
-    Object input; Predicate<Object> predicate;
-    NodeArg(Object input, Predicate<Object> predicate) {
-        this.input = input; this.predicate = predicate;
-    }
-    public Object input() { return input; }
-}
+/** 工作流節點執行結果 */
+record NodeOutput<O>(boolean result, O output) {}
 
+/** 節點輸入參數 */
+record NodeArg<I>(I input, Predicate<I> predicate) {}
+
+/** 工作流節點類型 */
 enum NodeType { CONVERT, IF, SUB_WORKFLOW }
 
+/**
+ * 工作流節點 - 支持三種類型
+ */
 class WorkflowNode {
-    String id, name; public NodeType type; Node executor;
-    public Workflow subWorkflow; Function<Object, Object> transformer;
+    private final String id;
+    private final String name;
+    public final NodeType type;
+    private final Node<Object, Object> executor;
+    public final Workflow<?, ?> subWorkflow;
+    private final Function<Object, Object> transformer;
 
-    private WorkflowNode(String id, String name, NodeType type, Node executor, 
-                        Workflow subWorkflow, Function<Object, Object> transformer) {
-        this.id = id; this.name = name; this.type = type; this.executor = executor;
-        this.subWorkflow = subWorkflow; this.transformer = transformer;
+    private WorkflowNode(String id, String name, NodeType type, Node<Object, Object> executor, 
+                        Workflow<?, ?> subWorkflow, Function<Object, Object> transformer) {
+        this.id = id;
+        this.name = name;
+        this.type = type;
+        this.executor = executor;
+        this.subWorkflow = subWorkflow;
+        this.transformer = transformer;
     }
 
     static WorkflowNode createConvertNode(String id, String name, Function<Object, Object> converter) {
         return new WorkflowNode(id, name, NodeType.CONVERT, 
-            arg -> new NodeOutput(true, converter.apply(arg.input())), null, null);
+            arg -> new NodeOutput<>(true, converter.apply(arg.input())), null, null);
     }
 
     static WorkflowNode createIfNode(String id, String name, Predicate<Object> condition) {
         return new WorkflowNode(id, name, NodeType.IF, 
-            arg -> new NodeOutput(condition.test(arg.input()), arg.input()), null, null);
+            arg -> new NodeOutput<>(condition.test(arg.input()), arg.input()), null, null);
     }
 
-    static WorkflowNode createSubWorkflowNode(String id, String name, Workflow subWorkflow, 
+    static WorkflowNode createSubWorkflowNode(String id, String name, Workflow<?, ?> subWorkflow, 
                                               Function<Object, Object> transformer) {
         return new WorkflowNode(id, name, NodeType.SUB_WORKFLOW, 
-            arg -> new NodeOutput(true, transformer.apply(arg.input())), subWorkflow, transformer);
+            arg -> new NodeOutput<>(true, transformer.apply(arg.input())), subWorkflow, transformer);
     }
 
     public String getId() { return id; }
-    public Node getExecutor() { return executor; }
+    public Node<Object, Object> getExecutor() { return executor; }
 }
 
-interface Node {
-    NodeOutput execute(NodeArg arg);
+/**
+ * 函數式節點介面 - 支援泛型
+ */
+interface Node<I, O> {
+    NodeOutput<O> execute(NodeArg<I> arg);
 }
 
-class Workflow {
-    Map<String, WorkflowNode> nodes = new LinkedHashMap<>();
-    List<WorkflowEdge> edges = new ArrayList<>();
-    String startNodeId;
+/**
+ * 工作流定義 - 支援泛型
+ */
+class Workflow<I, O> {
+    private final Map<String, WorkflowNode> nodes = new LinkedHashMap<>();
+    private final List<WorkflowEdge> edges = new ArrayList<>();
+    private String startNodeId;
 
-    Workflow addNode(WorkflowNode node) {
+    Workflow<I, O> addNode(WorkflowNode node) {
         nodes.put(node.getId(), node);
         if (startNodeId == null) startNodeId = node.getId();
         return this;
     }
 
-    Workflow addEdge(WorkflowEdge edge) {
+    Workflow<I, O> addEdge(WorkflowEdge edge) {
         edges.add(edge);
         return this;
     }
@@ -218,20 +221,22 @@ class Workflow {
     public String getStartNodeId() { return startNodeId; }
 }
 
-class ExecutionResult {
-    Object output; List<String> executionPath;
-    ExecutionResult(Object output, List<String> executionPath) {
-        this.output = output; this.executionPath = executionPath;
+/**
+ * 工作流執行結果
+ */
+record ExecutionResult<O>(O output, List<String> executionPath) {}
+
+/**
+ * 工作流執行引擎 - 支援泛型
+ */
+class FlowEngine<I, O> {
+    private final Workflow<I, O> workflow;
+
+    FlowEngine(Workflow<I, O> workflow) {
+        this.workflow = workflow;
     }
-    public Object output() { return output; }
-    public List<String> executionPath() { return executionPath; }
-}
 
-class FlowEngine {
-    Workflow workflow;
-    FlowEngine(Workflow workflow) { this.workflow = workflow; }
-
-    ExecutionResult execute(Object input) {
+    ExecutionResult<O> execute(I input) {
         List<String> executionPath = new ArrayList<>();
         Object currentData = input;
         String currentNodeId = workflow.getStartNodeId();
@@ -241,24 +246,27 @@ class FlowEngine {
             WorkflowNode node = workflow.getNodes().get(currentNodeId);
             if (node == null) break;
 
-            NodeOutput result;
+            NodeOutput<?> result;
             // 對 SUB_WORKFLOW 節點進行特殊處理
             if (node.type == NodeType.SUB_WORKFLOW && node.subWorkflow != null) {
-                ExecutionResult subResult = new FlowEngine(node.subWorkflow).execute(currentData);
-                result = new NodeOutput(true, subResult.output());
+                @SuppressWarnings("unchecked")
+                ExecutionResult<Object> subResult = (ExecutionResult<Object>) new FlowEngine<Object, Object>(
+                    (Workflow<Object, Object>) node.subWorkflow).execute(currentData);
+                result = new NodeOutput<>(true, subResult.output());
             } else {
-                result = node.getExecutor().execute(new NodeArg(currentData, null));
+                result = node.getExecutor().execute(new NodeArg<>(currentData, null));
             }
             
             currentData = result.output();
             currentNodeId = findNextNode(currentNodeId, result.result());
         }
 
-        return new ExecutionResult(currentData, executionPath);
+        @SuppressWarnings("unchecked")
+        O finalOutput = (O) currentData;
+        return new ExecutionResult<>(finalOutput, executionPath);
     }
 
     private String findNextNode(String currentNodeId, boolean conditionResult) {
-        String condition = conditionResult ? "true" : "false";
         List<WorkflowEdge> edges1 = findEdges(currentNodeId, "true");
         List<WorkflowEdge> edges2 = findEdges(currentNodeId, "false");
         List<WorkflowEdge> edges3 = findEdges(currentNodeId, "success");
