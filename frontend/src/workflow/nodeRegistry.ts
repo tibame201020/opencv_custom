@@ -7,7 +7,7 @@
 import {
     MousePointerClick, Move, Type, Keyboard, Camera, Clock,
     Search, ImagePlus, Timer, Eye, ScanText, Grid3X3,
-    GitBranch, Repeat, Layers, FileText
+    GitBranch, Repeat, Layers, FileText, Braces
 } from 'lucide-react';
 import type { FC } from 'react';
 
@@ -23,6 +23,7 @@ export type ParamType =
     | 'asset'     // 從 Asset Explorer 選取圖片
     | 'region'    // OcrRegion { x1, y1, x2, y2 }
     | 'expression' // 表達式（用於 If Condition）
+    | 'json'       // JSON 編輯器
     | 'select';    // 下拉選單
 
 export interface ParamSchema {
@@ -55,6 +56,7 @@ export interface NodeDefinition {
     label: string;             // 顯示名稱
     description: string;       // 簡短描述
     category: NodeCategory;
+    group: string;             // 更加細分的群組, e.g. 'Action', 'Input', 'Trigger'
     color: string;             // tailwind color class, e.g. 'primary', 'secondary'
     icon: FC<any>;             // lucide icon component
     params: ParamSchema[];     // 輸入參數
@@ -92,6 +94,7 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
         label: 'Click',
         description: '模擬點擊座標',
         category: 'platform',
+        group: 'Mouse',
         color: 'primary',
         icon: MousePointerClick,
         pythonMethod: 'platform.click',
@@ -108,6 +111,7 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
         label: 'Swipe',
         description: '模擬滑動手勢',
         category: 'platform',
+        group: 'Screen',
         color: 'primary',
         icon: Move,
         pythonMethod: 'platform.swipe',
@@ -127,6 +131,7 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
         label: 'Type Text',
         description: '模擬文字輸入',
         category: 'platform',
+        group: 'Keyboard',
         color: 'primary',
         icon: Type,
         pythonMethod: 'platform.type_text',
@@ -142,6 +147,7 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
         label: 'Key Event',
         description: '模擬按鍵（Back, Home 等）',
         category: 'platform',
+        group: 'Keyboard',
         color: 'primary',
         icon: Keyboard,
         pythonMethod: 'platform.key_event',
@@ -168,6 +174,7 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
         label: 'Screenshot',
         description: '擷取當前螢幕畫面',
         category: 'platform',
+        group: 'System',
         color: 'primary',
         icon: Camera,
         pythonMethod: 'platform.snapshot',
@@ -181,6 +188,7 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
         label: 'Sleep',
         description: '等待指定秒數',
         category: 'platform',
+        group: 'System',
         color: 'primary',
         icon: Clock,
         pythonMethod: 'platform.sleep',
@@ -196,6 +204,7 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
         label: 'Find Image',
         description: '在螢幕中尋找指定圖片',
         category: 'vision',
+        group: 'Search',
         color: 'secondary',
         icon: Search,
         pythonMethod: 'platform.find_image',
@@ -215,6 +224,7 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
         label: 'Click Image',
         description: '尋找圖片並點擊',
         category: 'vision',
+        group: 'Action',
         color: 'secondary',
         icon: ImagePlus,
         pythonMethod: 'platform.click_image',
@@ -232,6 +242,7 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
         label: 'Wait Image',
         description: '等待圖片出現',
         category: 'vision',
+        group: 'Wait',
         color: 'secondary',
         icon: Timer,
         pythonMethod: 'platform.wait_image',
@@ -253,6 +264,7 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
         label: 'Wait & Click',
         description: '等待圖片出現並點擊',
         category: 'vision',
+        group: 'Wait',
         color: 'secondary',
         icon: Eye,
         pythonMethod: 'platform.wait_click_image',
@@ -272,6 +284,7 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
         label: 'OCR Text',
         description: '在指定區域辨識文字',
         category: 'vision',
+        group: 'OCR',
         color: 'secondary',
         icon: ScanText,
         pythonMethod: 'platform.ocr_text',
@@ -289,6 +302,7 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
         label: 'OCR Pattern',
         description: '在指定區域辨識圖案/符號',
         category: 'vision',
+        group: 'OCR',
         color: 'secondary',
         icon: Grid3X3,
         pythonMethod: 'platform.ocr_pattern',
@@ -308,10 +322,60 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
         label: 'If Condition',
         description: '根據條件分支',
         category: 'flow',
+        group: 'Logic',
         color: 'accent',
         icon: GitBranch,
         params: [
-            { key: 'expression', label: 'Condition', type: 'expression', required: true, placeholder: '{{ $nodes["Find Image"].output.found }}', description: '條件表達式' },
+            { key: 'value1', label: 'Value 1', type: 'expression', required: true, placeholder: '{{ $nodes["Find Image"].output.found }}', description: '比較左值' },
+            {
+                key: 'operator', label: 'Operator', type: 'select', required: true, defaultValue: 'string:equals',
+                options: [
+                    // String
+                    { value: 'string:exists', label: '[String] exists' },
+                    { value: 'string:notExists', label: '[String] does not exist' },
+                    { value: 'string:isEmpty', label: '[String] is empty' },
+                    { value: 'string:isNotEmpty', label: '[String] is not empty' },
+                    { value: 'string:equals', label: '[String] is equal to' },
+                    { value: 'string:notEquals', label: '[String] is not equal to' },
+                    { value: 'string:contains', label: '[String] contains' },
+                    { value: 'string:notContains', label: '[String] does not contain' },
+                    { value: 'string:startsWith', label: '[String] starts with' },
+                    { value: 'string:notStartsWith', label: '[String] does not start with' },
+                    { value: 'string:endsWith', label: '[String] ends with' },
+                    { value: 'string:notEndsWith', label: '[String] does not end with' },
+                    { value: 'string:regex', label: '[String] matches regex' },
+                    { value: 'string:notRegex', label: '[String] does not match regex' },
+                    // Number
+                    { value: 'number:equals', label: '[Number] is equal to' },
+                    { value: 'number:notEquals', label: '[Number] is not equal to' },
+                    { value: 'number:gt', label: '[Number] is greater than' },
+                    { value: 'number:gte', label: '[Number] is greater than or equal' },
+                    { value: 'number:lt', label: '[Number] is less than' },
+                    { value: 'number:lte', label: '[Number] is less than or equal' },
+                    // Boolean
+                    { value: 'boolean:isTrue', label: '[Boolean] is true' },
+                    { value: 'boolean:isFalse', label: '[Boolean] is false' },
+                    { value: 'boolean:exists', label: '[Boolean] exists' },
+                    { value: 'boolean:notExists', label: '[Boolean] does not exist' },
+                    // Date & Time
+                    { value: 'date:isAfter', label: '[Date] is after' },
+                    { value: 'date:isBefore', label: '[Date] is before' },
+                    { value: 'date:equals', label: '[Date] is equal to' },
+                    // Array
+                    { value: 'array:contains', label: '[Array] contains' },
+                    { value: 'array:notContains', label: '[Array] does not contain' },
+                    { value: 'array:lengthEquals', label: '[Array] length equal to' },
+                    { value: 'array:lengthGt', label: '[Array] length greater than' },
+                    { value: 'array:isEmpty', label: '[Array] is empty' },
+                    { value: 'array:isNotEmpty', label: '[Array] is not empty' },
+                    // Object
+                    { value: 'object:exists', label: '[Object] exists' },
+                    { value: 'object:notExists', label: '[Object] does not exist' },
+                    { value: 'object:isEmpty', label: '[Object] is empty' },
+                    { value: 'object:isNotEmpty', label: '[Object] is not empty' },
+                ],
+            },
+            { key: 'value2', label: 'Value 2', type: 'expression', placeholder: 'true', description: '比較右值 (部分運算子不需要)' },
         ],
         outputs: [
             { key: 'result', label: 'Result', type: 'bool' },
@@ -328,6 +392,7 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
         label: 'Loop',
         description: '重複執行（固定次數或條件式）',
         category: 'flow',
+        group: 'Logic',
         color: 'accent',
         icon: Repeat,
         params: [
@@ -357,6 +422,7 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
         label: 'Sub-Workflow',
         description: '嵌入另一個 Workflow',
         category: 'flow',
+        group: 'Subflow',
         color: 'accent',
         icon: Layers,
         params: [
@@ -367,10 +433,26 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
         ],
     },
     {
+        type: 'set_variable',
+        label: 'Set Variables',
+        description: '設定全域變數 (JSON)',
+        category: 'flow',
+        group: 'Data',
+        color: 'accent',
+        icon: Braces,
+        params: [
+            { key: 'json_input', label: 'Variables (JSON)', type: 'json', required: true, defaultValue: '{\n  "count": 0\n}', description: '定義變數 Key-Value 對' },
+        ],
+        outputs: [
+            { key: 'success', label: 'Done', type: 'bool' },
+        ],
+    },
+    {
         type: 'log',
         label: 'Log',
         description: '輸出日誌訊息',
         category: 'flow',
+        group: 'System',
         color: 'accent',
         icon: FileText,
         pythonMethod: 'log',

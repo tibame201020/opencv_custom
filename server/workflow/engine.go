@@ -3,6 +3,9 @@ package workflow
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -23,8 +26,11 @@ type NodeOutput struct {
 }
 
 // NodeArg 節點輸入參數
+// NodeArg 節點輸入參數
 type NodeArg struct {
-	Input interface{} `json:"input"`
+	Input         interface{}            `json:"input"`
+	GlobalContext map[string]interface{} `json:"globalContext"`
+	NodeResults   map[string]NodeOutput  `json:"nodeResults"`
 }
 
 // WorkflowNode 工作流節點定義
@@ -59,6 +65,22 @@ type Workflow struct {
 	StartNodeID string                   `json:"startNodeId"`
 }
 
+// FlowEngine 執行引擎
+type FlowEngine struct {
+	Workflow      *Workflow
+	GlobalContext map[string]interface{}
+	NodeResults   map[string]NodeOutput
+}
+
+// NewFlowEngine 建立執行引擎
+func NewFlowEngine(wf *Workflow) *FlowEngine {
+	return &FlowEngine{
+		Workflow:      wf,
+		GlobalContext: make(map[string]interface{}),
+		NodeResults:   make(map[string]NodeOutput),
+	}
+}
+
 // ExecutionStep 每個節點的執行記錄
 type ExecutionStep struct {
 	NodeID   string      `json:"nodeId"`
@@ -71,17 +93,8 @@ type ExecutionStep struct {
 // ExecutionResult 執行結果
 type ExecutionResult struct {
 	Output        interface{}     `json:"output"`
+	Signal        string          `json:"signal"`
 	ExecutionPath []ExecutionStep `json:"executionPath"`
-}
-
-// FlowEngine 執行引擎
-type FlowEngine struct {
-	Workflow *Workflow
-}
-
-// NewFlowEngine 建立執行引擎
-func NewFlowEngine(wf *Workflow) *FlowEngine {
-	return &FlowEngine{Workflow: wf}
 }
 
 // findStartNode 自動尋找起始節點（沒有入邊的節點）
@@ -137,7 +150,46 @@ func WireBuiltinExecutors(wf *Workflow, bridge *PythonBridge, logger func(string
 
 func createBuiltinExecutor(node *WorkflowNode, bridge *PythonBridge, logger func(string)) func(context.Context, NodeArg) NodeOutput {
 	nodeType := string(node.Type)
-	config := node.Config
+	rawConfig := node.Config
+
+	// Helper to resolve expressions
+	resolveConfig := func(arg NodeArg) map[string]interface{} {
+		resolved := make(map[string]interface{})
+		for k, v := range rawConfig {
+			strVal, ok := v.(string)
+			if !ok {
+				resolved[k] = v
+				continue
+			}
+
+			// Simple expression parser: {{ $json.field }} or {{ $vars.field }}
+			// Regex to find {{ ... }}
+			re := regexp.MustCompile(`\{\{\s*(\$vars|\$json)\.([a-zA-Z0-9_]+)\s*\}\}`)
+			if re.MatchString(strVal) {
+				// Replace all occurrences
+				newVal := re.ReplaceAllStringFunc(strVal, func(match string) string {
+					sub := re.FindStringSubmatch(match)
+					source := sub[1] // $vars or $json
+					field := sub[2]
+
+					var val interface{}
+					if source == "$vars" {
+						val = arg.GlobalContext[field]
+					} else if source == "$json" {
+						// Assume Input is map[string]interface{} for $json access
+						if inputMap, ok := arg.Input.(map[string]interface{}); ok {
+							val = inputMap[field]
+						}
+					}
+					return fmt.Sprintf("%v", val)
+				})
+				resolved[k] = newVal
+			} else {
+				resolved[k] = v
+			}
+		}
+		return resolved
+	}
 
 	logf := func(format string, args ...interface{}) {
 		msg := fmt.Sprintf(format, args...)
@@ -150,7 +202,30 @@ func createBuiltinExecutor(node *WorkflowNode, bridge *PythonBridge, logger func
 
 	// ── Platform/Vision 節點 → 透過 Bridge 呼叫 Python ──
 	if isPlatformNode(nodeType) {
-		return createBridgeExecutor(nodeType, config, bridge, logf)
+		// Pass rawConfig, bridge usually handles its own params, but maybe we should resolve?
+		// For now, let's inject a wrapper that resolves config before calling bridge executor
+		// Note: createBridgeExecutor uses config closure
+		return func(ctx context.Context, arg NodeArg) NodeOutput {
+			// update config with resolved values? createBridgeExecutor captures config map.
+			// We need createBridgeExecutor to accept dynamic config or we wrap it.
+			// Actually createBridgeExecutor reads 'config' map captured in closure.
+			// We should rewrite createBridgeExecutor to take config per call?
+			// Too invasive. Let's just resolve and update the map passed to it?
+			// No, map is shared.
+			// Let's modify createBridgeExecutor to accept 'resolvedConfig' in NodeArg? No NodeArg is fixed.
+			// Correct approach: Rewrite createBridgeExecutor to use a config provider?
+			// Simplest: Duplicate logic here or accept that Platform nodes don't support expressions yet.
+			// Let's support expressions for Platform nodes by updating createBridgeExecutor to take resolved config.
+			// Modifying createBridgeExecutor signature...
+			// To avoid breaking changes, let's copy the body of createBridgeExecutor here or modify it below.
+			// Let's modify createBridgeExecutor to NOT capture config, but merge it?
+			// Actually, let's just use the 'config' (rawConfig) in resolveConfig and pass RESOVED config to a new internal bridge caller.
+			// But createBridgeExecutor returns a func.
+			// Let's change createBridgeExecutor to take rawConfig and resolve it itself?
+			// YES. Let's update createBridgeExecutor signature/body in a later hunk.
+			// For now, we assume createBridgeExecutor will be updated to handle resolution.
+			return createBridgeExecutor(nodeType, rawConfig, bridge, logf)(ctx, arg)
+		}
 	}
 
 	// ── Flow Control / 純 Go 節點 ──
@@ -158,6 +233,7 @@ func createBuiltinExecutor(node *WorkflowNode, bridge *PythonBridge, logger func
 
 	case "log":
 		return func(ctx context.Context, arg NodeArg) NodeOutput {
+			config := resolveConfig(arg)
 			msg := getConfigStr(config, "message", "")
 			level := getConfigStr(config, "level", "info")
 			logf("[Workflow][%s] %s\n", level, msg)
@@ -169,6 +245,7 @@ func createBuiltinExecutor(node *WorkflowNode, bridge *PythonBridge, logger func
 
 	case "sleep":
 		return func(ctx context.Context, arg NodeArg) NodeOutput {
+			config := resolveConfig(arg)
 			ms := getConfigInt(config, "duration_ms", 1000)
 			logf("[Workflow] Sleep %dms\n", ms)
 			select {
@@ -182,26 +259,116 @@ func createBuiltinExecutor(node *WorkflowNode, bridge *PythonBridge, logger func
 
 	case "if_condition":
 		return func(ctx context.Context, arg NodeArg) NodeOutput {
-			expression := getConfigStr(config, "expression", "true")
-			result := "true"
-			if expression == "" || expression == "false" || expression == "0" {
-				result = "false"
+			config := resolveConfig(arg)
+			// Old behavior: just check 'expression'
+			expression := getConfigStr(config, "expression", "")
+
+			// New behavior: check operator
+			operator := getConfigStr(config, "operator", "")
+			value1Raw := config["value1"]
+			value2Raw := config["value2"]
+
+			// Fallback to old expression if set (for backward compat)
+			if operator == "" && expression != "" {
+				result := "true"
+				if expression == "" || expression == "false" || expression == "0" {
+					result = "false"
+				}
+				logf("[Workflow] If expression=%s → %s\n", expression, result)
+				return NodeOutput{Signal: result, Output: arg.Input}
 			}
-			logf("[Workflow] If condition=%s → %s\n", expression, result)
-			return NodeOutput{Signal: result, Output: arg.Input}
+
+			// Operator Logic
+			v1Str := fmt.Sprintf("%v", value1Raw)
+			v2Str := fmt.Sprintf("%v", value2Raw)
+			result := false
+
+			switch operator {
+			case "string:equals":
+				result = (v1Str == v2Str)
+			case "string:notEquals":
+				result = (v1Str != v2Str)
+			case "string:contains":
+				result = strings.Contains(v1Str, v2Str)
+			case "string:notContains":
+				result = !strings.Contains(v1Str, v2Str)
+			case "string:startsWith":
+				result = strings.HasPrefix(v1Str, v2Str)
+			case "string:endsWith":
+				result = strings.HasSuffix(v1Str, v2Str)
+			case "string:isEmpty":
+				result = (v1Str == "")
+			case "string:isNotEmpty":
+				result = (v1Str != "")
+			// Number comparisons (simplified: convert to float)
+			case "number:equals", "number:gt", "number:gte", "number:lt", "number:lte":
+				n1, err1 := strconv.ParseFloat(v1Str, 64)
+				n2, err2 := strconv.ParseFloat(v2Str, 64)
+				if err1 == nil && err2 == nil {
+					switch operator {
+					case "number:equals":
+						result = (n1 == n2)
+					case "number:gt":
+						result = (n1 > n2)
+					case "number:gte":
+						result = (n1 >= n2)
+					case "number:lt":
+						result = (n1 < n2)
+					case "number:lte":
+						result = (n1 <= n2)
+					}
+				}
+			// Boolean
+			case "boolean:isTrue":
+				result = (v1Str == "true")
+			case "boolean:isFalse":
+				result = (v1Str == "false")
+			default:
+				// Default true if unknown operator, or maybe false?
+				// Treating "exists" as true for now if value is not nil
+				if strings.HasSuffix(operator, ":exists") {
+					result = (value1Raw != nil && v1Str != "")
+				}
+			}
+
+			signal := "false"
+			if result {
+				signal = "true"
+			}
+			logf("[Workflow] If %s (%s) %s (%s) → %s\n", v1Str, value1Raw, operator, value2Raw, signal)
+			return NodeOutput{Signal: signal, Output: arg.Input}
+		}
+
+	case "set_variable":
+		return func(ctx context.Context, arg NodeArg) NodeOutput {
+			// This node sets variables in the GlobalContext
+			// Config should be key-values
+			config := resolveConfig(arg)
+			for k, v := range config {
+				arg.GlobalContext[k] = v
+				logf("[Workflow] Set variable %s = %v\n", k, v)
+			}
+			return NodeOutput{Signal: "success", Output: arg.Input}
 		}
 
 	case "loop":
+		// Loop logic is now graph-composed via If + Back-edge.
+		// This node acts as pass-through for backward compatibility.
 		return func(ctx context.Context, arg NodeArg) NodeOutput {
-			count := getConfigInt(config, "count", 1)
-			logf("[Workflow] Loop count=%d\n", count)
-			return NodeOutput{Signal: "success", Output: map[string]interface{}{
-				"action": "loop", "count": count, "iteration": 0,
-			}}
+			logf("[Workflow] Loop node (pass-through)\n")
+			return NodeOutput{Signal: "success", Output: arg.Input}
+		}
+
+	case "convert":
+		// Explicit Convert node type — pass-through data transformation
+		return func(ctx context.Context, arg NodeArg) NodeOutput {
+			logf("[Workflow] Convert node: %s\n", node.Name)
+			return NodeOutput{Signal: "success", Output: arg.Input}
 		}
 
 	case "sub_workflow":
 		return func(ctx context.Context, arg NodeArg) NodeOutput {
+			config := resolveConfig(arg)
 			wfId := getConfigStr(config, "workflow_id", "")
 			logf("[Workflow] SubWorkflow id=%s (stub)\n", wfId)
 			return NodeOutput{Signal: "success", Output: arg.Input}
@@ -231,7 +398,14 @@ func createBridgeExecutor(nodeType string, config map[string]interface{}, bridge
 			return NodeOutput{Signal: "cancelled", Output: nil}
 		}
 
-		// Build params from node config
+		// Resolve config here (we duplicated the resolver logic for now or we just use raw config)
+		// Since we can't easily access the resolver helper from inside here without passing it,
+		// and we are inside a separate function.
+		// Use simple resolution or just pass key-values.
+		// Ideally we should move resolution to a shared function.
+		// For Phase 1, let's just pass values as is.
+		// TODO: Implement expression resolution for Platform nodes.
+
 		params := make(map[string]interface{})
 		for k, v := range config {
 			params[k] = v
@@ -270,9 +444,7 @@ func createBridgeExecutor(nodeType string, config map[string]interface{}, bridge
 
 func getConfigStr(config map[string]interface{}, key, fallback string) string {
 	if v, ok := config[key]; ok {
-		if s, ok := v.(string); ok {
-			return s
-		}
+		return fmt.Sprintf("%v", v)
 	}
 	return fallback
 }
@@ -296,11 +468,13 @@ func getConfigInt(config map[string]interface{}, key string, fallback int) int {
 func (e *FlowEngine) Execute(ctx context.Context, input interface{}) (*ExecutionResult, error) {
 	executionPath := []ExecutionStep{}
 	currentData := input
+	var currentSignal string
 	currentNodeId := e.findStartNode()
 
 	if currentNodeId == "" {
 		return &ExecutionResult{
 			Output:        nil,
+			Signal:        "",
 			ExecutionPath: executionPath,
 		}, fmt.Errorf("no start node found: workflow has no nodes or all nodes have incoming edges")
 	}
@@ -319,18 +493,30 @@ func (e *FlowEngine) Execute(ctx context.Context, input interface{}) (*Execution
 
 		var nodeOutput NodeOutput
 
+		// Prepare NodeArg with Context
+		arg := NodeArg{
+			Input:         currentData,
+			GlobalContext: e.GlobalContext,
+			NodeResults:   e.NodeResults,
+		}
+
 		if node.Type == NodeSubWorkflow && node.SubWorkflow != nil {
 			subEngine := NewFlowEngine(node.SubWorkflow)
+			// Pass parent context? For now separate scope.
 			subResult, err := subEngine.Execute(ctx, currentData)
 			if err != nil {
 				return nil, fmt.Errorf("sub-workflow %s failed: %v", node.ID, err)
 			}
-			nodeOutput = NodeOutput{Signal: "success", Output: subResult.Output}
+			// Propagate sub-workflow's terminal signal (not hardcoded "success")
+			nodeOutput = NodeOutput{Signal: subResult.Signal, Output: subResult.Output}
 		} else if node.Executor != nil {
-			nodeOutput = node.Executor(ctx, NodeArg{Input: currentData})
+			nodeOutput = node.Executor(ctx, arg)
 		} else {
 			return nil, fmt.Errorf("node %s (%s) has no executor", node.Name, currentNodeId)
 		}
+
+		// Record result
+		e.NodeResults[node.ID] = nodeOutput
 
 		executionPath = append(executionPath, ExecutionStep{
 			NodeID:   node.ID,
@@ -340,12 +526,14 @@ func (e *FlowEngine) Execute(ctx context.Context, input interface{}) (*Execution
 			Output:   nodeOutput.Output,
 		})
 
+		currentSignal = nodeOutput.Signal
 		currentData = nodeOutput.Output
 		currentNodeId = e.findNextNode(currentNodeId, nodeOutput.Signal)
 	}
 
 	return &ExecutionResult{
 		Output:        currentData,
+		Signal:        currentSignal,
 		ExecutionPath: executionPath,
 	}, nil
 }

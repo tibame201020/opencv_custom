@@ -14,6 +14,7 @@ class TestEntryCLI:
             ["python", "core/entry.py", "list"],
             capture_output=True,
             text=True,
+            encoding='utf-8',
             env={**os.environ, "PYTHONPATH": "."}
         )
         
@@ -42,6 +43,7 @@ class TestEntryCLI:
             ["python", "core/entry.py", "invalid_cmd"],
             capture_output=True,
             text=True,
+            encoding='utf-8',
             env={**os.environ, "PYTHONPATH": "."}
         )
         # Should show help or error
@@ -53,6 +55,7 @@ class TestEntryCLI:
             ["python", "core/entry.py", "run"],
             capture_output=True,
             text=True,
+            encoding='utf-8',
             env={**os.environ, "PYTHONPATH": "."}
         )
         # Argparse should fail because --script is required

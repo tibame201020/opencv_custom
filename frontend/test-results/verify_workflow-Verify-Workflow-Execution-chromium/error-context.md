@@ -1,0 +1,126 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e7]: V
+      - generic [ref=e8]: Platform
+    - generic [ref=e9]:
+      - generic [ref=e10]: Menu
+      - button "Execution" [ref=e11] [cursor=pointer]:
+        - img [ref=e12]
+        - generic [ref=e14]: Execution
+      - button "Workflow" [ref=e15] [cursor=pointer]:
+        - img [ref=e16]
+        - generic [ref=e21]: Workflow
+      - button "Editor" [ref=e23] [cursor=pointer]:
+        - img [ref=e24]
+        - generic [ref=e29]: Editor
+      - button "Management" [ref=e30] [cursor=pointer]:
+        - img [ref=e31]
+        - generic [ref=e35]: Management
+      - button "Setting" [ref=e36] [cursor=pointer]:
+        - img [ref=e37]
+        - generic [ref=e40]: Setting
+      - button "System Debugger" [ref=e41] [cursor=pointer]:
+        - img [ref=e42]
+        - generic [ref=e44]: System Debugger
+    - button [ref=e46] [cursor=pointer]:
+      - img [ref=e47]
+    - generic [ref=e50]:
+      - generic [ref=e51]: A
+      - generic [ref=e53]: Admin
+  - generic [ref=e56]:
+    - generic [ref=e57]:
+      - generic [ref=e58]:
+        - generic [ref=e59] [cursor=pointer]:
+          - img [ref=e60]
+          - heading "Workflows" [level=2] [ref=e65]
+        - generic [ref=e66]:
+          - button "New Project" [ref=e67] [cursor=pointer]:
+            - img [ref=e68]
+          - button [ref=e69] [cursor=pointer]:
+            - img [ref=e70]
+      - generic [ref=e73]:
+        - img [ref=e74]
+        - textbox "Search..." [ref=e77]
+      - generic [ref=e80] [cursor=pointer]:
+        - img [ref=e81]
+        - generic [ref=e83]: P
+        - generic [ref=e84]: test flow project
+    - generic [ref=e86] [cursor=pointer]:
+      - text: Assets
+      - img [ref=e87]
+    - generic [ref=e91]:
+      - img [ref=e93]
+      - heading "Select a Workflow to Edit" [level=2] [ref=e98]
+      - paragraph [ref=e99]: Choose an existing pipeline from the sidebar or create a new one to start building your visual automation.
+      - button "Create New Project" [ref=e100] [cursor=pointer]:
+        - img [ref=e101]
+        - text: Create New Project
+    - dialog:
+      - generic:
+        - heading "Create New Project" [level=3]:
+          - img
+          - text: Create New Project
+        - generic:
+          - generic:
+            - generic: Project Name
+            - textbox "e.g. Shopping App"
+        - generic:
+          - button "Cancel"
+          - button "Create Project"
+      - generic:
+        - button "close"
+    - dialog:
+      - generic:
+        - heading "Add Workflow to" [level=3]:
+          - img
+          - text: Add Workflow to
+        - generic:
+          - generic:
+            - generic: Workflow Name
+            - textbox "e.g. Login Flow"
+        - generic:
+          - button "Cancel"
+          - button "Create Workflow"
+      - generic:
+        - button "close"
+    - dialog:
+      - generic:
+        - heading "Delete Workflow" [level=3]:
+          - img
+          - text: Delete Workflow
+        - paragraph: Are you sure you want to delete this workflow? This cannot be undone.
+        - generic:
+          - button "Cancel"
+          - button "Delete"
+      - generic:
+        - button "close"
+    - dialog:
+      - generic:
+        - heading "Delete Workflow" [level=3]:
+          - img
+          - text: Delete Workflow
+        - paragraph: Are you sure you want to delete undefined? This cannot be undone.
+        - generic:
+          - button "Cancel"
+          - button "Delete"
+      - generic:
+        - button "close"
+    - dialog:
+      - generic:
+        - heading "Rename" [level=3]:
+          - img
+          - text: Rename
+        - generic:
+          - generic:
+            - generic: New Name
+            - textbox "Enter name..." [active]
+        - generic:
+          - button "Cancel"
+          - button "Rename"
+      - generic:
+        - button "close"
+```

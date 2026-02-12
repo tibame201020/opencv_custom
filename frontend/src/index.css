@@ -28,4 +28,51 @@ body,
   .premium-blur {
     @apply backdrop-blur-2xl bg-black/40;
   }
+
+  /* n8n Style Workflow Animations */
+  @keyframes n8n-marching-ants {
+    from {
+      stroke-dashoffset: 20;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  .n8n-flow-active {
+    stroke-dasharray: 5;
+    animation: n8n-marching-ants 0.5s linear infinite;
+  }
+
+  @keyframes n8n-pulse-glow {
+    0% {
+      box-shadow: 0 0 0 0 rgba(255, 109, 90, 0.4);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(255, 109, 90, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(255, 109, 90, 0);
+    }
+  }
+
+  .n8n-node-running {
+    animation: n8n-pulse-glow 1.5s infinite;
+    border-color: #ff6d5a !important;
+  }
+
+  @keyframes n8n-node-pop {
+    0% {
+      transform: scale(0.9);
+      opacity: 0;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  .n8n-node-enter {
+    animation: n8n-node-pop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
 }
