@@ -7,11 +7,12 @@ import { SettingsView } from './views/SettingsView';
 import { ManagementView } from './views/ManagementView';
 import { EditorView } from './views/EditorView';
 import { DebugView } from './views/DebugView';
-import { Play, Settings as SettingsIcon, Database, ChevronLeft, ChevronRight, FileCode, Terminal } from 'lucide-react';
+import { Play, Settings as SettingsIcon, Database, ChevronLeft, ChevronRight, FileCode, Terminal, LayoutGrid } from 'lucide-react';
+import { WorkflowEditorView } from './views/WorkflowEditorView';
 import clsx from 'clsx';
 
 function App() {
-  const { theme, activeMainTab, setActiveMainTab, isSidebarCollapsed, setSidebarCollapsed, fetchScripts, fetchDevices } = useAppStore();
+  const { theme, activeMainTab, setActiveMainTab, isSidebarCollapsed, setSidebarCollapsed, fetchScripts, fetchProjects, fetchDevices } = useAppStore();
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
@@ -19,22 +20,25 @@ function App() {
   // Global Data Fetching & Polling
   useEffect(() => {
     fetchScripts();
+    fetchProjects();
     fetchDevices();
 
-    // Remove high-frequency device polling per user request
-    const scriptInterval = setInterval(fetchScripts, 60000); // Reduce script polling too if desired
+    // Polling intervals
+    const scriptInterval = setInterval(fetchScripts, 60000);
+    const workflowInterval = setInterval(fetchProjects, 60000);
 
     return () => {
       clearInterval(scriptInterval);
+      clearInterval(workflowInterval);
     };
-  }, [fetchScripts, fetchDevices]);
+  }, [fetchScripts, fetchProjects, fetchDevices]);
 
   // Sync activeMainTab with route
   useEffect(() => {
     const path = location.pathname.split('/')[1];
-    const validTabs = ['execution', 'editor', 'management', 'setting', 'debug'];
+    const validTabs = ['execution', 'editor', 'workflow', 'management', 'setting', 'debug'];
     if (path && validTabs.includes(path)) {
-      setActiveMainTab(path as 'execution' | 'editor' | 'management' | 'setting' | 'debug');
+      setActiveMainTab(path as any);
     }
   }, [location, setActiveMainTab]);
 
@@ -45,6 +49,7 @@ function App() {
 
   const navItems = [
     { id: 'execution', label: t('ui.execution.title'), icon: Play, path: '/execution' },
+    { id: 'workflow', label: t('ui.workflow.title', 'Workflow'), icon: LayoutGrid, path: '/workflow' },
     { id: 'editor', label: t('ui.editor.title'), icon: FileCode, path: '/editor' },
     { id: 'management', label: t('ui.management.title'), icon: Database, path: '/management' },
     { id: 'setting', label: t('ui.setting.title'), icon: SettingsIcon, path: '/setting' },
@@ -63,7 +68,7 @@ function App() {
         {/* Logo Area */}
         <div className={clsx("h-16 flex items-center gap-3 border-b border-base-300 overflow-hidden", isSidebarCollapsed ? "justify-center px-0" : "px-6")}>
           <div className="w-8 h-8 rounded-lg bg-primary text-primary-content flex items-center justify-center shadow-md shrink-0">
-            <span className="font-bold text-lg">P</span>
+            <span className="font-bold text-lg">V</span>
           </div>
           <div className={clsx("font-bold text-lg tracking-tight truncate transition-opacity duration-200", isSidebarCollapsed ? "opacity-0 w-0" : "opacity-100 flex-1")}>
             {t('ui.common.appTitle')}
@@ -84,7 +89,7 @@ function App() {
               className={clsx(
                 "w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative",
                 activeMainTab === item.id
-                  ? "bg-base-100 text-primary shadow-sm" // Cleaner active state: Card-like bg instead of colored fill
+                  ? "bg-base-100 text-primary shadow-sm"
                   : "text-base-content/60 hover:bg-base-300/50 hover:text-base-content",
                 isSidebarCollapsed ? "justify-center" : ""
               )}
@@ -104,7 +109,6 @@ function App() {
                 {item.label}
               </span>
 
-              {/* Active Indicator Strip (Optional, maybe specific to theme) */}
               {activeMainTab === item.id && !isSidebarCollapsed && (
                 <div className="absolute right-3 w-1.5 h-1.5 rounded-full bg-primary" />
               )}
@@ -112,18 +116,17 @@ function App() {
           ))}
         </div>
 
-        {/* Collapse Toggle (Bottom) - FULL WIDTH CLICKABLE */}
+        {/* Collapse Toggle */}
         <div className="border-t border-base-300">
           <button
             onClick={() => setSidebarCollapsed(!isSidebarCollapsed)}
             className="w-full h-10 flex items-center justify-center opacity-50 hover:opacity-100 hover:bg-base-300/50 transition-all cursor-pointer"
-            title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
             {isSidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
           </button>
         </div>
 
-        {/* Bottom Profile Section */}
+        {/* Bottom Profile */}
         <div className={clsx("p-4 border-t border-base-300", isSidebarCollapsed ? "items-center" : "")}>
           <div className={clsx(
             "bg-base-100 rounded-lg p-3 flex items-center gap-3 shadow-sm border border-base-200 overflow-hidden",
@@ -144,13 +147,13 @@ function App() {
         <div className="flex-1 overflow-hidden relative">
           <Routes>
             <Route path="/execution" element={<ExecutionView />} />
+            <Route path="/workflow" element={<WorkflowEditorView />} />
             <Route path="/editor" element={<EditorView />} />
             <Route path="/management" element={<ManagementView />} />
             <Route path="/setting" element={<SettingsView />} />
             <Route path="/debug" element={<DebugView />} />
             <Route path="/" element={<Navigate to="/execution" replace />} />
           </Routes>
-
         </div>
       </div>
     </div>

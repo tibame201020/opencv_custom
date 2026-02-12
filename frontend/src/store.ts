@@ -21,15 +21,45 @@ export interface ScriptTabState {
     runId?: string; // Active backend run ID
 }
 
+export interface WorkflowNodeData {
+    id: string;
+    type: string;
+    label: string;
+    config: Record<string, any>;
+    position: { x: number; y: number };
+}
+
+export interface WorkflowEdgeData {
+    id: string;
+    source: string;
+    target: string;
+    signal: string;
+}
+
 export interface EditorTab {
     id: string; // unique id (path or composite)
     scriptId: string; // project root
     name: string;
     path: string | null; // relative path
-    type: 'code' | 'image';
-    content: string; // For images, this will be the URL or base64
+    type: 'code' | 'image' | 'workflow';
+    content: string; // For images, this will be the URL or base64. For workflow, this will be the YAML string.
     originalContent: string;
     isDirty: boolean;
+    workflowData?: {
+        nodes: WorkflowNodeData[];
+        edges: WorkflowEdgeData[];
+    };
+}
+
+export interface WorkflowTab {
+    id: string; // workflow ID
+    workflowId: string;
+    projectId: string;
+    name: string;
+    content: string; // JSON string of the workflow data
+    originalContent: string;
+    isDirty: boolean;
+    viewMode: 'graph' | 'yaml';
 }
 
 export interface LogMessage {
@@ -48,12 +78,34 @@ interface AppState {
     setApiBaseUrl: (url: string) => void;
 
     // Navigation
-    activeMainTab: 'execution' | 'management' | 'setting' | 'editor' | 'debug';
+    activeMainTab: 'execution' | 'editor' | 'workflow' | 'management' | 'setting' | 'debug';
     isSidebarCollapsed: boolean;
-    setActiveMainTab: (tab: 'execution' | 'management' | 'setting' | 'editor' | 'debug') => void;
+    setActiveMainTab: (tab: 'execution' | 'editor' | 'workflow' | 'management' | 'setting' | 'debug') => void;
     setSidebarCollapsed: (collapsed: boolean) => void;
 
-    // Editor State (Persisted)
+    // Workflow State
+    projectSelectedId: string | null;
+    workflowSelectedId: string | null;
+    workflowAssetExplorerCollapsed: boolean;
+    workflowSidebarCollapsed: boolean;
+
+    setProjectSelectedId: (id: string | null) => void;
+    setWorkflowSelectedId: (id: string | null) => void;
+    setWorkflowAssetExplorerCollapsed: (collapsed: boolean) => void;
+    setWorkflowSidebarCollapsed: (collapsed: boolean) => void;
+
+    // Workflow Editor Tabs (Independent from Script Editor)
+    workflowTabs: WorkflowTab[];
+    activeWorkflowTabId: string | null;
+
+    openWorkflowTab: (workflowId: string, projectId: string, name: string, content: string) => void;
+    closeWorkflowTab: (tabId: string) => void;
+    setActiveWorkflowTab: (tabId: string) => void;
+    updateWorkflowTabContent: (tabId: string, content: string) => void;
+    updateWorkflowTabViewMode: (tabId: string, mode: 'graph' | 'yaml') => void;
+    saveWorkflowTab: (tabId: string) => void;
+
+    // Editor State (Persisted) — Script Editor only
     editorSelectedScriptId: string | null;
     editorTabs: EditorTab[];
     activeEditorTabId: string | null;
@@ -65,7 +117,7 @@ interface AppState {
     setAssetExplorerCollapsed: (collapsed: boolean) => void;
     setScriptExplorerCollapsed: (collapsed: boolean) => void;
 
-    openEditorTab: (scriptId: string, path: string | null, name: string, content: string, type: 'code' | 'image') => void;
+    openEditorTab: (scriptId: string, path: string | null, name: string, content: string, type: 'code' | 'image' | 'workflow') => void;
     closeEditorTab: (tabId: string) => void;
     setActiveEditorTab: (tabId: string) => void;
     updateEditorTabContent: (tabId: string, content: string) => void;
@@ -73,10 +125,13 @@ interface AppState {
 
     // Global Data
     scripts: Script[];
+    projects: any[];
     devices: string[];
     setScripts: (scripts: Script[]) => void;
+    setProjects: (projects: any[]) => void;
     setDevices: (devices: string[]) => void;
     fetchScripts: () => Promise<void>;
+    fetchProjects: () => Promise<void>;
     fetchDevices: () => Promise<void>;
 
     // Execution Module State
@@ -102,17 +157,99 @@ export const useAppStore = create<AppState>()(
             // Defaults
             theme: 'dark',
             language: 'zh',
-            apiBaseUrl: '/api', // Default to relative path for standard Wails/Vite proxy
+            apiBaseUrl: '/api',
             activeMainTab: 'execution',
             isSidebarCollapsed: false,
             scriptTabs: [],
             activeTabId: null,
 
+            // Workflow State Defaults
+            projectSelectedId: null,
+            workflowSelectedId: null,
+            workflowAssetExplorerCollapsed: true,
+            workflowSidebarCollapsed: false,
+            workflowTabs: [],
+            activeWorkflowTabId: null,
+
+            setProjectSelectedId: (id: string | null) => set({ projectSelectedId: id }),
+            setWorkflowSelectedId: (id: string | null) => set({ workflowSelectedId: id }),
+            setWorkflowAssetExplorerCollapsed: (collapsed: boolean) => set({ workflowAssetExplorerCollapsed: collapsed }),
+            setWorkflowSidebarCollapsed: (collapsed: boolean) => set({ workflowSidebarCollapsed: collapsed }),
+
+            // Workflow Tab Actions
+            openWorkflowTab: (workflowId: string, projectId: string, name: string, content: string) => {
+                const { workflowTabs } = get();
+                const tabId = `wf:${workflowId}`;
+                const existing = workflowTabs.find(t => t.id === tabId);
+                if (existing) {
+                    set({
+                        workflowTabs: workflowTabs.map(t =>
+                            t.id === tabId ? { ...t, content, originalContent: content, isDirty: false } : t
+                        ),
+                        activeWorkflowTabId: tabId,
+                    });
+                    return;
+                }
+                const newTab: WorkflowTab = {
+                    id: tabId,
+                    workflowId,
+                    projectId,
+                    name,
+                    content,
+                    originalContent: content,
+                    isDirty: false,
+                    viewMode: 'graph',
+                };
+                set({
+                    workflowTabs: [...workflowTabs, newTab],
+                    activeWorkflowTabId: tabId,
+                });
+            },
+
+            closeWorkflowTab: (tabId: string) => {
+                const { workflowTabs, activeWorkflowTabId } = get();
+                const newTabs = workflowTabs.filter(t => t.id !== tabId);
+                let nextId = activeWorkflowTabId;
+                if (activeWorkflowTabId === tabId) {
+                    nextId = newTabs.length > 0 ? newTabs[newTabs.length - 1].id : null;
+                }
+                set({ workflowTabs: newTabs, activeWorkflowTabId: nextId });
+            },
+
+            setActiveWorkflowTab: (tabId: string) => set({ activeWorkflowTabId: tabId }),
+
+            updateWorkflowTabContent: (tabId: string, content: string) => set(state => ({
+                workflowTabs: state.workflowTabs.map(t =>
+                    t.id === tabId ? { ...t, content, isDirty: content !== t.originalContent } : t
+                )
+            })),
+
+            updateWorkflowTabViewMode: (tabId: string, mode: 'graph' | 'yaml') => set(state => ({
+                workflowTabs: state.workflowTabs.map(t =>
+                    t.id === tabId ? { ...t, viewMode: mode } : t
+                )
+            })),
+
+            saveWorkflowTab: (tabId: string) => set(state => ({
+                workflowTabs: state.workflowTabs.map(t =>
+                    t.id === tabId ? { ...t, originalContent: t.content, isDirty: false } : t
+                )
+            })),
+
+            // Actions
+            setTheme: (theme: string) => set({ theme }),
+            setLanguage: (language: string) => set({ language }),
+            setApiBaseUrl: (apiBaseUrl: string) => set({ apiBaseUrl }),
+            setActiveMainTab: (tab: 'execution' | 'editor' | 'workflow' | 'management' | 'setting' | 'debug') => set({ activeMainTab: tab }),
+            setSidebarCollapsed: (isSidebarCollapsed: boolean) => set({ isSidebarCollapsed }),
+
             // Global Data
             scripts: [],
+            projects: [],
             devices: [],
-            setScripts: (scripts) => set({ scripts }),
-            setDevices: (devices) => set({ devices }),
+            setScripts: (scripts: Script[]) => set({ scripts }),
+            setProjects: (projects: any[]) => set({ projects: Array.isArray(projects) ? projects : [] }),
+            setDevices: (devices: string[]) => set({ devices }),
 
             fetchScripts: async () => {
                 const { apiBaseUrl } = get();
@@ -120,10 +257,23 @@ export const useAppStore = create<AppState>()(
                     const res = await fetch(`${apiBaseUrl}/scripts`);
                     if (res.ok) {
                         const data = await res.json();
-                        set({ scripts: data || [] });
+                        set({ scripts: Array.isArray(data) ? data : [] });
                     }
                 } catch (err) {
                     console.error("Failed to fetch scripts", err);
+                }
+            },
+
+            fetchProjects: async () => {
+                const { apiBaseUrl } = get();
+                try {
+                    const res = await fetch(`${apiBaseUrl}/projects`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        set({ projects: Array.isArray(data) ? data : [] });
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch projects", err);
                 }
             },
 
@@ -140,26 +290,18 @@ export const useAppStore = create<AppState>()(
                 }
             },
 
-            // Actions
-            setTheme: (theme) => set({ theme }),
-            setLanguage: (language) => set({ language }),
-            setApiBaseUrl: (apiBaseUrl) => set({ apiBaseUrl }),
-            setActiveMainTab: (tab) => set({ activeMainTab: tab }),
-            setSidebarCollapsed: (isSidebarCollapsed) => set({ isSidebarCollapsed }),
-
             // Editor State Defaults
             editorSelectedScriptId: null,
             editorTabs: [],
             activeEditorTabId: null,
             activeEditorTabIdPerProject: {},
-            assetExplorerCollapsed: true, // Default to collapsed as requested
+            assetExplorerCollapsed: true,
             scriptExplorerCollapsed: false,
 
-            setAssetExplorerCollapsed: (collapsed) => set({ assetExplorerCollapsed: collapsed }),
-            setScriptExplorerCollapsed: (collapsed) => set({ scriptExplorerCollapsed: collapsed }),
+            setAssetExplorerCollapsed: (collapsed: boolean) => set({ assetExplorerCollapsed: collapsed }),
+            setScriptExplorerCollapsed: (collapsed: boolean) => set({ scriptExplorerCollapsed: collapsed }),
 
-            setEditorSelectedScriptId: (id) => set(state => {
-                // When project changes, switch the active global tab to the one remembered for this project
+            setEditorSelectedScriptId: (id: string | null) => set(state => {
                 const nextActiveTabId = id ? state.activeEditorTabIdPerProject[id] || null : null;
                 return {
                     editorSelectedScriptId: id,
@@ -167,7 +309,7 @@ export const useAppStore = create<AppState>()(
                 };
             }),
 
-            openEditorTab: (scriptId, path, name, content, type) => {
+            openEditorTab: (scriptId: string, path: string | null, name: string, content: string, type: 'code' | 'image' | 'workflow') => {
                 const { editorTabs, activeEditorTabIdPerProject } = get();
                 const tabId = path ? `${scriptId}/${path}` : `${scriptId}/__main__`;
 
@@ -207,7 +349,7 @@ export const useAppStore = create<AppState>()(
                 });
             },
 
-            closeEditorTab: (tabId) => {
+            closeEditorTab: (tabId: string) => {
                 const { editorTabs, activeEditorTabId, activeEditorTabIdPerProject } = get();
                 const closedTab = editorTabs.find(t => t.id === tabId);
                 if (!closedTab) return;
@@ -215,7 +357,6 @@ export const useAppStore = create<AppState>()(
                 const newTabs = editorTabs.filter(t => t.id !== tabId);
                 const scriptId = closedTab.scriptId;
 
-                // Update global active tab if needed
                 let nextActiveId = activeEditorTabId;
                 if (activeEditorTabId === tabId) {
                     const projectTabs = newTabs.filter(t => t.scriptId === scriptId);
@@ -226,7 +367,6 @@ export const useAppStore = create<AppState>()(
                     }
                 }
 
-                // Update project-specific active tab map
                 let nextProjectActiveId = activeEditorTabIdPerProject[scriptId];
                 if (nextProjectActiveId === tabId) {
                     const projectTabs = newTabs.filter(t => t.scriptId === scriptId);
@@ -243,7 +383,7 @@ export const useAppStore = create<AppState>()(
                 });
             },
 
-            setActiveEditorTab: (id) => set(state => {
+            setActiveEditorTab: (id: string) => set(state => {
                 const tab = state.editorTabs.find(t => t.id === id);
                 if (!tab) return { activeEditorTabId: id };
                 return {
@@ -255,26 +395,26 @@ export const useAppStore = create<AppState>()(
                 };
             }),
 
-            updateEditorTabContent: (tabId, content) => set(state => ({
+            updateEditorTabContent: (tabId: string, content: string) => set(state => ({
                 editorTabs: state.editorTabs.map(t =>
                     t.id === tabId ? { ...t, content, isDirty: content !== t.originalContent } : t
                 )
             })),
 
-            saveEditorTab: (tabId) => set(state => ({
+            saveEditorTab: (tabId: string) => set(state => ({
                 editorTabs: state.editorTabs.map(t =>
                     t.id === tabId ? { ...t, originalContent: t.content, isDirty: false } : t
                 )
             })),
 
-            openScriptTab: (scriptId, defaultName) => {
+            openScriptTab: (scriptId: string, defaultName?: string) => {
                 const { scriptTabs } = get();
                 const tabId = uuidv4();
 
                 const newTab: ScriptTabState = {
                     tabId,
                     scriptId,
-                    label: defaultName || scriptId, // Default label will be updated by view if needed
+                    label: defaultName || scriptId,
                     activeSubTab: 'control',
                     status: 'idle',
                     logs: [],
@@ -287,7 +427,7 @@ export const useAppStore = create<AppState>()(
                 });
             },
 
-            closeScriptTab: (tabId) => {
+            closeScriptTab: (tabId: string) => {
                 const { scriptTabs, activeTabId } = get();
                 const newTabs = scriptTabs.filter(t => t.tabId !== tabId);
 
@@ -299,25 +439,25 @@ export const useAppStore = create<AppState>()(
                 set({ scriptTabs: newTabs, activeTabId: newActiveId });
             },
 
-            setActiveScriptTab: (id) => set({ activeTabId: id }),
+            setActiveScriptTab: (id: string) => set({ activeTabId: id }),
 
-            renameScriptTab: (tabId, newLabel) => set(state => ({
+            renameScriptTab: (tabId: string, newLabel: string) => set(state => ({
                 scriptTabs: state.scriptTabs.map(t => t.tabId === tabId ? { ...t, label: newLabel } : t)
             })),
 
-            setSubTab: (tabId, subTab) => set(state => ({
+            setSubTab: (tabId: string, subTab: 'control' | 'logs') => set(state => ({
                 scriptTabs: state.scriptTabs.map(t => t.tabId === tabId ? { ...t, activeSubTab: subTab } : t)
             })),
 
-            updateScriptStatus: (tabId, status, runId) => set(state => ({
+            updateScriptStatus: (tabId: string, status: ScriptTabState['status'], runId?: string) => set(state => ({
                 scriptTabs: state.scriptTabs.map(t => t.tabId === tabId ? { ...t, status, runId: runId || t.runId } : t)
             })),
 
-            updateScriptParams: (tabId, params) => set(state => ({
+            updateScriptParams: (tabId: string, params: Partial<ScriptTabState['params']>) => set(state => ({
                 scriptTabs: state.scriptTabs.map(t => t.tabId === tabId ? { ...t, params: { ...t.params, ...params } } : t)
             })),
 
-            appendLog: (tabId, log) => set(state => ({
+            appendLog: (tabId: string, log: Omit<LogMessage, 'timestamp'>) => set(state => ({
                 scriptTabs: state.scriptTabs.map(t =>
                     t.tabId === tabId
                         ? { ...t, logs: [...t.logs, { ...log, timestamp: new Date().toISOString() }] }
@@ -325,17 +465,22 @@ export const useAppStore = create<AppState>()(
                 )
             })),
 
-            clearLogs: (tabId) => set(state => ({
+            clearLogs: (tabId: string) => set(state => ({
                 scriptTabs: state.scriptTabs.map(t => t.tabId === tabId ? { ...t, logs: [] } : t)
             })),
-
         }),
         {
             name: 'app-storage-v2',
-            partialize: (state) => ({
+            partialize: (state: AppState) => ({
                 theme: state.theme,
                 language: state.language,
                 isSidebarCollapsed: state.isSidebarCollapsed,
+                projectSelectedId: state.projectSelectedId,
+                workflowSelectedId: state.workflowSelectedId,
+                workflowAssetExplorerCollapsed: state.workflowAssetExplorerCollapsed,
+                workflowSidebarCollapsed: state.workflowSidebarCollapsed,
+                workflowTabs: state.workflowTabs,
+                activeWorkflowTabId: state.activeWorkflowTabId,
                 editorSelectedScriptId: state.editorSelectedScriptId,
                 editorTabs: state.editorTabs,
                 activeEditorTabId: state.activeEditorTabId,

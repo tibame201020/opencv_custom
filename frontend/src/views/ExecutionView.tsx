@@ -6,7 +6,7 @@ import {
     Play, Square, Search, X, Monitor, Smartphone,
     Terminal, Sliders, ChevronRight, ChevronLeft,
     Trash2, ArrowDown, ArrowUp, WrapText, Filter, XCircle, Download,
-    RefreshCw
+    RefreshCw, LayoutGrid
 } from 'lucide-react';
 import { ScreenshotModal } from '../components/ScreenshotModal';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
@@ -20,7 +20,7 @@ export const ExecutionView: React.FC = () => {
         scriptTabs, activeTabId,
         openScriptTab, closeScriptTab, setActiveScriptTab, setSubTab,
         updateScriptStatus, appendLog, renameScriptTab, updateScriptParams,
-        apiBaseUrl, scripts, devices, fetchDevices
+        apiBaseUrl, scripts, projects, devices, fetchDevices
     } = useAppStore();
 
     const API_Base = apiBaseUrl;
@@ -108,8 +108,16 @@ export const ExecutionView: React.FC = () => {
     };
 
 
-    // Helper: Find Script Definition
-    const getScriptDef = (scriptId: string) => scripts.find(s => s.id === scriptId);
+    // Helper: Find Script/Workflow Definition
+    const getScriptDef = (id: string) => {
+        if (id.startsWith('workflow:')) {
+            const wfId = id.split(':')[1];
+            const allWorkflows = (projects || []).flatMap((p: any) => p.workflows || []);
+            const wf = allWorkflows.find((w: any) => w.id === wfId);
+            return wf ? { ...wf, platform: 'android', isWorkflow: true } : null;
+        }
+        return scripts.find(s => s.id === id);
+    };
 
     // Open Tab Wrapper
     const handleOpenTab = (scriptId: string) => {
@@ -118,7 +126,9 @@ export const ExecutionView: React.FC = () => {
     };
 
     // Derived Data
-    const filteredScripts = scripts.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    const filteredScripts = (scripts || []).filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    const allWorkflows = (projects || []).flatMap((p: any) => p.workflows || []);
+    const filteredWorkflows = allWorkflows.filter((w: any) => w.name.toLowerCase().includes(searchTerm.toLowerCase()));
     const activeTab = scriptTabs.find(t => t.tabId === activeTabId);
 
     // Auto-scroll Logs
@@ -166,10 +176,15 @@ export const ExecutionView: React.FC = () => {
         try {
             const params = activeTab.params ? JSON.stringify(activeTab.params) : "{}";
 
-            const res = await fetch(`${API_Base}/run`, {
+            const isWorkflow = scriptId.startsWith('workflow:');
+            const runUrl = isWorkflow
+                ? `${API_Base}/workflows/${scriptId.split(':')[1]}/run`
+                : `${API_Base}/run`;
+
+            const res = await fetch(runUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ scriptId, params })
+                body: isWorkflow ? undefined : JSON.stringify({ scriptId, params })
             });
 
             if (!res.ok) throw new Error("Failed to start script");
@@ -309,6 +324,36 @@ export const ExecutionView: React.FC = () => {
                             <div className={clsx("flex-1 min-w-0 transition-opacity duration-200", isDrawerOpen ? "opacity-100" : "opacity-0 w-0 hidden")}>
                                 <div className="font-medium text-sm truncate leading-tight">{script.name}</div>
                                 <div className="text-[10px] opacity-50 uppercase font-bold mt-0.5">{script.platform}</div>
+                            </div>
+                        </div>
+                    ))}
+
+                    {/* Independent Workflows List */}
+                    {filteredWorkflows.length > 0 && isDrawerOpen && (
+                        <div className="pt-4 pb-2 px-2">
+                            <div className="font-bold text-[10px] uppercase opacity-40 tracking-widest flex items-center gap-2">
+                                <LayoutGrid size={10} /> Virtual Pipelines
+                            </div>
+                        </div>
+                    )}
+
+                    {filteredWorkflows.map(wf => (
+                        <div
+                            key={wf.id}
+                            className={clsx(
+                                "group flex items-center gap-3 rounded-lg cursor-pointer transition-all duration-200 border border-transparent select-none",
+                                isDrawerOpen ? "p-3 hover:bg-base-200" : "p-2 justify-center hover:bg-base-200 aspect-square"
+                            )}
+                            onDoubleClick={() => handleOpenTab(`workflow:${wf.id}`)}
+                            title={!isDrawerOpen ? wf.name : "Double-click to create instance"}
+                        >
+                            <div className="w-8 h-8 rounded-md flex items-center justify-center shrink-0 bg-primary/10 text-primary">
+                                <LayoutGrid size={18} />
+                            </div>
+
+                            <div className={clsx("flex-1 min-w-0 transition-opacity duration-200", isDrawerOpen ? "opacity-100" : "opacity-0 w-0 hidden")}>
+                                <div className="font-medium text-sm truncate leading-tight">{wf.name}</div>
+                                <div className="text-[10px] opacity-50 uppercase font-bold mt-0.5">Workflow</div>
                             </div>
                         </div>
                     ))}

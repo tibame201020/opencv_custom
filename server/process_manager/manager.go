@@ -286,6 +286,27 @@ func (sm *ScriptManager) monitorProcess(p *ScriptProcess, stdout, stderr io.Read
 	close(p.Logs)
 }
 
+func (sm *ScriptManager) StartWorkflow(scriptID string) (string, *ScriptProcess, context.Context, error) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	runID := fmt.Sprintf("workflow:%s-%d", scriptID, time.Now().Unix())
+	ctx, cancel := context.WithCancel(context.Background())
+
+	process := &ScriptProcess{
+		ID:        runID,
+		ScriptID:  scriptID,
+		Cmd:       nil, // Virtual process
+		StartTime: time.Now(),
+		Status:    "running",
+		Logs:      make(chan string, 100),
+		Cancel:    cancel,
+	}
+
+	sm.processes[runID] = process
+	return runID, process, ctx, nil
+}
+
 func (sm *ScriptManager) StopScript(runID string) error {
 	sm.mu.RLock()
 	process, ok := sm.processes[runID]
@@ -293,6 +314,14 @@ func (sm *ScriptManager) StopScript(runID string) error {
 
 	if !ok {
 		return fmt.Errorf("process not found")
+	}
+
+	// For virtual processes (workflows), just cancel the context
+	if process.Cmd == nil {
+		process.Cancel()
+		// Also mark as finished/error in logs?
+		// The goroutine running the workflow should handle this cleanup
+		return nil
 	}
 
 	// Important: Call KillProcess FIRST.
@@ -789,6 +818,10 @@ func (sm *ScriptManager) ListAssets(scriptID string) ([]*FileNode, error) {
 	}
 	fmt.Printf("[ListAssets] WalkDir returned %d assets\n", len(assets))
 	return assets, nil
+}
+
+func (sm *ScriptManager) WalkWorkflowDir(projectRoot string) []*FileNode {
+	return sm.walkDir(projectRoot, "")
 }
 
 func (sm *ScriptManager) walkDir(fullPath, relPath string) []*FileNode {

@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"script-platform/server/backend"
+	"script-platform/server/db"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -18,6 +19,12 @@ var assets embed.FS
 func main() {
 	// Create an instance of the app structure
 	app := NewApp()
+
+	// Initialize Database
+	if err := db.Init("workflows.db"); err != nil {
+		println("Fatal error initializing database:", err.Error())
+		return
+	}
 
 	// Setup API Router
 	router := backend.SetupRouter()

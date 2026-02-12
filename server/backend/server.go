@@ -2,7 +2,9 @@ package backend
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -10,8 +12,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"script-platform/server/db"
 	"script-platform/server/process_manager"
 	"script-platform/server/utils"
+	"script-platform/server/workflow"
 	"strings"
 	"time"
 
@@ -172,6 +176,19 @@ func SetupRouter() *gin.Engine {
 		api.POST("/adb/start", startAdb)
 		api.POST("/adb/stop", stopAdb)
 		api.POST("/adb/command", executeAdbCommand)
+
+		// Independent Virtual Workflow CRUD
+		api.GET("/projects", listProjects)
+		api.POST("/projects", createProject)
+		api.POST("/projects/:id/rename", renameProject) // NEW
+		api.DELETE("/projects/:id", deleteProject)      // NEW
+
+		api.POST("/workflows", createWorkflow)
+		api.GET("/workflows/:id", getWorkflow)
+		api.POST("/workflows/:id", saveWorkflow)
+		api.DELETE("/workflows/:id", deleteWorkflow)
+		api.POST("/workflows/:id/run", runWorkflow)
+		api.POST("/workflows/:id/rename", renameWorkflow) // NEW
 	}
 
 	r.GET("/ws/logs/:id", streamLogs)
@@ -202,7 +219,22 @@ func normalizeID(id string) string {
 }
 
 func listAssets(c *gin.Context) {
-	scriptID := normalizeID(c.Param("id"))
+	id := c.Param("id")
+	if strings.HasPrefix(id, "workflow:") {
+		wfID := strings.TrimPrefix(id, "workflow:")
+		projectRoot := filepath.Join(manager.CorePath, "workflows", wfID)
+		if _, err := os.Stat(projectRoot); os.IsNotExist(err) {
+			os.MkdirAll(projectRoot, 0755)
+			os.MkdirAll(filepath.Join(projectRoot, "images"), 0755)
+		} else {
+			// Even if root exists, ensure images exists
+			os.MkdirAll(filepath.Join(projectRoot, "images"), 0755)
+		}
+		assets := manager.WalkWorkflowDir(projectRoot)
+		c.JSON(200, assets)
+		return
+	}
+	scriptID := normalizeID(id)
 	assets, err := manager.ListAssets(scriptID)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
@@ -212,7 +244,7 @@ func listAssets(c *gin.Context) {
 }
 
 func renameAsset(c *gin.Context) {
-	scriptID := normalizeID(c.Param("id"))
+	id := c.Param("id")
 	var req struct {
 		OldName string `json:"oldName"`
 		NewName string `json:"newName"`
@@ -222,6 +254,20 @@ func renameAsset(c *gin.Context) {
 		return
 	}
 
+	if strings.HasPrefix(id, "workflow:") {
+		wfID := strings.TrimPrefix(id, "workflow:")
+		projectRoot := filepath.Join(manager.CorePath, "workflows", wfID)
+		oldPath := filepath.Join(projectRoot, req.OldName)
+		newPath := filepath.Join(projectRoot, req.NewName)
+		if err := os.Rename(oldPath, newPath); err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(200, gin.H{"status": "ok"})
+		return
+	}
+
+	scriptID := normalizeID(id)
 	if err := manager.RenameAsset(scriptID, req.OldName, req.NewName); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -230,12 +276,22 @@ func renameAsset(c *gin.Context) {
 }
 
 func deleteAsset(c *gin.Context) {
-	scriptID := normalizeID(c.Param("id"))
-	// Using Query because relPath might contain slashes which doesn't play well with Param in some Gin versions
-	// but let's stick to Param for consistency if we handle it correctly.
-	// Actually for recursive, relPath is passed in body for POST or as param.
+	id := c.Param("id")
 	relPath := c.Param("filename")
 
+	if strings.HasPrefix(id, "workflow:") {
+		wfID := strings.TrimPrefix(id, "workflow:")
+		projectRoot := filepath.Join(manager.CorePath, "workflows", wfID)
+		targetPath := filepath.Join(projectRoot, relPath)
+		if err := os.RemoveAll(targetPath); err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(200, gin.H{"status": "ok"})
+		return
+	}
+
+	scriptID := normalizeID(id)
 	if err := manager.DeleteAsset(scriptID, relPath); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -244,7 +300,7 @@ func deleteAsset(c *gin.Context) {
 }
 
 func mkdirAsset(c *gin.Context) {
-	scriptID := normalizeID(c.Param("id"))
+	id := c.Param("id")
 	var req struct {
 		Path string `json:"path"`
 	}
@@ -252,6 +308,20 @@ func mkdirAsset(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "Invalid request"})
 		return
 	}
+
+	if strings.HasPrefix(id, "workflow:") {
+		wfID := strings.TrimPrefix(id, "workflow:")
+		projectRoot := filepath.Join(manager.CorePath, "workflows", wfID)
+		fullPath := filepath.Join(projectRoot, req.Path)
+		if err := os.MkdirAll(fullPath, 0755); err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(200, gin.H{"status": "ok"})
+		return
+	}
+
+	scriptID := normalizeID(id)
 	if err := manager.MkdirAsset(scriptID, req.Path); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -260,7 +330,7 @@ func mkdirAsset(c *gin.Context) {
 }
 
 func moveAsset(c *gin.Context) {
-	scriptID := normalizeID(c.Param("id"))
+	id := c.Param("id")
 	var req struct {
 		OldPath string `json:"oldPath"`
 		NewPath string `json:"newPath"`
@@ -269,6 +339,21 @@ func moveAsset(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "Invalid request"})
 		return
 	}
+
+	if strings.HasPrefix(id, "workflow:") {
+		wfID := strings.TrimPrefix(id, "workflow:")
+		projectRoot := filepath.Join(manager.CorePath, "workflows", wfID)
+		oldPath := filepath.Join(projectRoot, req.OldPath)
+		newPath := filepath.Join(projectRoot, req.NewPath)
+		if err := os.Rename(oldPath, newPath); err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(200, gin.H{"status": "ok"})
+		return
+	}
+
+	scriptID := normalizeID(id)
 	if err := manager.MoveAsset(scriptID, req.OldPath, req.NewPath); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -277,7 +362,7 @@ func moveAsset(c *gin.Context) {
 }
 
 func createFile(c *gin.Context) {
-	scriptID := normalizeID(c.Param("id"))
+	id := c.Param("id")
 	var req struct {
 		Path string `json:"path"`
 	}
@@ -285,6 +370,24 @@ func createFile(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "Invalid request"})
 		return
 	}
+
+	if strings.HasPrefix(id, "workflow:") {
+		wfID := strings.TrimPrefix(id, "workflow:")
+		projectRoot := filepath.Join(manager.CorePath, "workflows", wfID)
+		fullPath := filepath.Join(projectRoot, req.Path)
+		if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		if err := os.WriteFile(fullPath, []byte(""), 0644); err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(200, gin.H{"status": "ok"})
+		return
+	}
+
+	scriptID := normalizeID(id)
 	if err := manager.CreateFileAsset(scriptID, req.Path); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -293,33 +396,37 @@ func createFile(c *gin.Context) {
 }
 
 func getAssetRaw(c *gin.Context) {
-	scriptID := normalizeID(c.Param("id"))
-	// For deep paths, we use a query param 'path' or handle the param carefully.
-	// Since filename param only captures one segment, let's use c.Param("filename")
-	// but if the UI sends it as a query param or we use a wildcard route, it's better.
-	// Wails/Gin wildcard route for filename: /scripts/:id/assets/*filepath
+	id := c.Param("id")
 	filename := c.Param("filename")
 
-	scripts, err := manager.ListScripts()
-	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
-		return
-	}
+	var projectRoot string
 
-	var scriptPath string
-	for _, s := range scripts {
-		if s["id"] == scriptID {
-			scriptPath = s["path"]
-			break
+	if strings.HasPrefix(id, "workflow:") {
+		wfID := strings.TrimPrefix(id, "workflow:")
+		projectRoot = filepath.Join(manager.CorePath, "workflows", wfID)
+	} else {
+		scriptID := normalizeID(id)
+		scripts, err := manager.ListScripts()
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
 		}
+
+		var scriptPath string
+		for _, s := range scripts {
+			if s["id"] == scriptID {
+				scriptPath = s["path"]
+				break
+			}
+		}
+
+		if scriptPath == "" {
+			c.JSON(404, gin.H{"error": "script not found"})
+			return
+		}
+		projectRoot = filepath.Join(manager.CorePath, filepath.Dir(scriptPath))
 	}
 
-	if scriptPath == "" {
-		c.JSON(404, gin.H{"error": "script not found"})
-		return
-	}
-
-	projectRoot := filepath.Join(manager.CorePath, filepath.Dir(scriptPath))
 	targetPath := filepath.Join(projectRoot, filename)
 
 	// Security check: Use absolute paths to prevent escape
@@ -418,7 +525,17 @@ func uploadAsset(c *gin.Context) {
 		var targetDir string
 		var filename string
 
-		if scriptID != "" {
+		if strings.HasPrefix(scriptID, "workflow:") {
+			wfID := strings.TrimPrefix(scriptID, "workflow:")
+			projectRoot := filepath.Join(manager.CorePath, "workflows", wfID)
+			fullRelPath := req.RelPath
+			if fullRelPath == "" {
+				fullRelPath = "images/" + req.Filename
+			}
+			targetPath := filepath.Join(projectRoot, fullRelPath)
+			targetDir = filepath.Dir(targetPath)
+			filename = filepath.Base(fullRelPath)
+		} else if scriptID != "" {
 			scriptID = strings.ReplaceAll(scriptID, " ", "_")
 			projectRoot := filepath.Join(manager.CorePath, "script", "custom", scriptID)
 
@@ -468,7 +585,20 @@ func uploadAsset(c *gin.Context) {
 	// Try to get relPath from form (more reliable than file.Filename)
 	relPath := c.PostForm("relPath")
 
-	if scriptID != "" {
+	if strings.HasPrefix(scriptID, "workflow:") {
+		wfID := strings.TrimPrefix(scriptID, "workflow:")
+		projectRoot := filepath.Join(manager.CorePath, "workflows", wfID)
+		var fullRelPath string
+		if relPath != "" {
+			fullRelPath = relPath
+		} else {
+			fullRelPath = "images/" + file.Filename
+		}
+		targetPath := filepath.Join(projectRoot, fullRelPath)
+		targetDir = filepath.Dir(targetPath)
+		filename = filepath.Base(fullRelPath)
+		returnPath = "workflows/" + wfID + "/" + fullRelPath
+	} else if scriptID != "" {
 		// New Structure: core/script/custom/<scriptId>
 		scriptID = strings.ReplaceAll(scriptID, " ", "_")
 		projectRoot := filepath.Join(manager.CorePath, "script", "custom", scriptID)
@@ -923,4 +1053,290 @@ func renameScript(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{"status": "renamed"})
+}
+
+func listWorkflows(c *gin.Context) {
+	// Redirect or use listProjects for now to avoid errors,
+	// but UI will switch to /api/projects
+	projects, err := workflow.ListProjects()
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, projects)
+}
+
+func listProjects(c *gin.Context) {
+	projects, err := workflow.ListProjects()
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, projects)
+}
+
+func createProject(c *gin.Context) {
+	var req struct {
+		Name        string `json:"name"`
+		Platform    string `json:"platform"`
+		Description string `json:"description"`
+	}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	id := normalizeID(req.Name) + "_" + fmt.Sprintf("%d", time.Now().Unix())
+	if err := workflow.SaveProject(id, req.Name, req.Platform, req.Description); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Create project directory for assets
+	projectRoot := filepath.Join(manager.CorePath, "workflows", id)
+	os.MkdirAll(projectRoot, 0755)
+	os.MkdirAll(filepath.Join(projectRoot, "images"), 0755)
+
+	c.JSON(200, gin.H{"id": id, "name": req.Name, "platform": req.Platform})
+}
+
+func createWorkflow(c *gin.Context) {
+	var req struct {
+		ProjectID   string `json:"projectId"`
+		Name        string `json:"name"`
+		Description string `json:"description"`
+	}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	// Clean ID without suffix (User request)
+	id := normalizeID(req.Name)
+
+	// Check for conflict
+	if _, err := workflow.GetWorkflow(id); err == nil {
+		c.JSON(409, gin.H{"error": fmt.Sprintf("Workflow with name '%s' (ID: %s) already exists", req.Name, id)})
+		return
+	}
+
+	wf := &workflow.Workflow{
+		ID:          id,
+		ProjectID:   req.ProjectID,
+		Name:        req.Name,
+		Description: req.Description,
+		Nodes:       make(map[string]*workflow.WorkflowNode),
+	}
+
+	if err := workflow.SaveWorkflow(wf); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, wf)
+}
+
+func renameProject(c *gin.Context) {
+	id := c.Param("id")
+	var req struct {
+		Name string `json:"name"`
+	}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	if err := workflow.RenameProject(id, req.Name); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"status": "ok"})
+}
+
+func deleteProject(c *gin.Context) {
+	id := c.Param("id")
+
+	// Delete from DB (cascading to workflows)
+	if err := workflow.DeleteProject(id); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Delete project directory assets
+	projectRoot := filepath.Join(manager.CorePath, "workflows", id)
+	os.RemoveAll(projectRoot)
+
+	c.JSON(200, gin.H{"status": "deleted"})
+}
+
+func renameWorkflow(c *gin.Context) {
+	id := c.Param("id")
+	var req struct {
+		Name string `json:"name"`
+	}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	if err := workflow.RenameWorkflow(id, req.Name); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"status": "ok"})
+}
+
+func getWorkflow(c *gin.Context) {
+	id := c.Param("id")
+	fmt.Printf("[API] getWorkflow called for id: %s\n", id)
+
+	wf, err := workflow.GetWorkflow(id)
+	if err != nil {
+		fmt.Printf("[API] getWorkflow error: %v\n", err)
+		c.JSON(404, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Explicit Marshal to debug empty body issue
+	b, err := json.Marshal(wf)
+	if err != nil {
+		fmt.Printf("[API] JSON Marshal error: %v\n", err)
+		c.JSON(500, gin.H{"error": "JSON Marshal failed"})
+		return
+	}
+
+	fmt.Printf("[API] getWorkflow success, sending %d bytes\n", len(b))
+	c.Data(200, "application/json", b)
+}
+
+func saveWorkflow(c *gin.Context) {
+	var wf workflow.Workflow
+	if err := c.BindJSON(&wf); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid JSON"})
+		return
+	}
+	if err := workflow.SaveWorkflow(&wf); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"status": "ok"})
+}
+
+func deleteWorkflow(c *gin.Context) {
+	id := c.Param("id")
+	_, err := db.DB.Exec("DELETE FROM workflows WHERE id = ?", id)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"status": "deleted"})
+}
+
+func runWorkflow(c *gin.Context) {
+	id := c.Param("id")
+	wf, err := workflow.GetWorkflow(id)
+	if err != nil {
+		c.JSON(404, gin.H{"error": "Workflow not found"})
+		return
+	}
+
+	// Start "Virtual" Process via Manager
+	runID, proc, ctx, err := manager.StartWorkflow(wf.ID)
+	if err != nil {
+		c.JSON(500, gin.H{"error": fmt.Sprintf("Failed to start workflow process: %v", err)})
+		return
+	}
+
+	// Return RunID immediately so UI can connect WebSocket
+	c.JSON(200, gin.H{"runId": runID})
+
+	// Execute in Goroutine
+	go func() {
+		defer close(proc.Logs) // Close logs when done to signal WS to close
+		defer func() {
+			proc.Logs <- `{"type": "status", "message": "Process exited"}`
+		}()
+
+		// Helper to log to both server console and WebSocket
+		logger := func(msg string) {
+			// Print to server console
+			// fmt.Print(msg)
+			// Send to WebSocket (buffered)
+			select {
+			case proc.Logs <- msg:
+			default:
+				// Drop log if buffer full to prevent blocking?
+				// Or increase buffer. For now, non-blocking try.
+				fmt.Println("[Warn] Log buffer full, dropping message")
+			}
+		}
+
+		logger(fmt.Sprintf("Starting workflow: %s (%s)\n", wf.Name, wf.ID))
+
+		// Check if any nodes need the Python bridge (platform/vision actions)
+		needsBridge := false
+		for _, node := range wf.Nodes {
+			t := string(node.Type)
+			switch t {
+			case "click", "swipe", "type_text", "key_event", "screenshot",
+				"find_image", "click_image", "wait_image", "wait_click_image",
+				"ocr_text", "ocr_pattern":
+				needsBridge = true
+			}
+			if needsBridge {
+				break
+			}
+		}
+
+		var bridge *workflow.PythonBridge
+
+		if needsBridge {
+			logger("Initializing Python Bridge...\n")
+			// Determine platform from workflow or default to android
+			platform := wf.Platform
+			if platform == "" {
+				platform = "android"
+			}
+
+			// TODO: get deviceId from request body or workflow config
+			deviceId := ""
+
+			bridge, err = workflow.NewPythonBridge(
+				ctx, // Use the process context!
+				manager.CmdPath,
+				manager.CorePath,
+				manager.EntryScript,
+				platform,
+				deviceId,
+			)
+			if err != nil {
+				errMsg := fmt.Sprintf("Failed to start Python bridge: %v", err)
+				logger(errMsg + "\n")
+				proc.Logs <- fmt.Sprintf(`{"type": "error", "message": "%s"}`, errMsg)
+				return
+			}
+			defer bridge.Close()
+			logger("Python Bridge ready.\n")
+		}
+
+		// Wire executors (pass logger!)
+		workflow.WireBuiltinExecutors(wf, bridge, logger)
+
+		engine := workflow.NewFlowEngine(wf)
+		result, err := engine.Execute(ctx, nil)
+
+		if err != nil {
+			// Check if cancelled
+			if ctx.Err() == context.Canceled {
+				logger("\nWorkflow execution cancelled.\n")
+				proc.Logs <- `{"type": "status", "message": "Workflow cancelled"}`
+			} else {
+				logger(fmt.Sprintf("\nWorkflow execution failed: %v\n", err))
+				proc.Logs <- fmt.Sprintf(`{"type": "error", "message": "Error: %v"}`, err)
+			}
+			return
+		}
+
+		logger(fmt.Sprintf("\nExecution complete: %d steps\n", len(result.ExecutionPath)))
+		proc.Logs <- `{"type": "status", "message": "Workflow Execution Complete"}`
+	}()
 }

@@ -3,12 +3,13 @@ import Editor, { type OnMount } from '@monaco-editor/react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAppStore } from '../store';
-import { Save, Play, FileCode, Plus, Trash2, Camera, HelpCircle, ChevronLeft, ChevronRight, X, File, FileCheck, RefreshCw } from 'lucide-react';
+import { Save, Play, FileCode, Plus, Trash2, Camera, HelpCircle, ChevronLeft, ChevronRight, X, File, FileCheck, RefreshCw, Activity } from 'lucide-react';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ScreenshotModal } from '../components/ScreenshotModal';
 import { ApiRefModal } from '../components/ApiRefModal';
 import { AssetExplorer } from '../components/AssetExplorer';
 import { registerPythonCompletions } from '../utils/monacoConfig';
+
 import clsx from 'clsx';
 
 
@@ -115,6 +116,66 @@ export const EditorView: React.FC = () => {
         }
 
         const isImage = /\.(png|jpg|jpeg|gif|bmp|webp)$/i.test(path);
+        const isWorkflow = path.endsWith('.wf') || path.startsWith('workflow:');
+
+        if (isWorkflow) {
+            setIsLoading(true);
+            try {
+                let wfData;
+                let content;
+                let name;
+
+                if (path.startsWith('workflow:')) {
+                    const wfId = path.split(':')[1];
+                    const res = await fetch(`${API_Base}/workflows/${wfId}`);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    wfData = await res.json();
+                    content = JSON.stringify(wfData, null, 2);
+                    name = wfData.name;
+                } else {
+                    const res = await fetch(`${API_Base}/scripts/${editorSelectedScriptId}/content?path=${encodeURIComponent(path)}`);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const data = await res.json();
+                    content = data.content;
+                    name = path.split('/').pop() || path;
+                    try { wfData = JSON.parse(data.content); } catch (e) { wfData = { nodes: [], edges: [] }; }
+                }
+
+                const tabId = path.startsWith('workflow:') ? path : `${editorSelectedScriptId}/${path}`;
+
+                // Check if already open
+                const existing = editorTabs.find(t => t.id === tabId);
+                if (existing) {
+                    setActiveEditorTab(tabId);
+                    return;
+                }
+
+                useAppStore.setState(state => ({
+                    editorTabs: [...state.editorTabs, {
+                        id: tabId,
+                        scriptId: editorSelectedScriptId || 'workflows',
+                        name,
+                        path,
+                        type: 'workflow',
+                        content,
+                        originalContent: content,
+                        isDirty: false,
+                        workflowData: wfData
+                    }],
+                    activeEditorTabId: tabId,
+                    activeEditorTabIdPerProject: {
+                        ...state.activeEditorTabIdPerProject,
+                        [editorSelectedScriptId || 'workflows']: tabId
+                    }
+                }));
+            } catch (err) {
+                console.error("Failed to open workflow", err);
+                showToast("Failed to load workflow", "error");
+            } finally {
+                setIsLoading(false);
+            }
+            return;
+        }
 
         if (isImage) {
             // For images, the "content" is the URL
@@ -153,25 +214,34 @@ export const EditorView: React.FC = () => {
     };
 
     const handleSave = async () => {
-        if (!activeTab || !editorRef.current || activeTab.type === 'image') return;
-        const currentCode = editorRef.current.getValue();
+        if (!activeTab || activeTab.type === 'image') return;
+        const currentCode = editorRef.current?.getValue(); // Use optional chaining for editorRef.current
 
         try {
-            const url = activeTab.path
-                ? `${API_Base}/scripts/${activeTab.scriptId}/content?path=${encodeURIComponent(activeTab.path)}`
-                : `${API_Base}/scripts/${activeTab.scriptId}/content`;
-
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: currentCode })
-            });
-
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (activeTab.type === 'workflow' && activeTab.id.startsWith('workflow:')) {
+                const wfId = activeTab.id.split(':')[1];
+                const res = await fetch(`${API_Base}/workflows/${wfId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: activeTab.content
+                });
+                if (!res.ok) throw new Error("API Save failed");
+            } else {
+                const url = activeTab.path
+                    ? `${API_Base}/scripts/${activeTab.scriptId}/content?path=${encodeURIComponent(activeTab.path)}`
+                    : `${API_Base}/scripts/${activeTab.scriptId}/content`;
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: currentCode })
+                });
+                if (!res.ok) throw new Error("File Save failed");
+            }
             saveEditorTab(activeTab.id);
+            showToast(t('ui.editor.saveSuccess', 'File saved!'), 'info'); // Changed type to 'info' for success
         } catch (err) {
             console.error("Failed to save", err);
-            alert(t('ui.common.error'));
+            showToast(t('ui.common.error'), 'error');
         }
     };
 
@@ -195,7 +265,7 @@ export const EditorView: React.FC = () => {
             setIsDeleteModalOpen(false);
         } catch (err: any) {
             console.error("Failed to delete", err);
-            alert(t('ui.common.error') + ": " + (err.message));
+            showToast(t('ui.common.error') + ": " + (err.message), 'error');
         }
     };
 
@@ -223,7 +293,7 @@ export const EditorView: React.FC = () => {
             setNewScriptPlatform("android");
         } catch (err: any) {
             console.error("Failed to create script", err);
-            alert(t('ui.common.error') + ": " + (err.message));
+            showToast(t('ui.common.error') + ": " + (err.message), 'error');
         } finally {
             setIsCreating(false);
         }
@@ -444,6 +514,12 @@ export const EditorView: React.FC = () => {
                                                 IMAGE MODE
                                             </div>
                                         </div>
+                                    </div>
+                                ) : activeTab.type === 'workflow' ? (
+                                    <div className="flex-1 flex flex-col items-center justify-center text-base-content/40 p-12 text-center">
+                                        <Activity size={48} className="mb-4 opacity-20" />
+                                        <div className="text-lg font-bold">Workflow Editor has moved</div>
+                                        <div className="text-sm mt-2 max-w-sm">Please use the dedicated <strong>Workflow</strong> tab in the navigation bar to edit workflows.</div>
                                     </div>
                                 ) : (
                                     <Editor

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileImage, Trash2, Edit2, Folder, FolderPlus, ChevronRight, ChevronDown, ListTree, ChevronLeft, FileCode, FileText, FileJson, File, FilePlus } from 'lucide-react';
+import { FileImage, Trash2, Edit2, Folder, FolderPlus, ChevronRight, ChevronDown, ListTree, ChevronLeft, FileCode, FileText, FileJson, File, FilePlus, LayoutGrid } from 'lucide-react';
 import clsx from 'clsx';
 import { useAppStore } from '../store';
 
@@ -236,6 +236,8 @@ export const AssetExplorer: React.FC<AssetExplorerProps> = ({ scriptId, width, c
             case 'txt':
             case 'md':
                 return <FileText size={14} className="text-base-content/40" />;
+            case 'wf':
+                return <LayoutGrid size={14} className="text-primary/70" />;
             default: return <File size={14} className="text-base-content/30" />;
         }
     };
