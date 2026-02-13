@@ -753,6 +753,8 @@ const ParamField: React.FC<ParamFieldProps> = ({
 interface WorkflowViewProps {
     tab: WorkflowTab;
     onContentChange?: (content: string) => void;
+    onRun?: () => void;
+    isExecuting?: boolean;
 }
 
 /* ============================================================
@@ -763,7 +765,7 @@ type RightPanelTab = 'properties' | 'variables';
 /* ============================================================
  *  Inner Component (needs ReactFlowProvider)
  * ============================================================ */
-function WorkflowViewInner({ tab, onContentChange }: WorkflowViewProps) {
+function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false }: WorkflowViewProps) {
     const { theme } = useAppStore();
     const [selectedNode, setSelectedNode] = useState<Node | null>(null);
     const { screenToFlowPosition, zoomIn, zoomOut, fitView, zoomTo } = useReactFlow();
@@ -775,7 +777,6 @@ function WorkflowViewInner({ tab, onContentChange }: WorkflowViewProps) {
     const [showRightPanel, setShowRightPanel] = useState(false);
     const [newVarKey, setNewVarKey] = useState('');
     const [newVarValue, setNewVarValue] = useState('');
-    const [isExecuting, setIsExecuting] = useState(false);
     const [showSettingsModal, setShowSettingsModal] = useState(false);
 
     // Context Menu State
@@ -1234,40 +1235,19 @@ function WorkflowViewInner({ tab, onContentChange }: WorkflowViewProps) {
                         >
                             <Background gap={24} color="#f8fafc" />
                             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-4">
-                                <button
-                                    className={clsx(
-                                        "btn btn-lg text-white border-none shadow-xl rounded-full px-8 gap-3 animate-in fade-in slide-in-from-bottom duration-300 group transition-all",
-                                        isExecuting ? "bg-primary/50 cursor-not-allowed" : "bg-[#ff6d5a] hover:bg-[#ff5a45]"
-                                    )}
-                                    disabled={isExecuting}
-                                    onClick={() => {
-                                        if (isExecuting) return;
-                                        setIsExecuting(true);
-                                        const nodeIds = nodes.map(n => n.id);
-                                        let current = 0;
-                                        const nextNode = () => {
-                                            if (current >= nodeIds.length) {
-                                                setTimeout(() => {
-                                                    setIsExecuting(false);
-                                                    setNodes(nds => nds.map(n => ({ ...n, data: { ...n.data, status: 'success' } })));
-                                                }, 1000);
-                                                return;
-                                            }
-                                            const id = nodeIds[current];
-                                            setNodes(nds => nds.map(n => ({ ...n, data: { ...n.data, status: n.id === id ? 'running' : n.data.status } })));
-                                            setTimeout(() => {
-                                                setNodes(nds => nds.map(n => ({ ...n, data: { ...n.data, status: n.id === id ? 'success' : n.data.status } })));
-                                                current++;
-                                                nextNode();
-                                            }, 800);
-                                        };
-                                        setNodes(nds => nds.map(n => ({ ...n, data: { ...n.data, status: undefined } })));
-                                        nextNode();
-                                    }}
-                                >
-                                    {isExecuting ? <Loader2 size={20} className="animate-spin" /> : <Play size={20} fill="currentColor" className="group-hover:scale-110 transition-transform" />}
-                                    <span className="font-bold tracking-tight">{isExecuting ? 'Executing...' : 'Execute workflow'}</span>
-                                </button>
+                                {onRun && (
+                                    <button
+                                        className={clsx(
+                                            "btn btn-lg text-white border-none shadow-xl rounded-full px-8 gap-3 animate-in fade-in slide-in-from-bottom duration-300 group transition-all",
+                                            isExecuting ? "bg-primary/50 cursor-not-allowed" : "bg-[#ff6d5a] hover:bg-[#ff5a45]"
+                                        )}
+                                        disabled={isExecuting}
+                                        onClick={onRun}
+                                    >
+                                        {isExecuting ? <Loader2 size={20} className="animate-spin" /> : <Play size={20} fill="currentColor" className="group-hover:scale-110 transition-transform" />}
+                                        <span className="font-bold tracking-tight">{isExecuting ? 'Executing...' : 'Execute workflow'}</span>
+                                    </button>
+                                )}
                             </div>
                             <div className="absolute top-1/2 -translate-y-1/2 right-4 z-10 flex flex-col gap-2 p-1.5 bg-base-100 border border-base-300 shadow-xl rounded-xl backdrop-blur-sm">
                                 <button className="btn btn-sm btn-ghost btn-square text-base-content/60 hover:text-primary transition-colors" title="Zoom In" onClick={() => zoomIn()}><Plus size={18} /></button>

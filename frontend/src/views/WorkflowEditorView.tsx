@@ -570,6 +570,8 @@ export const WorkflowEditorView: React.FC = () => {
                             key={activeTab.id}
                             tab={activeTab}
                             onContentChange={(content: string) => updateWorkflowTabContent(activeTab.id, content)}
+                            onRun={handleRun}
+                            isExecuting={isRunning}
                         />
                         {/* Run Result Panel */}
                         {runResult && (
