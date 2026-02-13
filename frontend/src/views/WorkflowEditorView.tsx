@@ -35,6 +35,7 @@ export const WorkflowEditorView: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [isRunning, setIsRunning] = useState(false);
     const [runResult, setRunResult] = useState<any>(null);
+    const [logs, setLogs] = useState<any[]>([]);
 
     // Context Menu State
     const [contextMenu, setContextMenu] = useState<{
@@ -295,6 +296,7 @@ export const WorkflowEditorView: React.FC = () => {
         if (!tab) return;
         setIsRunning(true);
         setRunResult(null);
+        setLogs([]);
         try {
             const res = await fetch(`${apiBaseUrl}/workflows/${tab.workflowId}/run`, {
                 method: 'POST',
@@ -303,13 +305,55 @@ export const WorkflowEditorView: React.FC = () => {
             const data = await res.json();
             if (res.ok) {
                 setRunResult(data);
-                showToast("Workflow executed successfully", "success");
+                showToast("Workflow started", "success");
+
+                // Connect to WebSocket for logs
+                if (data.runId) {
+                    // Assuming API is proxied, so ws is relative or derived
+                    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    // Use configured API base or derive from location
+                    // Note: apiBaseUrl might be /api, so we need to construct WS URL
+                    // If apiBaseUrl is full URL (http://localhost:12857/api), we need to parse it
+                    let wsUrl = '';
+                    if (apiBaseUrl.startsWith('http')) {
+                        const url = new URL(apiBaseUrl);
+                        wsUrl = `${url.protocol === 'https:' ? 'wss:' : 'ws:'}//${url.host}/ws/logs/${data.runId}`;
+                    } else {
+                        // Relative
+                        wsUrl = `${wsProtocol}//${window.location.host}/ws/logs/${data.runId}`;
+                    }
+
+                    const ws = new WebSocket(wsUrl);
+                    ws.onmessage = (event) => {
+                        try {
+                            const msg = JSON.parse(event.data);
+                            setLogs(prev => [...prev, msg]);
+                            // If execution complete, stop loading
+                            if (msg.type === 'status' && (msg.message?.includes('Complete') || msg.message?.includes('exited'))) {
+                                setIsRunning(false);
+                                ws.close();
+                            }
+                        } catch (e) {
+                            // Plain text log?
+                            setLogs(prev => [...prev, { type: 'stdout', message: event.data }]);
+                        }
+                    };
+                    ws.onerror = (e) => {
+                        console.error("WS Error", e);
+                        setIsRunning(false);
+                    };
+                    ws.onclose = () => {
+                        setIsRunning(false);
+                    };
+                } else {
+                    setIsRunning(false);
+                }
             } else {
                 showToast(`Run failed: ${data.error || 'Unknown error'}`, "error");
+                setIsRunning(false);
             }
         } catch (err) {
             showToast("Execution error", "error");
-        } finally {
             setIsRunning(false);
         }
     }, [activeWorkflowTabId, workflowTabs, apiBaseUrl]);
@@ -574,15 +618,33 @@ export const WorkflowEditorView: React.FC = () => {
                             isExecuting={isRunning}
                         />
                         {/* Run Result Panel */}
-                        {runResult && (
-                            <div className="absolute bottom-0 left-0 right-0 bg-base-200 border-t border-base-300 p-4 max-h-48 overflow-auto">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-xs font-bold uppercase tracking-wider text-base-content/50">Execution Result</span>
-                                    <button className="btn btn-xs btn-ghost btn-square" onClick={() => setRunResult(null)}>
+                        {(runResult || logs.length > 0) && (
+                            <div className="absolute bottom-0 left-0 right-0 bg-base-200 border-t border-base-300 p-4 max-h-48 overflow-auto flex flex-col font-mono text-xs shadow-xl z-20">
+                                <div className="flex items-center justify-between mb-2 sticky top-0 bg-base-200 pb-2 border-b border-base-300/50">
+                                    <span className="text-xs font-bold uppercase tracking-wider text-base-content/50 flex items-center gap-2">
+                                        Execution Log
+                                        {isRunning && <span className="loading loading-dots loading-xs"></span>}
+                                    </span>
+                                    <button className="btn btn-xs btn-ghost btn-square" onClick={() => { setRunResult(null); setLogs([]); }}>
                                         <X size={14} />
                                     </button>
                                 </div>
-                                <pre className="text-xs font-mono whitespace-pre-wrap text-base-content/80">{JSON.stringify(runResult, null, 2)}</pre>
+                                <div className="space-y-1">
+                                    {logs.map((log, i) => (
+                                        <div key={i} className={clsx(
+                                            "break-all",
+                                            log.level === 'error' || log.type === 'error' ? "text-error" :
+                                                log.level === 'warn' ? "text-warning" :
+                                                    log.type === 'status' ? "text-info opacity-70" : "text-base-content/70"
+                                        )}>
+                                            <span className="opacity-30 mr-2">[{new Date().toLocaleTimeString()}]</span>
+                                            {typeof log === 'string' ? log : (log.message || JSON.stringify(log))}
+                                        </div>
+                                    ))}
+                                    {logs.length === 0 && runResult && (
+                                        <div className="text-success">Started Run ID: {runResult.runId}</div>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>
