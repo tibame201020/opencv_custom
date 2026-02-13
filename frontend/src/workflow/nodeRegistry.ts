@@ -382,8 +382,41 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
         ],
         handleConfig: {
             sources: [
-                { id: 'true', label: 'True', position: '30%' },
-                { id: 'false', label: 'False', position: '70%' },
+                { id: 'true', label: 'True' },
+                { id: 'false', label: 'False' },
+            ],
+        },
+    },
+    {
+        type: 'switch',
+        label: 'Switch',
+        description: '多重條件分支 (Case / Default)',
+        category: 'flow',
+        group: 'Logic',
+        color: 'accent',
+        icon: GitBranch,
+        params: [
+            {
+                key: 'mode', label: 'Mode', type: 'select', required: true, defaultValue: 'string',
+                options: [
+                    { value: 'string', label: 'String' },
+                    { value: 'number', label: 'Number' },
+                ]
+            },
+            { key: 'value', label: 'Value', type: 'expression', required: true, placeholder: '{{ $json.category }}' },
+            // Simplified Cases: Just a list of values? Or dynamic inputs?
+            // For now, let's assume a JSON array of case values for MVP.
+            // A real UI would need a dynamic list builder.
+            { key: 'cases', label: 'Cases (JSON Array)', type: 'json', defaultValue: '["A", "B"]', description: '匹配值列表 (Case 0, Case 1...)' },
+        ],
+        outputs: [
+            { key: 'output', label: 'Output', type: 'any' },
+        ],
+        handleConfig: {
+            sources: [
+                // Dynamic handles usually handled in component, but we can define defaults
+                // We'll treat this specially in GenericNode
+                { id: 'default', label: 'Default' },
             ],
         },
     },
@@ -412,8 +445,8 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
         ],
         handleConfig: {
             sources: [
-                { id: 'body', label: 'Loop Body', position: '30%' },
-                { id: 'done', label: 'Done', position: '70%' },
+                { id: 'body', label: 'Loop Body' },
+                { id: 'done', label: 'Done' },
             ],
         },
     },
