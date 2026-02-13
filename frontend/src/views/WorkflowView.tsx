@@ -138,7 +138,6 @@ const edgeTypes = {
 const GenericNode = React.memo(({ data, id, type, selected }: NodeProps<any>) => {
     const def = getNodeDef(type || data.nodeType || 'click');
     const IconComp = def?.icon;
-    const borderColor = selected ? 'border-primary' : 'border-base-300';
     const [hovered, setHovered] = useState(false);
 
     // Status Logic
@@ -149,67 +148,100 @@ const GenericNode = React.memo(({ data, id, type, selected }: NodeProps<any>) =>
 
     return (
         <div
-            className={clsx(
-                "group relative bg-white rounded-xl border transition-all duration-200 shadow-sm hover:shadow-md min-w-[180px]",
-                borderColor === 'border-primary' ? "ring-2 ring-primary border-transparent" : "border-gray-200 hover:border-gray-300",
-                isRunning && "n8n-node-running ring-4 ring-primary/20",
-                isDisabled && "opacity-60 grayscale-[0.5]",
-                "n8n-node-pop" // Pop-in animation on mount
-            )}
+            className="group relative flex flex-col items-center overflow-visible w-16 h-16"
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
-            {selected && (
-                <NodeResizer
-                    minWidth={180}
-                    minHeight={80}
-                    lineStyle={RESIZER_LINE_STYLE}
-                    handleClassName="w-2.5 h-2.5 bg-primary border-2 border-white rounded-full shadow-sm"
-                />
+            {/* Main Square Container */}
+            <div
+                className={clsx(
+                    "w-16 h-16 rounded-2xl bg-white border-2 flex items-center justify-center shadow-sm transition-all duration-200 z-10",
+                    selected ? "border-primary ring-4 ring-primary/20" : "border-gray-200 hover:border-gray-400",
+                    isRunning && "border-primary animate-pulse",
+                    isError && "border-error",
+                    isDisabled && "opacity-60 grayscale"
+                )}
+            >
+                {/* Icon */}
+                <div className={clsx(
+                    "transition-transform duration-200 group-hover:scale-110",
+                    `text-${def?.color || 'gray-500'}`
+                )}>
+                     {IconComp ? <IconComp size={28} /> : <div className="text-[8px] font-bold">Node</div>}
+                </div>
+            </div>
+
+            {/* Status Indicator (Bottom-Right Inside) */}
+            {(isRunning || isSuccess || isError) && (
+                <div className={clsx(
+                    "absolute bottom-0 right-0 translate-x-1/4 translate-y-1/4 w-5 h-5 rounded-full flex items-center justify-center border-2 border-white z-20 shadow-sm animate-in zoom-in duration-300",
+                    isSuccess && "bg-success text-white",
+                    isRunning && "bg-primary text-white",
+                    isError && "bg-error text-white"
+                )}>
+                    {isSuccess && <Check size={10} strokeWidth={4} />}
+                    {isRunning && <Loader2 size={10} className="animate-spin" />}
+                    {isError && <AlertCircle size={10} strokeWidth={4} />}
+                </div>
             )}
 
-            {/* n8n Style Hover Toolbar (Top) */}
+            {/* External Label (Below, Transparent) */}
+            <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-32 text-center pointer-events-none z-20">
+                <div className={clsx(
+                    "text-[11px] font-bold leading-tight drop-shadow-sm transition-colors duration-200",
+                    selected ? "text-primary" : "text-gray-700"
+                )}>
+                    {data.label || def?.label || 'Node'}
+                </div>
+                 {(data.subtitle || def?.description) && (
+                    <div className="text-[9px] text-gray-500 mt-0.5 truncate max-w-full px-1">
+                        {data.subtitle}
+                    </div>
+                )}
+            </div>
+
+            {/* Transparent Hover Toolbar (Floating Above) */}
             <div className={clsx(
-                "absolute -top-10 left-1/2 -translate-x-1/2 bg-white rounded-full shadow-lg border border-gray-100 p-1 flex items-center gap-1 z-30 transition-all duration-200",
+                "absolute -top-12 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-30 transition-all duration-200",
                 (hovered || selected) ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
             )}>
                 <button
-                    className="p-1.5 rounded-full hover:bg-gray-100 text-gray-600 hover:text-primary transition-colors"
+                    className="p-1.5 rounded-full bg-white shadow-sm border border-gray-100 hover:border-primary text-gray-500 hover:text-primary transition-colors"
                     title="Execute Step"
                     onClick={(e) => {
                         e.stopPropagation();
-                        // Dispatch execute event
                         window.dispatchEvent(new CustomEvent('workflow-node-execute', { detail: { nodeId: id } }));
                     }}
                 >
-                    <Play size={14} fill="currentColor" />
+                    <Play size={12} fill="currentColor" />
                 </button>
-                <div className="w-px h-3 bg-gray-200" />
                 <button
-                    className={clsx("p-1.5 rounded-full hover:bg-gray-100 transition-colors", isDisabled ? "text-red-500" : "text-gray-600")}
+                    className={clsx(
+                        "p-1.5 rounded-full bg-white shadow-sm border border-gray-100 hover:border-primary transition-colors",
+                        isDisabled ? "text-red-500 hover:text-red-600" : "text-gray-500 hover:text-primary"
+                    )}
                     title={isDisabled ? "Enable Step" : "Disable Step"}
                     onClick={(e) => {
                         e.stopPropagation();
                         window.dispatchEvent(new CustomEvent('workflow-node-toggle', { detail: { nodeId: id, disabled: !isDisabled } }));
                     }}
                 >
-                    {isDisabled ? <EyeOff size={14} /> : <Eye size={14} />}
+                    {isDisabled ? <EyeOff size={12} /> : <Eye size={12} />}
                 </button>
                 <button
-                    className="p-1.5 rounded-full hover:bg-red-50 text-gray-600 hover:text-red-500 transition-colors"
+                    className="p-1.5 rounded-full bg-white shadow-sm border border-gray-100 hover:border-red-300 text-gray-500 hover:text-red-500 transition-colors"
                     title="Delete Step"
                     onClick={(e) => {
                         e.stopPropagation();
                         window.dispatchEvent(new CustomEvent('workflow-node-delete', { detail: { nodeId: id } }));
                     }}
                 >
-                    <Trash2 size={14} />
+                    <Trash2 size={12} />
                 </button>
                 <button
-                    className="p-1.5 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
+                    className="p-1.5 rounded-full bg-white shadow-sm border border-gray-100 hover:border-primary text-gray-500 hover:text-primary transition-colors"
                     title="More Actions"
                     onClick={(e) => {
-                         // Trigger context menu manually
                          e.stopPropagation();
                          const rect = e.currentTarget.getBoundingClientRect();
                          window.dispatchEvent(new CustomEvent('workflow-context-menu', {
@@ -217,42 +249,8 @@ const GenericNode = React.memo(({ data, id, type, selected }: NodeProps<any>) =>
                          }));
                     }}
                 >
-                    <MoreHorizontal size={14} />
+                    <MoreHorizontal size={12} />
                 </button>
-            </div>
-
-            {/* n8n Style Status Indicator (Top-Right) */}
-            {(isRunning || isSuccess || isError) && (
-                <div className={clsx(
-                    "absolute -top-2.5 -right-2.5 w-6 h-6 rounded-full flex items-center justify-center shadow-lg border-2 border-white z-20 animate-in zoom-in duration-300",
-                    isSuccess && "bg-success text-white",
-                    isRunning && "bg-primary text-white",
-                    isError && "bg-error text-white"
-                )}>
-                    {isSuccess && <Check size={12} strokeWidth={3} />}
-                    {isRunning && <Loader2 size={12} className="animate-spin" />}
-                    {isError && <AlertCircle size={12} strokeWidth={3} />}
-                </div>
-            )}
-
-            <div className="flex items-center gap-3 p-3">
-                {/* Node Icon - n8n style rounded box */}
-                <div className={clsx(
-                    "w-10 h-10 rounded-lg flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform",
-                    `bg-${def?.color || 'gray-100'} text-white`
-                )}>
-                    {IconComp ? <IconComp size={20} /> : <div className="text-[10px] font-bold">Node</div>}
-                </div>
-
-                <div className="min-w-0 flex-1 pr-2">
-                    <div className="text-sm font-semibold text-gray-800 truncate leading-tight">{data.label || def?.label || 'Node'}</div>
-                    <div className="text-[10px] text-gray-500 truncate mt-0.5">{data.subtitle || def?.description}</div>
-                </div>
-
-                {/* Drag Handle (visible on hover) */}
-                <div className="opacity-0 group-hover:opacity-40 hover:!opacity-100 cursor-grab active:cursor-grabbing transition-opacity">
-                    <GripVertical size={16} className="text-gray-400" />
-                </div>
             </div>
 
             {/* Input Handle (Left) */}
@@ -260,7 +258,7 @@ const GenericNode = React.memo(({ data, id, type, selected }: NodeProps<any>) =>
                 <Handle
                     type="target"
                     position={Position.Left}
-                    className="!w-2.5 !h-2.5 !border-2 !border-white !bg-gray-400 hover:!bg-primary transition-colors shadow-sm -ml-1.5"
+                    className="!w-2.5 !h-2.5 !border-2 !border-white !bg-gray-400 hover:!bg-primary transition-colors shadow-sm -ml-1.5 z-0"
                 />
             )}
 
