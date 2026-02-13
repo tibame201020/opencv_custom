@@ -1322,6 +1322,17 @@ func runWorkflow(c *gin.Context) {
 		workflow.WireBuiltinExecutors(wf, bridge, logger)
 
 		engine := workflow.NewFlowEngine(wf)
+		engine.OnStep = func(step workflow.ExecutionStep) {
+			// Stream execution step
+			msg := map[string]interface{}{
+				"type": "execution_step",
+				"data": step,
+			}
+			if b, err := json.Marshal(msg); err == nil {
+				proc.Logs <- string(b)
+			}
+		}
+
 		result, err := engine.Execute(ctx, nil)
 
 		if err != nil {
