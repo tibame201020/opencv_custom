@@ -29,7 +29,8 @@ import { useAppStore, type WorkflowTab } from '../store';
 import {
     Trash2, ChevronDown, X, GripVertical, Plus,
     Braces, ToggleLeft, Play, Maximize,
-    Focus, Minus, Check, Loader2, AlertCircle, Zap
+    Check, Loader2, AlertCircle, Zap,
+    ZoomIn, ZoomOut
 } from 'lucide-react';
 import clsx from 'clsx';
 import { v4 as uuidv4 } from 'uuid';
@@ -38,6 +39,7 @@ import {
     CATEGORY_LABELS, CATEGORY_COLORS,
     type NodeCategory, type ParamSchema
 } from '../workflow/nodeRegistry';
+import { ExpressionInput } from '../components/ExpressionInput';
 
 /* ============================================================
  *  Generic Node Component (driven by NodeRegistry)
@@ -254,15 +256,14 @@ const GenericNode = React.memo(({ data, id, type, selected }: NodeProps<any>) =>
     );
 });
 
-const nodeTypes = {
-    click: GenericNode,
-    find: GenericNode,
-    text: GenericNode,
-    wait: GenericNode,
-    loop: GenericNode,
-    condition: GenericNode,
-    script: GenericNode,
-};
+import { NODE_DEFINITIONS } from '../workflow/nodeRegistry';
+const nodeTypes: Record<string, any> = {};
+NODE_DEFINITIONS.forEach(def => {
+    nodeTypes[def.type] = GenericNode;
+});
+
+const EMPTY_ARRAY: any[] = [];
+
 
 /* ============================================================
  *  Context Menu Component (n8n Style)
@@ -277,10 +278,11 @@ interface GraphContextMenuProps {
     onToFront?: () => void;
     onToBack?: () => void;
     onProperties?: () => void;
+    onAddNode?: () => void;
 }
 
 const GraphContextMenu: React.FC<GraphContextMenuProps> = ({
-    type, x, y, onClose, onDelete, onDuplicate, onToFront, onToBack, onProperties
+    type, x, y, onClose, onDelete, onDuplicate, onToFront, onToBack, onProperties, onAddNode
 }) => {
     return (
         <div
@@ -289,6 +291,12 @@ const GraphContextMenu: React.FC<GraphContextMenuProps> = ({
             onMouseLeave={onClose}
         >
             <div className="px-3 py-1 text-[9px] font-bold opacity-30 uppercase tracking-widest">{type} Actions</div>
+
+            {onAddNode && (
+                <button onClick={onAddNode} className="w-full text-left px-4 py-2 hover:bg-base-200 text-xs flex items-center gap-2">
+                    <Plus size={14} className="text-primary" /> Add Node
+                </button>
+            )}
 
             {onProperties && (
                 <button onClick={onProperties} className="w-full text-left px-4 py-2 hover:bg-base-200 text-xs flex items-center gap-2">
@@ -310,6 +318,7 @@ const GraphContextMenu: React.FC<GraphContextMenuProps> = ({
                 </button>
             )}
 
+            {/* Minimap (Bottom Right) */}
             {onToBack && (
                 <button onClick={onToBack} className="w-full text-left px-4 py-2 hover:bg-base-200 text-xs flex items-center gap-2">
                     <ChevronDown size={14} /> Send to Back
@@ -411,12 +420,17 @@ interface NodeSettingsModalProps {
     onDelete: () => void;
     expressionModes: Record<string, boolean>;
     onToggleExpression: (key: string) => void;
+    nodes: Node[];
+    executionState: any[];
 }
 
 const NodeSettingsModal: React.FC<NodeSettingsModalProps> = ({
-    node, nodeDef, onClose, onConfigChange, onRename, onDelete,
-    expressionModes, onToggleExpression
+    node, onClose, onConfigChange, onRename, onDelete,
+    expressionModes, onToggleExpression, nodes, executionState
 }) => {
+    const { theme } = useAppStore();
+    if (!node) return null;
+    const nodeDef = getNodeDef(node.type || 'click');
     const [activeTab, setActiveTab] = useState<'parameters' | 'settings'>('parameters');
     const [isRenaming, setIsRenaming] = useState(false);
     const [tempName, setTempName] = useState((node.data as any).label || '');
@@ -525,6 +539,8 @@ const NodeSettingsModal: React.FC<NodeSettingsModalProps> = ({
                                             onChange={onConfigChange}
                                             expressionMode={!!expressionModes[`${node.id}:${param.key}`]}
                                             onToggleExpression={() => onToggleExpression(`${node.id}:${param.key}`)}
+                                            nodes={nodes}
+                                            executionState={executionState}
                                         />
                                     ))}
 
@@ -562,10 +578,22 @@ const NodeSettingsModal: React.FC<NodeSettingsModalProps> = ({
                         <div className="flex items-center justify-between px-4 py-3 border-b border-base-300">
                             <span className="text-[10px] font-bold uppercase tracking-widest opacity-40">Output</span>
                         </div>
-                        <div className="flex-1 flex flex-col items-center justify-center text-base-content/20 p-4 text-center">
-                            <div className="text-xs">No output data</div>
-                            <div className="text-[10px] mt-1 opacity-60">Execute step to view output</div>
-                        </div>
+                        {executionState.find(s => s.nodeId === node.id) ? (
+                            <div className="flex-1 overflow-hidden relative">
+                                <Editor
+                                    height="100%"
+                                    defaultLanguage="json"
+                                    value={JSON.stringify(executionState.slice().reverse().find(s => s.nodeId === node.id)?.output, null, 2)}
+                                    options={{ minimap: { enabled: false }, readOnly: true, fontSize: 11, lineNumbers: 'off' }}
+                                    theme={theme === 'dark' ? 'vs-dark' : 'light'}
+                                />
+                            </div>
+                        ) : (
+                            <div className="flex-1 flex flex-col items-center justify-center text-base-content/20 p-4 text-center">
+                                <div className="text-xs">No output data</div>
+                                <div className="text-[10px] mt-1 opacity-60">Execute step to view output</div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -582,10 +610,12 @@ interface ParamFieldProps {
     onChange: (key: string, value: any) => void;
     expressionMode: boolean;
     onToggleExpression: () => void;
+    nodes: Node[];
+    executionState: any[];
 }
 
 const ParamField: React.FC<ParamFieldProps> = ({
-    param, value, onChange, expressionMode, onToggleExpression
+    param, value, onChange, expressionMode, onToggleExpression, nodes, executionState
 }) => {
     const { theme } = useAppStore();
 
@@ -602,12 +632,12 @@ const ParamField: React.FC<ParamFieldProps> = ({
                         <Braces size={10} /> Expr
                     </button>
                 </label>
-                <input
-                    type="text"
-                    className="input input-xs input-bordered font-mono text-warning bg-warning/5 border-warning/30"
+                <ExpressionInput
                     value={value || ''}
-                    onChange={(e) => onChange(param.key, e.target.value)}
-                    placeholder={param.placeholder || '{{ $nodes["..."].output.xxx }}'}
+                    onChange={(val) => onChange(param.key, val)}
+                    nodes={nodes}
+                    executionState={executionState}
+                    placeholder={param.placeholder || '{{ $node["..."].json.field }}'}
                 />
                 {param.description && <div className="text-[9px] opacity-30 mt-0.5 pl-1">{param.description}</div>}
             </div>
@@ -730,16 +760,72 @@ const ParamField: React.FC<ParamFieldProps> = ({
                             {param.label} {param.required && <span className="text-error">*</span>}
                         </span>
                     </label>
-                    <input
-                        type="text"
-                        className="input input-xs input-bordered font-mono text-warning bg-warning/5 border-warning/30"
+                    <ExpressionInput
                         value={value ?? ''}
-                        onChange={(e) => onChange(param.key, e.target.value)}
+                        onChange={(val) => onChange(param.key, val)}
+                        nodes={nodes}
+                        executionState={executionState}
                         placeholder={param.placeholder || '{{ ... }}'}
                     />
                     {param.description && <div className="text-[9px] opacity-30 mt-0.5 pl-1">{param.description}</div>}
                 </div>
             );
+
+        case 'key_value': {
+            const pairs = typeof value === 'object' && value ? Object.entries(value) : [];
+            const addPair = () => {
+                const newKey = `key${pairs.length + 1}`;
+                onChange(param.key, { ...value, [newKey]: '' });
+            };
+            const updateKey = (oldKey: string, newKey: string, val: any) => {
+                const newValue = { ...value };
+                delete newValue[oldKey];
+                newValue[newKey] = val;
+                onChange(param.key, newValue);
+            };
+            const updateValue = (key: string, val: any) => {
+                onChange(param.key, { ...value, [key]: val });
+            };
+            const deletePair = (keyToDelete: string) => {
+                const newValue = { ...value };
+                delete newValue[keyToDelete];
+                onChange(param.key, newValue);
+            };
+
+            return (
+                <div className="form-control w-full">
+                    {commonLabel}
+                    <div className="space-y-2 mb-2">
+                        {pairs.map(([k, v]) => (
+                            <div key={k} className="flex gap-2 items-center">
+                                <input
+                                    className="input input-xs input-bordered w-1/3 text-xs font-mono"
+                                    value={k}
+                                    onChange={(e) => updateKey(k, e.target.value, v)}
+                                    placeholder="Key"
+                                />
+                                <div className="flex-1 min-w-0">
+                                    <ExpressionInput
+                                        value={typeof v === 'string' ? v : JSON.stringify(v)}
+                                        onChange={(val) => updateValue(k, val)}
+                                        nodes={nodes}
+                                        executionState={executionState}
+                                        placeholder="Value"
+                                    />
+                                </div>
+                                <button className="btn btn-xs btn-ghost btn-square text-error opacity-50 hover:opacity-100" onClick={() => deletePair(k)}>
+                                    <Trash2 size={12} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                    <button className="btn btn-xs btn-outline btn-dashed w-full gap-2 opacity-60 hover:opacity-100" onClick={addPair}>
+                        <Plus size={12} /> Add Variable
+                    </button>
+                    {param.description && <div className="text-[9px] opacity-30 mt-1 pl-1">{param.description}</div>}
+                </div>
+            );
+        }
 
         case 'json':
             return (
@@ -782,22 +868,13 @@ interface WorkflowViewProps {
 }
 
 /* ============================================================
- *  Right Panel Tab Type
- * ============================================================ */
-type RightPanelTab = 'properties' | 'variables' | 'data';
-
-/* ============================================================
  *  Inner Component (needs ReactFlowProvider)
  * ============================================================ */
-function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, executionState = [] }: WorkflowViewProps) {
+function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, executionState = EMPTY_ARRAY }: WorkflowViewProps) {
     const { theme } = useAppStore();
     const [selectedNode, setSelectedNode] = useState<Node | null>(null);
     const { screenToFlowPosition, zoomIn, zoomOut, fitView, zoomTo } = useReactFlow();
-    const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
-        platform: true, vision: true, flow: true
-    });
     const [expressionModes, setExpressionModes] = useState<Record<string, boolean>>({});
-    const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>('properties');
     const [showRightPanel, setShowRightPanel] = useState(false);
     const [newVarKey, setNewVarKey] = useState('');
     const [newVarValue, setNewVarValue] = useState('');
@@ -947,14 +1024,59 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
         });
     }, [workflowData, isExecuting, executionState]);
 
+    // State for nodes and edges
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-    // Sync nodes/edges when props change (specifically executionState)
+    // Track internal updates to prevent echo loops
+    const isInternalUpdate = useRef(false);
+
+    // Sync from UPSTREAM (tab.content) -> DOWNSTREAM (nodes/edges)
+    // Only if the content actually changed and it wasn't us who changed it.
     useEffect(() => {
+        if (isInternalUpdate.current) {
+            isInternalUpdate.current = false;
+            return;
+        }
+        // Deep compare or simple length check to avoid unnecessary resets?
+        // For now, simpler: just set them.
+        // Optimization: Check if JSON.stringify(nodes) !== JSON.stringify(initialNodes)
         setNodes(initialNodes);
         setEdges(initialEdges);
-    }, [initialNodes, initialEdges, setNodes, setEdges]);
+    }, [workflowData, setNodes, setEdges, executionState, isExecuting]); // Removed initialNodes/initialEdges from dep array to rely on stable workflowData
+
+    // Sync from DOWNSTREAM (nodes/edges) -> UPSTREAM (tab.content)
+    useEffect(() => {
+        if (!nodes || !edges) return;
+
+        // Form the new data
+        const nodesMap: Record<string, any> = {};
+        nodes.forEach(n => {
+            nodesMap[n.id] = {
+                id: n.id,
+                name: (n.data as any).label || '',
+                type: n.type || 'click',
+                config: (n.data as any).config || {},
+                x: Math.round(n.position.x), // Round to avoid jitter
+                y: Math.round(n.position.y),
+                style: { width: n.width, height: n.height, ...n.style },
+            };
+        });
+        const edgeArr = edges.map(e => ({
+            id: e.id, fromNodeId: e.source, toNodeId: e.target,
+            signal: e.sourceHandle || String(e.label || 'success'),
+        }));
+
+        const updated = { ...workflowData, nodes: nodesMap, edges: edgeArr };
+        const json = JSON.stringify(updated, null, 2);
+
+        // Only propagate if actually different
+        if (json !== tab.content) {
+            isInternalUpdate.current = true; // Mark as internal so we ignore the echo
+            if (onContentChange) onContentChange(json);
+        }
+    }, [nodes, edges]); // Dependencies: nodes, edges
+
 
     // Edge Toolbar Events (from HoverEdge component)
     useEffect(() => {
@@ -1122,28 +1244,6 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
         setQuickAddMenu(null);
     }, [setNodes, setEdges]);
 
-    useEffect(() => {
-        const nodesMap: Record<string, any> = {};
-        nodes.forEach(n => {
-            nodesMap[n.id] = {
-                id: n.id,
-                name: (n.data as any).label || '',
-                type: n.type || 'click',
-                config: (n.data as any).config || {},
-                x: n.position.x,
-                y: n.position.y,
-                style: { width: n.width, height: n.height, ...n.style },
-            };
-        });
-        const edgeArr = edges.map(e => ({
-            id: e.id, fromNodeId: e.source, toNodeId: e.target,
-            signal: e.sourceHandle || String(e.label || 'success'),
-        }));
-        const updated = { ...workflowData, nodes: nodesMap, edges: edgeArr };
-        const json = JSON.stringify(updated, null, 2);
-        if (json !== tab.content && onContentChange) onContentChange(json);
-    }, [nodes, edges]);
-
     const onDragOver = useCallback((event: React.DragEvent) => {
         event.preventDefault();
         event.dataTransfer.dropEffect = 'move';
@@ -1234,7 +1334,6 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
         return lightThemes.includes(theme) ? 'light' : 'vs-dark';
     }, [theme]);
 
-    const nodesByCategory = useMemo(() => getNodesByCategory(), []);
     const selectedNodeDef = selectedNode ? getNodeDef(selectedNode.type || '') : null;
     const vars = getVars();
     const varEntries = Object.entries(vars);
@@ -1243,51 +1342,6 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
         <div className="flex-1 flex h-full bg-base-100 overflow-hidden">
             {tab.viewMode === 'graph' ? (
                 <div className="flex-1 flex relative">
-                    {/* Node Palette */}
-                    <div className="w-56 border-r border-base-300 bg-base-200/50 p-2 flex flex-col gap-1 shrink-0 overflow-y-auto custom-scrollbar">
-                        {(Object.keys(nodesByCategory) as NodeCategory[]).map(cat => (
-                            <div key={cat}>
-                                <button
-                                    className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-base-300/50 transition-colors"
-                                    onClick={() => setExpandedCategories(prev => ({ ...prev, [cat]: !prev[cat] }))}
-                                >
-                                    <ChevronDown size={12} className={clsx("transition-transform", !expandedCategories[cat] && "-rotate-90")} />
-                                    <span className={clsx("text-[10px] font-bold uppercase tracking-widest", CATEGORY_COLORS[cat])}>
-                                        {CATEGORY_LABELS[cat]}
-                                    </span>
-                                    <span className="text-[9px] opacity-30 ml-auto">{nodesByCategory[cat].length}</span>
-                                </button>
-                                {expandedCategories[cat] && (
-                                    <div className="ml-1 space-y-0.5 mb-2">
-                                        {nodesByCategory[cat].map(def => {
-                                            const IconComp = def.icon;
-                                            return (
-                                                <div
-                                                    key={def.type}
-                                                    draggable
-                                                    onDragStart={(e) => {
-                                                        e.dataTransfer.setData('application/reactflow', def.type);
-                                                        e.dataTransfer.effectAllowed = 'move';
-                                                    }}
-                                                    className="group flex items-center gap-2 bg-base-100 border border-base-300 rounded-lg px-2.5 py-2 cursor-grab active:cursor-grabbing hover:border-primary/40 hover:shadow-sm transition-all"
-                                                >
-                                                    <GripVertical size={9} className="opacity-15 group-hover:opacity-40 shrink-0" />
-                                                    <div className={clsx("p-1 rounded-md bg-base-200 group-hover:bg-primary/10 shrink-0", `text-${def.color}`)}>
-                                                        <IconComp size={13} />
-                                                    </div>
-                                                    <div className="min-w-0 flex-1">
-                                                        <div className="text-[11px] font-bold truncate">{def.label}</div>
-                                                        <div className="text-[9px] opacity-35 truncate">{def.description}</div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-
                     {/* Canvas */}
                     <div className="flex-1 relative">
                         <ReactFlow
@@ -1332,13 +1386,66 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                                     </button>
                                 )}
                             </div>
-                            <div className="absolute top-1/2 -translate-y-1/2 right-4 z-10 flex flex-col gap-2 p-1.5 bg-base-100 border border-base-300 shadow-xl rounded-xl backdrop-blur-sm">
-                                <button className="btn btn-sm btn-ghost btn-square text-base-content/60 hover:text-primary transition-colors" title="Zoom In" onClick={() => zoomIn()}><Plus size={18} /></button>
-                                <button className="btn btn-sm btn-ghost btn-square text-base-content/60 hover:text-primary transition-colors" title="Zoom Out" onClick={() => zoomOut()}><Minus size={18} /></button>
-                                <div className="h-px bg-base-300 mx-1" />
-                                <button className="btn btn-sm btn-ghost btn-square text-base-content/60 hover:text-primary transition-colors" title="Zoom to Fit" onClick={() => fitView()}><Focus size={18} /></button>
-                                <button className="btn btn-sm btn-ghost btn-square text-base-content/60 hover:text-primary transition-colors" title="Center View" onClick={() => zoomTo(1)}><Maximize size={16} /></button>
+                            {/* n8n Style Top-Right Toolbar */}
+                            <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+                                <div className="flex flex-col bg-base-100 shadow-xl rounded-xl border border-base-300 overflow-hidden">
+                                    <button
+                                        className="p-3 hover:bg-base-200 text-primary transition-colors tooltip tooltip-left"
+                                        data-tip="Add node"
+                                        onClick={(e) => {
+                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            setQuickAddMenu({ x: rect.right - 280, y: rect.top });
+                                        }}
+                                    >
+                                        <Plus size={20} />
+                                    </button>
+                                </div>
+
+                                <div className="flex flex-col bg-base-100 shadow-xl rounded-xl border border-base-300 overflow-hidden p-1">
+                                    <button
+                                        className="p-2 hover:bg-base-200 text-base-content/70 transition-colors rounded-lg tooltip tooltip-left"
+                                        data-tip="Zoom In"
+                                        onClick={() => { zoomIn(); }}
+                                    >
+                                        <ZoomIn size={18} />
+                                    </button>
+                                    <button
+                                        className="p-2 hover:bg-base-200 text-base-content/70 transition-colors rounded-lg tooltip tooltip-left"
+                                        data-tip="Zoom Out"
+                                        onClick={() => { zoomOut(); }}
+                                    >
+                                        <ZoomOut size={18} />
+                                    </button>
+                                    <button
+                                        className="p-2 hover:bg-base-200 text-base-content/70 transition-colors rounded-lg tooltip tooltip-left"
+                                        data-tip="Fit View"
+                                        onClick={() => { fitView(); }}
+                                    >
+                                        <Maximize size={18} />
+                                    </button>
+                                </div>
                             </div>
+
+                            {/* n8n Style Center "Add first step" Button */}
+                            {nodes.length === 0 && (
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                                    <button
+                                        className="pointer-events-auto flex flex-col items-center gap-4 group animate-in fade-in zoom-in duration-300"
+                                        onClick={(e) => {
+                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            // Center the menu relative to the button
+                                            setQuickAddMenu({ x: rect.left + rect.width / 2 - 128, y: rect.top + rect.height + 10 });
+                                        }}
+                                    >
+                                        <div className="w-16 h-16 rounded-2xl border-2 border-dashed border-base-content/20 flex items-center justify-center bg-base-100/50 backdrop-blur-sm group-hover:border-primary group-hover:bg-primary/5 transition-all shadow-lg group-hover:scale-105">
+                                            <Plus size={32} className="text-base-content/30 group-hover:text-primary transition-colors" />
+                                        </div>
+                                        <span className="font-bold text-lg text-base-content/50 group-hover:text-primary transition-colors">
+                                            Add first step...
+                                        </span>
+                                    </button>
+                                </div>
+                            )}
                             <Controls />
                             <MiniMap zoomable pannable />
                         </ReactFlow>
@@ -1354,6 +1461,10 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                                 onToFront={graphContextMenu.type === 'node' ? moveNodeToFront : undefined}
                                 onToBack={graphContextMenu.type === 'node' ? moveNodeToBack : undefined}
                                 onProperties={graphContextMenu.type === 'node' ? handlePropertiesFromMenu : undefined}
+                                onAddNode={() => {
+                                    setQuickAddMenu({ x: graphContextMenu.x, y: graphContextMenu.y });
+                                    setGraphContextMenu(null);
+                                }}
                             />
                         )}
 
@@ -1377,13 +1488,15 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                                 onDelete={handleDeleteFromModal}
                                 expressionModes={expressionModes}
                                 onToggleExpression={(key) => setExpressionModes(prev => ({ ...prev, [key]: !prev[key] }))}
+                                nodes={nodes}
+                                executionState={executionState}
                             />
                         )}
 
                         {!showRightPanel && (
                             <button
                                 className="absolute top-3 right-3 btn btn-sm btn-ghost gap-1 bg-base-100/80 backdrop-blur border border-base-300 shadow-lg z-10"
-                                onClick={() => { setRightPanelTab('variables'); setShowRightPanel(true); }}
+                                onClick={() => { setShowRightPanel(true); }}
                                 title="Workflow Variables"
                             >
                                 <Braces size={14} className="text-warning" /> Vars
@@ -1394,123 +1507,32 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
 
                     {showRightPanel && (
                         <div className="w-80 border-l border-base-300 bg-base-200/50 flex flex-col animate-in slide-in-from-right duration-200 overflow-hidden">
-                            <div className="flex items-center border-b border-base-300 shrink-0">
-                                <button
-                                    className={clsx("flex-1 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors", rightPanelTab === 'properties' ? "text-primary border-b-2 border-primary bg-primary/5" : "text-base-content/40 hover:text-base-content/60")}
-                                    onClick={() => setRightPanelTab('properties')}
-                                >Properties</button>
-                                <button
-                                    className={clsx("flex-1 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1", rightPanelTab === 'variables' ? "text-warning border-b-2 border-warning bg-warning/5" : "text-base-content/40 hover:text-base-content/60")}
-                                    onClick={() => setRightPanelTab('variables')}
-                                ><Braces size={10} /> Variables {varEntries.length > 0 && <span className="badge badge-xs badge-warning ml-1">{varEntries.length}</span>}</button>
-                                <button
-                                    className={clsx("flex-1 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors", rightPanelTab === 'data' ? "text-success border-b-2 border-success bg-success/5" : "text-base-content/40 hover:text-base-content/60")}
-                                    onClick={() => setRightPanelTab('data')}
-                                >Data</button>
-                                <button className="btn btn-xs btn-ghost btn-square mx-1" onClick={() => setShowRightPanel(false)}><X size={14} /></button>
+                            <div className="flex items-center justify-between border-b border-base-300 shrink-0 p-3 bg-base-100/50">
+                                <div className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 text-warning">
+                                    <Braces size={14} />
+                                    Workflow Variables
+                                    {varEntries.length > 0 && <span className="badge badge-xs badge-warning">{varEntries.length}</span>}
+                                </div>
+                                <button className="btn btn-xs btn-ghost btn-square" onClick={() => setShowRightPanel(false)}><X size={14} /></button>
                             </div>
 
-                            {rightPanelTab === 'properties' && (
-                                selectedNode && selectedNodeDef ? (
-                                    <>
-                                        <div className="flex items-center gap-2 px-4 py-3 border-b border-base-300 shrink-0">
-                                            {(() => { const IC = selectedNodeDef.icon; return <IC size={16} className={`text-${selectedNodeDef.color}`} />; })()}
-                                            <div className="min-w-0 flex-1">
-                                                <div className="text-xs font-bold">{selectedNodeDef.label}</div>
-                                                <div className="text-[9px] opacity-40">{selectedNodeDef.description}</div>
-                                            </div>
+                            <div className="flex-1 overflow-y-auto px-4 py-3 custom-scrollbar">
+                                <div className="space-y-2">
+                                    {varEntries.map(([k, v]) => (
+                                        <div key={k} className="flex items-center gap-1.5">
+                                            <input type="text" value={k} readOnly className="input input-xs input-bordered w-24 font-mono bg-base-200 shrink-0" />
+                                            <input type="text" value={v as string} className="input input-xs input-bordered flex-1 font-mono" onChange={(e) => updateVars({ ...vars, [k]: e.target.value })} />
+                                            <button className="btn btn-xs btn-ghost btn-square text-error shrink-0" onClick={() => { const nv = { ...vars }; delete nv[k]; updateVars(nv); }}><Trash2 size={12} /></button>
                                         </div>
-                                        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1 custom-scrollbar">
-                                            <div className="form-control w-full">
-                                                <label className="label py-1"><span className="text-[10px] uppercase font-bold opacity-50">Name</span></label>
-                                                <input type="text" className="input input-xs input-bordered" value={(selectedNode.data as any).label} onChange={(e) => {
-                                                    setNodes(nds => nds.map(n => n.id === selectedNode.id ? { ...n, data: { ...n.data, label: e.target.value } } : n));
-                                                    setSelectedNode(prev => prev ? { ...prev, data: { ...prev.data, label: e.target.value } } : null);
-                                                }} />
-                                            </div>
-                                            <div className="form-control w-full">
-                                                <label className="label py-1"><span className="text-[10px] uppercase font-bold opacity-50">ID</span></label>
-                                                <input type="text" value={selectedNode.id} readOnly className="input input-xs input-bordered bg-base-300/50 font-mono text-[10px] opacity-40" />
-                                            </div>
-                                            {selectedNodeDef.params.length > 0 && <div className="divider text-[9px] opacity-30 uppercase tracking-widest my-2">Parameters</div>}
-                                            {selectedNodeDef.params.map(param => (
-                                                <ParamField
-                                                    key={param.key}
-                                                    param={param}
-                                                    value={(selectedNode.data as any).config?.[param.key]}
-                                                    onChange={handleConfigChange}
-                                                    expressionMode={!!expressionModes[`${selectedNode.id}:${param.key}`]}
-                                                    onToggleExpression={() => setExpressionModes(prev => ({ ...prev, [`${selectedNode.id}:${param.key}`]: !prev[`${selectedNode.id}:${param.key}`] }))}
-                                                />
-                                            ))}
-                                        </div>
-                                        <div className="border-t border-base-300 p-3 shrink-0">
-                                            <button className="btn btn-sm btn-error btn-outline gap-2 w-full" onClick={() => {
-                                                setNodes(nds => nds.filter(n => n.id !== selectedNode.id));
-                                                setEdges(eds => eds.filter(e => e.source !== selectedNode.id && e.target !== selectedNode.id));
-                                                setSelectedNode(null);
-                                            }}><Trash2 size={14} /> Delete Node</button>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <div className="flex-1 flex flex-col items-center justify-center text-base-content/20 p-8 text-center">
-                                        <div className="text-sm">Select a node</div>
-                                    </div>
-                                )
-                            )}
-
-                            {rightPanelTab === 'variables' && (
-                                <div className="flex-1 overflow-y-auto px-4 py-3 custom-scrollbar">
-                                    <div className="space-y-2">
-                                        {varEntries.map(([k, v]) => (
-                                            <div key={k} className="flex items-center gap-1.5">
-                                                <input type="text" value={k} readOnly className="input input-xs input-bordered w-24 font-mono bg-base-200 shrink-0" />
-                                                <input type="text" value={v as string} className="input input-xs input-bordered flex-1 font-mono" onChange={(e) => updateVars({ ...vars, [k]: e.target.value })} />
-                                                <button className="btn btn-xs btn-ghost btn-square text-error shrink-0" onClick={() => { const nv = { ...vars }; delete nv[k]; updateVars(nv); }}><Trash2 size={12} /></button>
-                                            </div>
-                                        ))}
-                                        <div className="divider text-[9px] opacity-20 my-1">Add</div>
-                                        <div className="flex items-center gap-1.5">
-                                            <input type="text" placeholder="key" className="input input-xs input-bordered w-24 font-mono shrink-0" value={newVarKey} onChange={(e) => setNewVarKey(e.target.value)} />
-                                            <input type="text" placeholder="value" className="input input-xs input-bordered flex-1 font-mono" value={newVarValue} onChange={(e) => setNewVarValue(e.target.value)} />
-                                            <button className="btn btn-xs btn-primary btn-square shrink-0" onClick={() => { if (!newVarKey.trim()) return; updateVars({ ...vars, [newVarKey.trim()]: newVarValue }); setNewVarKey(''); setNewVarValue(''); }} disabled={!newVarKey.trim()}><Plus size={12} /></button>
-                                        </div>
+                                    ))}
+                                    <div className="divider text-[9px] opacity-20 my-1">Add</div>
+                                    <div className="flex items-center gap-1.5">
+                                        <input type="text" placeholder="key" className="input input-xs input-bordered w-24 font-mono shrink-0" value={newVarKey} onChange={(e) => setNewVarKey(e.target.value)} />
+                                        <input type="text" placeholder="value" className="input input-xs input-bordered flex-1 font-mono" value={newVarValue} onChange={(e) => setNewVarValue(e.target.value)} />
+                                        <button className="btn btn-xs btn-primary btn-square shrink-0" onClick={() => { if (!newVarKey.trim()) return; updateVars({ ...vars, [newVarKey.trim()]: newVarValue }); setNewVarKey(''); setNewVarValue(''); }} disabled={!newVarKey.trim()}><Plus size={12} /></button>
                                     </div>
                                 </div>
-                            )}
-
-                            {rightPanelTab === 'data' && (
-                                <div className="flex-1 overflow-hidden flex flex-col">
-                                    {selectedNode ? (
-                                        (() => {
-                                            const lastStep = executionState.slice().reverse().find(s => s.nodeId === selectedNode.id);
-                                            if (!lastStep) {
-                                                return (
-                                                    <div className="flex-1 flex flex-col items-center justify-center text-base-content/20 p-8 text-center">
-                                                        <div className="text-xs">No execution data</div>
-                                                        <div className="text-[10px]">Run the workflow to see data</div>
-                                                    </div>
-                                                );
-                                            }
-                                            return (
-                                                <div className="flex-1 p-2">
-                                                    <Editor
-                                                        height="100%"
-                                                        defaultLanguage="json"
-                                                        value={JSON.stringify(lastStep.output, null, 2)}
-                                                        theme={monacoTheme}
-                                                        options={{ minimap: { enabled: false }, readOnly: true, fontSize: 11 }}
-                                                    />
-                                                </div>
-                                            );
-                                        })()
-                                    ) : (
-                                        <div className="flex-1 flex flex-col items-center justify-center text-base-content/20 p-8 text-center">
-                                            <div className="text-sm">Select a node</div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                            </div>
                         </div>
                     )}
                 </div>

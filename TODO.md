@@ -110,6 +110,14 @@
 | 3.8.5 | Set Variable Node (JSON) | ✅ | ⬜ | Monaco Editor |
 | 3.8.6 | Expression Mode Toggle | ✅ | ⬜ | 參數動態切換 |
 
+### 3.9 UI 優化 (n8n Style)
+
+| # | 功能 | 實作狀態 | User 確認 | 備註 |
+|---|------|---------|-----------|------|
+| 3.9.1 | Floating Action Bar (FAB) | ✅ | ⬜ | Top-Right Toolbar |
+| 3.9.2 | Add First Step Button | ✅ | ⬜ | Empty State Action |
+| 3.9.3 | Quick Add Menu Integration | ✅ | ⬜ | Unified Node Picker |
+
 ## 4. Bug Fixes
 
 | # | 問題 | 修復狀態 | User 確認 | 備註 |

@@ -185,65 +185,104 @@ func resolveValue(val interface{}, arg NodeArg) interface{} {
 	return resolvedStr
 }
 
-func evaluateExpression(expr string, arg NodeArg) interface{} {
-	// 1. $vars.key
-	if strings.HasPrefix(expr, "$vars.") {
-		key := strings.TrimPrefix(expr, "$vars.")
-		return arg.GlobalContext[key]
+// getValueByPath traverses a map/struct using dot notation
+func getValueByPath(data interface{}, path string) interface{} {
+	if path == "" {
+		return data
 	}
+	parts := strings.Split(path, ".")
+	current := data
 
-	// 2. $json.key (Input)
-	if strings.HasPrefix(expr, "$json.") {
-		key := strings.TrimPrefix(expr, "$json.")
-		if inputMap, ok := arg.Input.(map[string]interface{}); ok {
-			return inputMap[key]
+	for _, part := range parts {
+		if m, ok := current.(map[string]interface{}); ok {
+			if val, exists := m[part]; exists {
+				current = val
+			} else {
+				return nil
+			}
+		} else {
+			// Array index support? e.g. items.0.id
+			if list, ok := current.([]interface{}); ok {
+				if idx, err := strconv.Atoi(part); err == nil && idx >= 0 && idx < len(list) {
+					current = list[idx]
+				} else {
+					return nil
+				}
+			} else {
+				return nil
+			}
 		}
-		return nil
+	}
+	return current
+}
+
+func evaluateExpression(expr string, arg NodeArg) interface{} {
+	// 1. $vars.path
+	if strings.HasPrefix(expr, "$vars.") {
+		path := strings.TrimPrefix(expr, "$vars.")
+		return getValueByPath(arg.GlobalContext, path)
 	}
 
-	// 3. $node["Name"].json.key
+	// 2. $json.path (Input)
+	if strings.HasPrefix(expr, "$json.") {
+		path := strings.TrimPrefix(expr, "$json.")
+		return getValueByPath(arg.Input, path)
+	}
+
+	// 3. $node["Name"].json.path or $node["Name"].output.path
 	if strings.HasPrefix(expr, "$node[") {
 		// Parse Node Name: $node["My Node"]
-		// Find closing bracket
 		closeBracket := strings.Index(expr, "]")
 		if closeBracket > 7 {
 			// Extract name: "My Node" or 'My Node'
 			rawName := expr[6:closeBracket]
-			// Trim quotes
 			nodeName := strings.Trim(rawName, "\"'")
 
-			// Remainder: .json.key
+			// Remainder: .json.path or .output.path
 			remainder := expr[closeBracket+1:]
-			if strings.HasPrefix(remainder, ".json.") || strings.HasPrefix(remainder, ".output.") {
-				// Normalized key path
-				keyPath := ""
-				if strings.HasPrefix(remainder, ".json.") {
-					keyPath = strings.TrimPrefix(remainder, ".json.")
-				} else {
-					keyPath = strings.TrimPrefix(remainder, ".output.")
-				}
+			var path string
+			if strings.HasPrefix(remainder, ".json.") {
+				path = strings.TrimPrefix(remainder, ".json.")
+			} else if strings.HasPrefix(remainder, ".output.") {
+				path = strings.TrimPrefix(remainder, ".output.")
+			} else if remainder == ".json" || remainder == ".output" {
+				path = "" // Return whole object
+			} else {
+				return nil // Invalid path
+			}
 
-				// Find Node ID by Name
-				var nodeID string
-				for id, name := range arg.NodeNames {
-					if name == nodeName {
-						nodeID = id
-						break
-					}
+			// Find Node ID by Name
+			var nodeID string
+			for id, name := range arg.NodeNames {
+				if name == nodeName {
+					nodeID = id
+					break
 				}
+			}
 
-				if nodeID != "" {
-					if result, ok := arg.NodeResults[nodeID]; ok {
-						if outputMap, ok := result.Output.(map[string]interface{}); ok {
-							return outputMap[keyPath]
-						}
-					}
+			if nodeID != "" {
+				if result, ok := arg.NodeResults[nodeID]; ok {
+					return getValueByPath(result.Output, path)
 				}
 			}
 		}
 	}
 
-	return expr // Fallback to raw string
+	// 4. Constants or Fallback
+	if expr == "true" {
+		return true
+	}
+	if expr == "false" {
+		return false
+	}
+	if expr == "null" {
+		return nil
+	}
+	if i, err := strconv.Atoi(expr); err == nil {
+		return i
+	}
+
+	return expr
 }
 
 func ResolveConfig(rawConfig map[string]interface{}, arg NodeArg) map[string]interface{} {
@@ -511,10 +550,13 @@ func createBuiltinExecutor(node *WorkflowNode, bridge *PythonBridge, logger func
 			if slice, ok := itemsRaw.([]interface{}); ok {
 				items = slice
 			} else if inputMap, ok := arg.Input.(map[string]interface{}); ok {
-				// Assume loop over specific input field "items" if config is empty?
-				// Or if itemsRaw is nil.
+				// Assume loop over specific input field "items" if config is empty
 				if itemsRaw == nil {
-					// Fallback to input array?
+					if val, funcOk := inputMap["items"]; funcOk {
+						if slice, typeOk := val.([]interface{}); typeOk {
+							items = slice
+						}
+					}
 				}
 			}
 

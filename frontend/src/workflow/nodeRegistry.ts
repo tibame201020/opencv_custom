@@ -24,7 +24,8 @@ export type ParamType =
     | 'region'    // OcrRegion { x1, y1, x2, y2 }
     | 'expression' // 表達式（用於 If Condition）
     | 'json'       // JSON 編輯器
-    | 'select';    // 下拉選單
+    | 'select'     // 下拉選單
+    | 'key_value'; // Key-Value 編輯器
 
 export interface ParamSchema {
     key: string;
@@ -38,6 +39,8 @@ export interface ParamSchema {
     min?: number;
     max?: number;
 }
+// ...
+
 
 export interface OutputSchema {
     key: string;
@@ -474,7 +477,7 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
         color: 'accent',
         icon: Braces,
         params: [
-            { key: 'json_input', label: 'Variables (JSON)', type: 'json', required: true, defaultValue: '{\n  "count": 0\n}', description: '定義變數 Key-Value 對' },
+            { key: 'variables', label: 'Variables', type: 'key_value', required: true, defaultValue: { count: 0 }, description: '定義變數 Key-Value 對' },
         ],
         outputs: [
             { key: 'success', label: 'Done', type: 'bool' },

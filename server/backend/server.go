@@ -1297,8 +1297,8 @@ func runWorkflow(c *gin.Context) {
 				platform = "android"
 			}
 
-			// TODO: get deviceId from request body or workflow config
-			deviceId := ""
+			// Get deviceId from query
+			deviceId := c.Query("deviceId")
 
 			bridge, err = workflow.NewPythonBridge(
 				ctx, // Use the process context!
@@ -1309,13 +1309,14 @@ func runWorkflow(c *gin.Context) {
 				deviceId,
 			)
 			if err != nil {
-				errMsg := fmt.Sprintf("Failed to start Python bridge: %v", err)
+				errMsg := fmt.Sprintf("Warning: Failed to start Python bridge: %v. Execution will continue with stubbed platform nodes.", err)
 				logger(errMsg + "\n")
-				proc.Logs <- fmt.Sprintf(`{"type": "error", "message": "%s"}`, errMsg)
-				return
+				proc.Logs <- fmt.Sprintf(`{"type": "log", "message": "%s", "level": "warning"}`, errMsg)
+				// Do not return, continue with bridge = nil
+			} else {
+				defer bridge.Close()
+				logger("Python Bridge ready.\n")
 			}
-			defer bridge.Close()
-			logger("Python Bridge ready.\n")
 		}
 
 		// Wire executors (pass logger!)

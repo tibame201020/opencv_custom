@@ -5,6 +5,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added — 2026-02-13
+- **Frontend / Workflow Editor**: n8n-style Floating Action Bar (FAB) with Zoom/Fit controls.
+- **Frontend / Workflow Editor**: "Add first step" center button for empty workflows.
+- **Frontend / Workflow Editor**: Unified Node Picker (Quick Add Menu) triggerable from FAB, center button, and context menu.
+
 ### Added — 2026-02-12
 - **Workflow Engine (Backend)**: Implemented Global Context and Node Results management.
 - **Workflow Engine (Backend)**: Added `set_variable` executor and enhanced `if_condition` with 55 operators.
