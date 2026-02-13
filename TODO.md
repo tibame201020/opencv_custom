@@ -118,6 +118,16 @@
 | 3.9.2 | Add First Step Button | ✅ | ⬜ | Empty State Action |
 | 3.9.3 | Quick Add Menu Integration | ✅ | ⬜ | Unified Node Picker |
 
+### 3.10 V2 UI Overhaul (Visual Redesign)
+
+| # | 功能 | 實作狀態 | User 確認 | 備註 |
+|---|------|---------|-----------|------|
+| 3.10.1 | Square Node Shape (64x64) | ✅ | ⬜ | n8n V2 Style |
+| 3.10.2 | External Labels (Below Node) | ✅ | ⬜ | Transparent background |
+| 3.10.3 | Transparent Floating Toolbar | ✅ | ⬜ | Action buttons on hover |
+| 3.10.4 | Connection Stubs (+) | ✅ | ⬜ | Grow on hover, right side |
+| 3.10.5 | Sliding Add Node Sidebar | ✅ | ⬜ | Replaces context menu add |
+
 ## 4. Bug Fixes
 
 | # | 問題 | 修復狀態 | User 確認 | 備註 |

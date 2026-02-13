@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed — 2026-02-13 (V2 UI Overhaul)
+- **Frontend / Workflow Editor**: Refactored `GenericNode` to 64x64px square shape with rounded corners (n8n V2 style).
+- **Frontend / Workflow Editor**: Moved node labels and descriptions outside and below the node container with transparent backgrounds.
+- **Frontend / Workflow Editor**: Implemented transparent, floating hover toolbar for node actions (Execute, Disable, Delete).
+- **Frontend / Workflow Editor**: Adjusted connection stubs (`+` button) to align correctly with the new square node geometry.
+- **Frontend / Workflow Editor**: Replaced context menu node addition with a sliding `WorkflowSidebar` triggered by connection stubs or empty state.
+- **Frontend / Workflow Editor**: Updated edge styling to use Bezier curves (`getBezierPath`) for smoother connections.
+
 ### Added — 2026-02-13
 - **Frontend / Workflow Editor**: n8n-style Floating Action Bar (FAB) with Zoom/Fit controls.
 - **Frontend / Workflow Editor**: "Add first step" center button for empty workflows.
