@@ -1,0 +1,81 @@
+{
+  "id": "complex_logic_example",
+  "name": "Complex Logic Example",
+  "description": "Demonstrates Set Variable, Loop, and Switch logic.",
+  "platform": "android",
+  "nodes": {
+    "n_vars": {
+      "id": "n_vars",
+      "type": "set_variable",
+      "name": "Set Data",
+      "config": {
+        "json_input": "{\"items\": [10, 20, 5], \"mode\": \"active\"}"
+      },
+      "x": 50,
+      "y": 100
+    },
+    "n_loop": {
+      "id": "n_loop",
+      "type": "loop",
+      "name": "Loop Items",
+      "config": {
+        "items": "{{ $json.items }}"
+      },
+      "x": 300,
+      "y": 100
+    },
+    "n_switch": {
+      "id": "n_switch",
+      "type": "switch",
+      "name": "Filter Value",
+      "config": {
+        "mode": "number",
+        "value": "{{ $json.item }}",
+        "cases": [10, 20]
+      },
+      "x": 550,
+      "y": 100
+    },
+    "n_log_10": {
+      "id": "n_log_10",
+      "type": "log",
+      "name": "Log 10",
+      "config": { "message": "Got 10" },
+      "x": 800,
+      "y": 0
+    },
+    "n_log_20": {
+      "id": "n_log_20",
+      "type": "log",
+      "name": "Log 20",
+      "config": { "message": "Got 20" },
+      "x": 800,
+      "y": 100
+    },
+    "n_log_def": {
+      "id": "n_log_def",
+      "type": "log",
+      "name": "Log Default",
+      "config": { "message": "Got other: {{ $json.item }}" },
+      "x": 800,
+      "y": 200
+    },
+    "n_done": {
+      "id": "n_done",
+      "type": "log",
+      "name": "All Done",
+      "config": { "message": "Loop Finished" },
+      "x": 300,
+      "y": 300
+    }
+  },
+  "edges": [
+    { "id": "e1", "fromNodeId": "n_vars", "toNodeId": "n_loop", "signal": "success" },
+    { "id": "e2", "fromNodeId": "n_loop", "toNodeId": "n_switch", "signal": "body" },
+    { "id": "e3", "fromNodeId": "n_switch", "toNodeId": "n_log_10", "signal": "0" },
+    { "id": "e4", "fromNodeId": "n_switch", "toNodeId": "n_log_20", "signal": "1" },
+    { "id": "e5", "fromNodeId": "n_switch", "toNodeId": "n_log_def", "signal": "default" },
+    { "id": "e6", "fromNodeId": "n_loop", "toNodeId": "n_done", "signal": "done" }
+  ],
+  "startNodeId": "n_vars"
+}
