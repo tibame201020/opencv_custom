@@ -95,6 +95,12 @@ func NewPythonBridge(ctx context.Context, pythonCmd, corePath, entryScript strin
 	}
 	fmt.Printf("[Bridge] Python workflow bridge started (pid=%d)\n", cmd.Process.Pid)
 
+	// Fallback for logic testing without device
+	if deviceId == "" && platform == "android" {
+		fmt.Println("[Bridge] No deviceId provided, falling back to 'desktop' platform for logic testing.")
+		platform = "desktop"
+	}
+
 	// Send init command
 	initParams := map[string]interface{}{
 		"platform": platform,

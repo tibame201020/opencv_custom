@@ -1,81 +1,89 @@
 {
-  "id": "complex_logic_example",
-  "name": "Complex Logic Example",
-  "description": "Demonstrates Set Variable, Loop, and Switch logic.",
-  "platform": "android",
+  "id": "complex_test",
+  "name": "Complex Logic Test",
   "nodes": {
-    "n_vars": {
-      "id": "n_vars",
+    "start": {
+      "id": "start",
+      "name": "Init Variables",
       "type": "set_variable",
-      "name": "Set Data",
       "config": {
-        "json_input": "{\"items\": [10, 20, 5], \"mode\": \"active\"}"
+        "items": ["A", "B", "C"]
       },
-      "x": 50,
+      "x": 100,
       "y": 100
     },
-    "n_loop": {
-      "id": "n_loop",
-      "type": "loop",
+    "loop": {
+      "id": "loop",
       "name": "Loop Items",
+      "type": "loop",
       "config": {
-        "items": "{{ $json.items }}"
+        "items": "{{ $vars.items }}"
       },
       "x": 300,
       "y": 100
     },
-    "n_switch": {
-      "id": "n_switch",
+    "switch": {
+      "id": "switch",
+      "name": "Switch Case",
       "type": "switch",
-      "name": "Filter Value",
       "config": {
-        "mode": "number",
-        "value": "{{ $json.item }}",
-        "cases": [10, 20]
+        "value": "{{ $vars.item }}",
+        "cases": ["A", "B"]
       },
-      "x": 550,
+      "x": 500,
       "y": 100
     },
-    "n_log_10": {
-      "id": "n_log_10",
+    "logA": {
+      "id": "logA",
+      "name": "Log A",
       "type": "log",
-      "name": "Log 10",
-      "config": { "message": "Got 10" },
-      "x": 800,
-      "y": 0
+      "config": {
+        "message": "Found A at index {{ $vars.index }}"
+      },
+      "x": 700,
+      "y": 50
     },
-    "n_log_20": {
-      "id": "n_log_20",
+    "logB": {
+      "id": "logB",
+      "name": "Log B",
       "type": "log",
-      "name": "Log 20",
-      "config": { "message": "Got 20" },
-      "x": 800,
-      "y": 100
+      "config": {
+        "message": "Found B at index {{ $vars.index }}"
+      },
+      "x": 700,
+      "y": 150
     },
-    "n_log_def": {
-      "id": "n_log_def",
-      "type": "log",
+    "logDefault": {
+      "id": "logDefault",
       "name": "Log Default",
-      "config": { "message": "Got other: {{ $json.item }}" },
-      "x": 800,
-      "y": 200
-    },
-    "n_done": {
-      "id": "n_done",
       "type": "log",
-      "name": "All Done",
-      "config": { "message": "Loop Finished" },
+      "config": {
+        "message": "Found Other ({{ $vars.item }}) at index {{ $vars.index }}"
+      },
+      "x": 700,
+      "y": 250
+    },
+    "done": {
+      "id": "done",
+      "name": "Done",
+      "type": "log",
+      "config": {
+        "message": "Loop Finished"
+      },
       "x": 300,
       "y": 300
     }
   },
   "edges": [
-    { "id": "e1", "fromNodeId": "n_vars", "toNodeId": "n_loop", "signal": "success" },
-    { "id": "e2", "fromNodeId": "n_loop", "toNodeId": "n_switch", "signal": "body" },
-    { "id": "e3", "fromNodeId": "n_switch", "toNodeId": "n_log_10", "signal": "0" },
-    { "id": "e4", "fromNodeId": "n_switch", "toNodeId": "n_log_20", "signal": "1" },
-    { "id": "e5", "fromNodeId": "n_switch", "toNodeId": "n_log_def", "signal": "default" },
-    { "id": "e6", "fromNodeId": "n_loop", "toNodeId": "n_done", "signal": "done" }
+    { "id": "e1", "fromNodeId": "start", "toNodeId": "loop", "signal": "success" },
+    { "id": "e2", "fromNodeId": "loop", "toNodeId": "switch", "signal": "body" },
+    { "id": "e3", "fromNodeId": "switch", "toNodeId": "logA", "signal": "0" },
+    { "id": "e4", "fromNodeId": "switch", "toNodeId": "logB", "signal": "1" },
+    { "id": "e5", "fromNodeId": "switch", "toNodeId": "logDefault", "signal": "default" },
+    { "id": "e6", "fromNodeId": "logA", "toNodeId": "loop", "signal": "success" },
+    { "id": "e7", "fromNodeId": "logB", "toNodeId": "loop", "signal": "success" },
+    { "id": "e8", "fromNodeId": "logDefault", "toNodeId": "loop", "signal": "success" },
+    { "id": "e9", "fromNodeId": "loop", "toNodeId": "done", "signal": "done" }
   ],
-  "startNodeId": "n_vars"
+  "startNodeId": "start"
 }

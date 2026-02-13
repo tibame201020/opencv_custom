@@ -20,19 +20,40 @@ const (
 	NodeCustom      NodeType = "CUSTOM"
 )
 
+// Scope 變數作用域
+type Scope struct {
+	Variables map[string]interface{}
+	Parent    *Scope
+}
+
+func (s *Scope) Get(key string) (interface{}, bool) {
+	if val, ok := s.Variables[key]; ok {
+		return val, true
+	}
+	if s.Parent != nil {
+		return s.Parent.Get(key)
+	}
+	return nil, false
+}
+
+func (s *Scope) Set(key string, val interface{}) {
+	s.Variables[key] = val
+}
+
 // NodeOutput 節點執行結果
 type NodeOutput struct {
-	Signal string      `json:"signal"`
-	Output interface{} `json:"output"`
+	Signal      string                 `json:"signal"`
+	Output      interface{}            `json:"output"`
+	ScopeAction string                 `json:"-"` // "push", "pop"
+	ScopeData   map[string]interface{} `json:"-"` // Initial variables for new scope
 }
 
 // NodeArg 節點輸入參數
-// NodeArg 節點輸入參數
 type NodeArg struct {
-	Input         interface{}            `json:"input"`
-	GlobalContext map[string]interface{} `json:"globalContext"`
-	NodeResults   map[string]NodeOutput  `json:"nodeResults"`
-	NodeNames     map[string]string      `json:"nodeNames"` // ID -> Name mapping
+	Input       interface{}           `json:"input"`
+	Scope       *Scope                `json:"scope"`
+	NodeResults map[string]NodeOutput `json:"nodeResults"`
+	NodeNames   map[string]string     `json:"nodeNames"` // ID -> Name mapping
 }
 
 // WorkflowNode 工作流節點定義
@@ -69,18 +90,24 @@ type Workflow struct {
 
 // FlowEngine 執行引擎
 type FlowEngine struct {
-	Workflow      *Workflow
-	GlobalContext map[string]interface{}
-	NodeResults   map[string]NodeOutput
-	OnStep        func(step ExecutionStep)
+	Workflow    *Workflow
+	RootScope   *Scope
+	CurrentScope *Scope
+	NodeResults map[string]NodeOutput
+	OnStep      func(step ExecutionStep)
 }
 
 // NewFlowEngine 建立執行引擎
 func NewFlowEngine(wf *Workflow) *FlowEngine {
+	rootScope := &Scope{
+		Variables: make(map[string]interface{}),
+		Parent:    nil,
+	}
 	return &FlowEngine{
-		Workflow:      wf,
-		GlobalContext: make(map[string]interface{}),
-		NodeResults:   make(map[string]NodeOutput),
+		Workflow:    wf,
+		RootScope:   rootScope,
+		CurrentScope: rootScope,
+		NodeResults: make(map[string]NodeOutput),
 	}
 }
 
@@ -90,6 +117,7 @@ type ExecutionStep struct {
 	NodeName string      `json:"nodeName"`
 	NodeType string      `json:"nodeType"`
 	Signal   string      `json:"signal"`
+	Input    interface{} `json:"input,omitempty"`
 	Output   interface{} `json:"output,omitempty"`
 }
 
@@ -189,7 +217,10 @@ func evaluateExpression(expr string, arg NodeArg) interface{} {
 	// 1. $vars.key
 	if strings.HasPrefix(expr, "$vars.") {
 		key := strings.TrimPrefix(expr, "$vars.")
-		return arg.GlobalContext[key]
+		if val, ok := arg.Scope.Get(key); ok {
+			return val
+		}
+		return nil
 	}
 
 	// 2. $json.key (Input)
@@ -429,9 +460,20 @@ func createBuiltinExecutor(node *WorkflowNode, bridge *PythonBridge, logger func
 			// Implementation: Return signal "0", "1", "2" for index, or "default".
 
 			// Check "cases" from config (parsed as slice of interface{})
-			casesRaw, ok := config["cases"].([]interface{})
-			if ok {
-				for i, caseValRaw := range casesRaw {
+			casesRaw := config["cases"]
+			var cases []interface{}
+
+			if slice, ok := casesRaw.([]interface{}); ok {
+				cases = slice
+			} else if str, ok := casesRaw.(string); ok {
+				// Try to parse JSON array string
+				if err := json.Unmarshal([]byte(str), &cases); err != nil {
+					logf("[Workflow] Switch failed to parse cases JSON: %v\n", err)
+				}
+			}
+
+			if len(cases) > 0 {
+				for i, caseValRaw := range cases {
 					caseValStr := fmt.Sprintf("%v", caseValRaw)
 					matched := false
 					if mode == "number" {
@@ -472,14 +514,21 @@ func createBuiltinExecutor(node *WorkflowNode, bridge *PythonBridge, logger func
 			// Config input is 'json_input' string or raw object
 			config := ResolveConfig(rawConfig, arg)
 
+			// Helper to set variable in scope AND stream
+			setVar := func(k string, v interface{}) {
+				// 1. Set to Stream (Input for next node)
+				newInput[k] = v
+				// 2. Set to Current Scope (for $vars access)
+				arg.Scope.Set(k, v)
+				logf("[Workflow] Set var %s = %v\n", k, v)
+			}
+
 			// 1. Try to parse 'json_input'
 			if jsonStr, ok := config["json_input"].(string); ok {
 				var parsedVars map[string]interface{}
 				if err := json.Unmarshal([]byte(jsonStr), &parsedVars); err == nil {
 					for k, v := range parsedVars {
-						newInput[k] = v // Set to Stream
-						// arg.GlobalContext[k] = v // Legacy Global Support (Optional)
-						logf("[Workflow] Set data %s = %v\n", k, v)
+						setVar(k, v)
 					}
 				} else {
 					logf("[Workflow] Failed to parse json_input: %v\n", err)
@@ -491,31 +540,22 @@ func createBuiltinExecutor(node *WorkflowNode, bridge *PythonBridge, logger func
 				if k == "json_input" {
 					continue
 				}
-				newInput[k] = v
-				logf("[Workflow] Set data %s = %v\n", k, v)
+				setVar(k, v)
 			}
 
 			return NodeOutput{Signal: "success", Output: newInput}
 		}
 
 	case "loop":
-		// Iterator Implementation
+		// Iterator Implementation with Scope
 		return func(ctx context.Context, arg NodeArg) NodeOutput {
-			// State is stored in GlobalContext with key "loop_<NodeID>_index"
-			// Input items must be array
+			// Resolve items
 			config := ResolveConfig(rawConfig, arg)
 			itemsRaw := config["items"]
 
-			// Support "items" from expression or config
 			var items []interface{}
 			if slice, ok := itemsRaw.([]interface{}); ok {
 				items = slice
-			} else if inputMap, ok := arg.Input.(map[string]interface{}); ok {
-				// Assume loop over specific input field "items" if config is empty?
-				// Or if itemsRaw is nil.
-				if itemsRaw == nil {
-					// Fallback to input array?
-				}
 			}
 
 			// If "items" is string (parsed from JSON in expression), unmarshal it
@@ -531,34 +571,47 @@ func createBuiltinExecutor(node *WorkflowNode, bridge *PythonBridge, logger func
 				return NodeOutput{Signal: "done", Output: arg.Input}
 			}
 
-			// Get Current Index
-			idxKey := fmt.Sprintf("loop_%s_index", node.ID)
-			idxRaw, exists := arg.GlobalContext[idxKey]
-			idx := 0
-			if exists {
-				idx = idxRaw.(int)
+			// Check if we are already in a loop scope (re-entry)
+			// We look for a unique state key in the CURRENT scope.
+			// The state key identifies THIS loop node's state.
+			stateKey := fmt.Sprintf("__loop_state_%s__", node.ID)
+			stateVal, inLoopScope := arg.Scope.Variables[stateKey]
+
+			var idx int
+			if inLoopScope {
+				// We are inside the loop scope, increment index
+				idx = stateVal.(int) + 1
+				logf("[Workflow] Loop continue, index: %d\n", idx)
 			} else {
-				arg.GlobalContext[idxKey] = 0 // Init
+				// First entry, or re-entry from parent
+				idx = 0
+				logf("[Workflow] Loop start, index: 0\n")
 			}
 
 			// Check Bounds
 			if idx >= len(items) {
 				logf("[Workflow] Loop done (%d items)\n", len(items))
-				// Reset for next run? Or keep it? If graph re-enters loop node later?
-				// Typically reset on "done".
-				delete(arg.GlobalContext, idxKey)
-				return NodeOutput{Signal: "done", Output: arg.Input}
+				if inLoopScope {
+					// We are inside loop scope, but finished -> Pop
+					return NodeOutput{Signal: "done", Output: arg.Input, ScopeAction: "pop"}
+				} else {
+					// Empty loop or finished immediately?
+					return NodeOutput{Signal: "done", Output: arg.Input}
+				}
 			}
 
 			// Process Item
 			currentItem := items[idx]
-			logf("[Workflow] Loop iteration %d/%d: %v\n", idx+1, len(items), currentItem)
+			logf("[Workflow] Loop processing %d/%d: %v\n", idx+1, len(items), currentItem)
 
-			// Increment for next visit
-			arg.GlobalContext[idxKey] = idx + 1
+			// Prepare Scope Data
+			// We always update the scope variables.
+			// If pushing (idx==0), we provide initial data.
+			// If staying (idx>0), we update existing via side-effect on Scope?
+			// Wait, if we return ScopeAction="push", FlowEngine creates NEW scope.
+			// If we return ScopeAction="", FlowEngine keeps current scope.
 
-			// Output: Merge item into stream?
-			// n8n puts item in output.
+			// Output Stream (Context for next nodes)
 			newInput := make(map[string]interface{})
 			if inputMap, ok := arg.Input.(map[string]interface{}); ok {
 				for k, v := range inputMap {
@@ -568,7 +621,21 @@ func createBuiltinExecutor(node *WorkflowNode, bridge *PythonBridge, logger func
 			newInput["item"] = currentItem
 			newInput["index"] = idx
 
-			return NodeOutput{Signal: "body", Output: newInput}
+			if !inLoopScope {
+				// Create new scope
+				scopeData := map[string]interface{}{
+					stateKey: idx,
+					"index":  idx,
+					"item":   currentItem,
+				}
+				return NodeOutput{Signal: "body", Output: newInput, ScopeAction: "push", ScopeData: scopeData}
+			} else {
+				// Update existing scope
+				arg.Scope.Set(stateKey, idx)
+				arg.Scope.Set("index", idx)
+				arg.Scope.Set("item", currentItem)
+				return NodeOutput{Signal: "body", Output: newInput}
+			}
 		}
 
 	case "convert":
@@ -707,10 +774,10 @@ func (e *FlowEngine) Execute(ctx context.Context, input interface{}) (*Execution
 
 		// Prepare NodeArg with Context
 		arg := NodeArg{
-			Input:         currentData,
-			GlobalContext: e.GlobalContext,
-			NodeResults:   e.NodeResults,
-			NodeNames:     nodeNames,
+			Input:       currentData,
+			Scope:       e.CurrentScope,
+			NodeResults: e.NodeResults,
+			NodeNames:   nodeNames,
 		}
 
 		if node.Type == NodeSubWorkflow && node.SubWorkflow != nil {
@@ -728,6 +795,23 @@ func (e *FlowEngine) Execute(ctx context.Context, input interface{}) (*Execution
 			return nil, fmt.Errorf("node %s (%s) has no executor", node.Name, currentNodeId)
 		}
 
+		// Handle Scope Actions
+		if nodeOutput.ScopeAction == "push" {
+			newScope := &Scope{
+				Variables: make(map[string]interface{}),
+				Parent:    e.CurrentScope,
+			}
+			// Init variables
+			for k, v := range nodeOutput.ScopeData {
+				newScope.Variables[k] = v
+			}
+			e.CurrentScope = newScope
+		} else if nodeOutput.ScopeAction == "pop" {
+			if e.CurrentScope.Parent != nil {
+				e.CurrentScope = e.CurrentScope.Parent
+			}
+		}
+
 		// Record result
 		e.NodeResults[node.ID] = nodeOutput
 
@@ -736,6 +820,7 @@ func (e *FlowEngine) Execute(ctx context.Context, input interface{}) (*Execution
 			NodeName: node.Name,
 			NodeType: string(node.Type),
 			Signal:   nodeOutput.Signal,
+			Input:    currentData,
 			Output:   nodeOutput.Output,
 		}
 

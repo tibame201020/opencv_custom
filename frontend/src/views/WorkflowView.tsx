@@ -1493,14 +1493,31 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                                                 );
                                             }
                                             return (
-                                                <div className="flex-1 p-2">
-                                                    <Editor
-                                                        height="100%"
-                                                        defaultLanguage="json"
-                                                        value={JSON.stringify(lastStep.output, null, 2)}
-                                                        theme={monacoTheme}
-                                                        options={{ minimap: { enabled: false }, readOnly: true, fontSize: 11 }}
-                                                    />
+                                                <div className="flex-1 p-2 flex flex-col gap-2">
+                                                    <div className="flex-1 flex flex-col">
+                                                        <div className="text-[10px] font-bold uppercase opacity-40 px-2">Input</div>
+                                                        <div className="flex-1 border border-base-300 rounded overflow-hidden">
+                                                            <Editor
+                                                                height="100%"
+                                                                defaultLanguage="json"
+                                                                value={JSON.stringify(lastStep.input, null, 2)}
+                                                                theme={monacoTheme}
+                                                                options={{ minimap: { enabled: false }, readOnly: true, fontSize: 11, automaticLayout: true }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex-1 flex flex-col">
+                                                        <div className="text-[10px] font-bold uppercase opacity-40 px-2">Output</div>
+                                                        <div className="flex-1 border border-base-300 rounded overflow-hidden">
+                                                            <Editor
+                                                                height="100%"
+                                                                defaultLanguage="json"
+                                                                value={JSON.stringify(lastStep.output, null, 2)}
+                                                                theme={monacoTheme}
+                                                                options={{ minimap: { enabled: false }, readOnly: true, fontSize: 11, automaticLayout: true }}
+                                                            />
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             );
                                         })()
