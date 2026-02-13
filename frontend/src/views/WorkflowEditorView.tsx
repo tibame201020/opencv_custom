@@ -36,6 +36,7 @@ export const WorkflowEditorView: React.FC = () => {
     const [isRunning, setIsRunning] = useState(false);
     const [runResult, setRunResult] = useState<any>(null);
     const [logs, setLogs] = useState<any[]>([]);
+    const [executionState, setExecutionState] = useState<any[]>([]);
 
     // Context Menu State
     const [contextMenu, setContextMenu] = useState<{
@@ -297,6 +298,7 @@ export const WorkflowEditorView: React.FC = () => {
         setIsRunning(true);
         setRunResult(null);
         setLogs([]);
+        setExecutionState([]); // Reset visual feedback
         try {
             const res = await fetch(`${apiBaseUrl}/workflows/${tab.workflowId}/run`, {
                 method: 'POST',
@@ -312,14 +314,11 @@ export const WorkflowEditorView: React.FC = () => {
                     // Assuming API is proxied, so ws is relative or derived
                     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                     // Use configured API base or derive from location
-                    // Note: apiBaseUrl might be /api, so we need to construct WS URL
-                    // If apiBaseUrl is full URL (http://localhost:12857/api), we need to parse it
                     let wsUrl = '';
                     if (apiBaseUrl.startsWith('http')) {
                         const url = new URL(apiBaseUrl);
                         wsUrl = `${url.protocol === 'https:' ? 'wss:' : 'ws:'}//${url.host}/ws/logs/${data.runId}`;
                     } else {
-                        // Relative
                         wsUrl = `${wsProtocol}//${window.location.host}/ws/logs/${data.runId}`;
                     }
 
@@ -328,13 +327,18 @@ export const WorkflowEditorView: React.FC = () => {
                         try {
                             const msg = JSON.parse(event.data);
                             setLogs(prev => [...prev, msg]);
+
+                            // Handle Execution Events
+                            if (msg.type === 'execution_step') {
+                                setExecutionState(prev => [...prev, msg.data]);
+                            }
+
                             // If execution complete, stop loading
-                            if (msg.type === 'status' && (msg.message?.includes('Complete') || msg.message?.includes('exited'))) {
+                            if (msg.type === 'status' && (msg.message?.includes('Complete') || msg.message?.includes('exited') || msg.message?.includes('cancelled'))) {
                                 setIsRunning(false);
                                 ws.close();
                             }
                         } catch (e) {
-                            // Plain text log?
                             setLogs(prev => [...prev, { type: 'stdout', message: event.data }]);
                         }
                     };
@@ -616,6 +620,7 @@ export const WorkflowEditorView: React.FC = () => {
                             onContentChange={(content: string) => updateWorkflowTabContent(activeTab.id, content)}
                             onRun={handleRun}
                             isExecuting={isRunning}
+                            executionState={executionState}
                         />
                         {/* Run Result Panel */}
                         {(runResult || logs.length > 0) && (

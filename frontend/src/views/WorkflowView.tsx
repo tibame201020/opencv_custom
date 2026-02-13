@@ -198,35 +198,58 @@ const GenericNode = React.memo(({ data, id, type, selected }: NodeProps<any>) =>
                 />
             )}
 
-            {/* Success Handle (Right) */}
-            <Handle
-                type="source"
-                position={Position.Right}
-                id="success"
-                className="w-3 h-3 border-2 border-base-100 bg-success rounded-full hover:scale-125 transition-transform"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    window.dispatchEvent(new CustomEvent('workflow-quick-add', {
-                        detail: { x: rect.right + 20, y: rect.top - 150, sourceNodeId: id, sourceHandleId: 'success' }
-                    }));
-                }}
-            />
+            {/* Dynamic Output Handles */}
+            {(() => {
+                const config = def?.handleConfig;
+                let sources = config?.sources || [{ id: 'success', label: 'Success' }];
 
-            {/* Error Handle (Bottom) */}
-            <Handle
-                type="source"
-                position={Position.Bottom}
-                id="false"
-                className="w-3 h-3 border-2 border-base-100 bg-error rounded-full hover:scale-125 transition-transform"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    window.dispatchEvent(new CustomEvent('workflow-quick-add', {
-                        detail: { x: rect.left - 50, y: rect.bottom + 20, sourceNodeId: id, sourceHandleId: 'false' }
-                    }));
-                }}
-            />
+                // Special handling for Switch: Add handles for cases
+                if (type === 'switch') {
+                    // Try to parse config.cases
+                    const caseStr = data.config?.cases;
+                    try {
+                        const cases = typeof caseStr === 'string' ? JSON.parse(caseStr) : caseStr;
+                        if (Array.isArray(cases)) {
+                            const caseHandles = cases.map((c, i) => ({
+                                id: `${i}`,
+                                label: `Case ${i} (${c})`
+                            }));
+                            sources = [...caseHandles, { id: 'default', label: 'Default' }];
+                        }
+                    } catch { }
+                }
+
+                return sources.map((source, index) => {
+                    // Distribute handles vertically on the right
+                    const top = sources.length === 1 ? '50%' : `${((index + 1) * 100) / (sources.length + 1)}%`;
+                    // Color logic
+                    let bg = 'bg-success';
+                    if (source.id === 'false' || source.id === 'default') bg = 'bg-base-content/20'; // Grey/False
+                    if (type === 'switch') bg = 'bg-accent';
+
+                    return (
+                        <div key={source.id} className="absolute right-0" style={{ top, transform: 'translate(50%, -50%)' }}>
+                            <Handle
+                                type="source"
+                                position={Position.Right}
+                                id={source.id}
+                                className={clsx("w-3 h-3 border-2 border-base-100 rounded-full hover:scale-125 transition-transform", bg)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    window.dispatchEvent(new CustomEvent('workflow-quick-add', {
+                                        detail: { x: rect.right + 20, y: rect.top - 150, sourceNodeId: id, sourceHandleId: source.id }
+                                    }));
+                                }}
+                            />
+                            {/* Hover Label */}
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap text-[9px] font-bold bg-base-100 px-1 rounded shadow-sm transition-opacity z-10">
+                                {source.label}
+                            </div>
+                        </div>
+                    );
+                });
+            })()}
         </div>
     );
 });
@@ -755,17 +778,18 @@ interface WorkflowViewProps {
     onContentChange?: (content: string) => void;
     onRun?: () => void;
     isExecuting?: boolean;
+    executionState?: any[]; // List of executed steps
 }
 
 /* ============================================================
  *  Right Panel Tab Type
  * ============================================================ */
-type RightPanelTab = 'properties' | 'variables';
+type RightPanelTab = 'properties' | 'variables' | 'data';
 
 /* ============================================================
  *  Inner Component (needs ReactFlowProvider)
  * ============================================================ */
-function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false }: WorkflowViewProps) {
+function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, executionState = [] }: WorkflowViewProps) {
     const { theme } = useAppStore();
     const [selectedNode, setSelectedNode] = useState<Node | null>(null);
     const { screenToFlowPosition, zoomIn, zoomOut, fitView, zoomTo } = useReactFlow();
@@ -830,6 +854,20 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false }:
                 const entries = Object.entries(n.config).slice(0, 2);
                 subtitle = entries.map(([k, v]) => `${k}: ${v}`).join(', ');
             }
+
+            // Check execution state
+            const executedStep = executionState.find(s => s.nodeId === n.id);
+            let status = undefined;
+            if (executedStep) {
+                status = 'success'; // Or based on signal?
+                // If it's the last one and isExecuting is true, maybe running?
+                // But executionState arrives as completed steps.
+            } else if (isExecuting) {
+                // Check if currently running? We don't have real-time "started" events yet, only "completed" steps.
+                // We can infer "running" if it's connected to the last completed step?
+                // For now, simpler: highlight completed nodes.
+            }
+
             return {
                 id: n.id,
                 type: n.type || 'click',
@@ -840,16 +878,55 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false }:
                     config: n.config || {},
                     subtitle,
                     style: n.style,
+                    status,
                 },
             };
         });
         return nodeList;
-    }, [workflowData]);
+    }, [workflowData, executionState, isExecuting]);
 
     const initialEdges: Edge[] = useMemo(() => {
         const edgeArr = workflowData.edges || [];
+        // Map of completed nodes and their output signals
+        const completedNodes = new Map<string, string>(); // NodeID -> Signal
+        executionState.forEach(step => {
+            completedNodes.set(step.nodeId, step.signal);
+        });
+
         return edgeArr.map((e: any) => {
             const { stroke, strokeWidth } = e.style || {};
+
+            // Check if this edge was traversed
+            // An edge is traversed if:
+            // 1. Source node was executed
+            // 2. Source output signal matches edge signal (or default success)
+            // 3. Target node was executed (implies flow continued)
+            //    OR just source executed with matching signal implies this path was CHOSEN.
+
+            const sourceSignal = completedNodes.get(e.fromNodeId || e.source);
+            const edgeSignal = e.signal || 'success';
+            // Edge sourceHandle might be 'false' or 'true'.
+            // engine.go uses "true"/"false" strings for signal.
+
+            const isTraversed = sourceSignal && (
+                sourceSignal === edgeSignal ||
+                (edgeSignal === 'success' && sourceSignal === 'success') // Default match
+            );
+
+            // Determine style
+            let edgeColor = stroke || '#94a3b8';
+            let animated = isExecuting;
+
+            if (isTraversed) {
+                edgeColor = '#22c55e'; // Green
+                animated = false; // Stop animating if completed? Or keep generic animation?
+            } else if (isExecuting) {
+                edgeColor = '#ff6d5a'; // Active/Pending color
+            }
+
+            if (e.signal === 'false') edgeColor = '#ff52d9'; // Logic False branch base color
+            if (isTraversed) edgeColor = '#22c55e'; // Traversed overrides
+
             return {
                 id: e.id,
                 source: e.fromNodeId || e.source,
@@ -857,21 +934,27 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false }:
                 sourceHandle: e.signal && e.signal !== 'success' ? e.signal : undefined,
                 label: e.signal || 'success',
                 type: 'hover',
-                animated: isExecuting,
-                className: isExecuting ? 'n8n-flow-active' : '',
+                animated: animated,
+                className: isExecuting || isTraversed ? 'n8n-flow-active' : '',
                 style: {
-                    stroke: e.signal === 'false' ? '#ff52d9' : (isExecuting ? '#ff6d5a' : (stroke || '#94a3b8')),
-                    strokeWidth: strokeWidth || 3
+                    stroke: edgeColor,
+                    strokeWidth: isTraversed ? 4 : (strokeWidth || 3)
                 },
                 interactionWidth: 20,
                 selectable: true,
                 updatable: true,
             };
         });
-    }, [workflowData, isExecuting]);
+    }, [workflowData, isExecuting, executionState]);
 
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+    // Sync nodes/edges when props change (specifically executionState)
+    useEffect(() => {
+        setNodes(initialNodes);
+        setEdges(initialEdges);
+    }, [initialNodes, initialEdges, setNodes, setEdges]);
 
     // Edge Toolbar Events (from HoverEdge component)
     useEffect(() => {
@@ -1320,6 +1403,10 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false }:
                                     className={clsx("flex-1 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1", rightPanelTab === 'variables' ? "text-warning border-b-2 border-warning bg-warning/5" : "text-base-content/40 hover:text-base-content/60")}
                                     onClick={() => setRightPanelTab('variables')}
                                 ><Braces size={10} /> Variables {varEntries.length > 0 && <span className="badge badge-xs badge-warning ml-1">{varEntries.length}</span>}</button>
+                                <button
+                                    className={clsx("flex-1 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors", rightPanelTab === 'data' ? "text-success border-b-2 border-success bg-success/5" : "text-base-content/40 hover:text-base-content/60")}
+                                    onClick={() => setRightPanelTab('data')}
+                                >Data</button>
                                 <button className="btn btn-xs btn-ghost btn-square mx-1" onClick={() => setShowRightPanel(false)}><X size={14} /></button>
                             </div>
 
@@ -1389,6 +1476,39 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false }:
                                             <button className="btn btn-xs btn-primary btn-square shrink-0" onClick={() => { if (!newVarKey.trim()) return; updateVars({ ...vars, [newVarKey.trim()]: newVarValue }); setNewVarKey(''); setNewVarValue(''); }} disabled={!newVarKey.trim()}><Plus size={12} /></button>
                                         </div>
                                     </div>
+                                </div>
+                            )}
+
+                            {rightPanelTab === 'data' && (
+                                <div className="flex-1 overflow-hidden flex flex-col">
+                                    {selectedNode ? (
+                                        (() => {
+                                            const lastStep = executionState.slice().reverse().find(s => s.nodeId === selectedNode.id);
+                                            if (!lastStep) {
+                                                return (
+                                                    <div className="flex-1 flex flex-col items-center justify-center text-base-content/20 p-8 text-center">
+                                                        <div className="text-xs">No execution data</div>
+                                                        <div className="text-[10px]">Run the workflow to see data</div>
+                                                    </div>
+                                                );
+                                            }
+                                            return (
+                                                <div className="flex-1 p-2">
+                                                    <Editor
+                                                        height="100%"
+                                                        defaultLanguage="json"
+                                                        value={JSON.stringify(lastStep.output, null, 2)}
+                                                        theme={monacoTheme}
+                                                        options={{ minimap: { enabled: false }, readOnly: true, fontSize: 11 }}
+                                                    />
+                                                </div>
+                                            );
+                                        })()
+                                    ) : (
+                                        <div className="flex-1 flex flex-col items-center justify-center text-base-content/20 p-8 text-center">
+                                            <div className="text-sm">Select a node</div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

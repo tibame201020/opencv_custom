@@ -72,6 +72,7 @@ type FlowEngine struct {
 	Workflow      *Workflow
 	GlobalContext map[string]interface{}
 	NodeResults   map[string]NodeOutput
+	OnStep        func(step ExecutionStep)
 }
 
 // NewFlowEngine 建立執行引擎
@@ -413,6 +414,49 @@ func createBuiltinExecutor(node *WorkflowNode, bridge *PythonBridge, logger func
 			return NodeOutput{Signal: signal, Output: arg.Input}
 		}
 
+	case "switch":
+		return func(ctx context.Context, arg NodeArg) NodeOutput {
+			config := ResolveConfig(rawConfig, arg)
+			valueRaw := config["value"]
+			mode := getConfigStr(config, "mode", "string") // "string", "number"
+			valueStr := fmt.Sprintf("%v", valueRaw)
+
+			// Cases: assume "cases" is map or list?
+			// NodeRegistry probably defines it as a list of rules?
+			// For simplicity, let's assume config stores "case_0", "case_1", ... or "rules" array.
+			// Standard Switch usually matches value against cases.
+			// Let's look for "rules" array if it exists (complex object), otherwise fallback to manual keys.
+			// Implementation: Return signal "0", "1", "2" for index, or "default".
+
+			// Check "cases" from config (parsed as slice of interface{})
+			casesRaw, ok := config["cases"].([]interface{})
+			if ok {
+				for i, caseValRaw := range casesRaw {
+					caseValStr := fmt.Sprintf("%v", caseValRaw)
+					matched := false
+					if mode == "number" {
+						n1, err1 := strconv.ParseFloat(valueStr, 64)
+						n2, err2 := strconv.ParseFloat(caseValStr, 64)
+						if err1 == nil && err2 == nil && n1 == n2 {
+							matched = true
+						}
+					} else {
+						if valueStr == caseValStr {
+							matched = true
+						}
+					}
+
+					if matched {
+						logf("[Workflow] Switch matched case %d: %s == %s\n", i, valueStr, caseValStr)
+						return NodeOutput{Signal: fmt.Sprintf("%d", i), Output: arg.Input}
+					}
+				}
+			}
+
+			logf("[Workflow] Switch no match for %s, going default\n", valueStr)
+			return NodeOutput{Signal: "default", Output: arg.Input}
+		}
+
 	case "set_variable":
 		return func(ctx context.Context, arg NodeArg) NodeOutput {
 			// Initialize new Input map (Data Stream)
@@ -455,11 +499,76 @@ func createBuiltinExecutor(node *WorkflowNode, bridge *PythonBridge, logger func
 		}
 
 	case "loop":
-		// Loop logic is now graph-composed via If + Back-edge.
-		// This node acts as pass-through for backward compatibility.
+		// Iterator Implementation
 		return func(ctx context.Context, arg NodeArg) NodeOutput {
-			logf("[Workflow] Loop node (pass-through)\n")
-			return NodeOutput{Signal: "success", Output: arg.Input}
+			// State is stored in GlobalContext with key "loop_<NodeID>_index"
+			// Input items must be array
+			config := ResolveConfig(rawConfig, arg)
+			itemsRaw := config["items"]
+
+			// Support "items" from expression or config
+			var items []interface{}
+			if slice, ok := itemsRaw.([]interface{}); ok {
+				items = slice
+			} else if inputMap, ok := arg.Input.(map[string]interface{}); ok {
+				// Assume loop over specific input field "items" if config is empty?
+				// Or if itemsRaw is nil.
+				if itemsRaw == nil {
+					// Fallback to input array?
+				}
+			}
+
+			// If "items" is string (parsed from JSON in expression), unmarshal it
+			if str, ok := itemsRaw.(string); ok {
+				var parsed []interface{}
+				if err := json.Unmarshal([]byte(str), &parsed); err == nil {
+					items = parsed
+				}
+			}
+
+			if len(items) == 0 {
+				logf("[Workflow] Loop: No items to iterate\n")
+				return NodeOutput{Signal: "done", Output: arg.Input}
+			}
+
+			// Get Current Index
+			idxKey := fmt.Sprintf("loop_%s_index", node.ID)
+			idxRaw, exists := arg.GlobalContext[idxKey]
+			idx := 0
+			if exists {
+				idx = idxRaw.(int)
+			} else {
+				arg.GlobalContext[idxKey] = 0 // Init
+			}
+
+			// Check Bounds
+			if idx >= len(items) {
+				logf("[Workflow] Loop done (%d items)\n", len(items))
+				// Reset for next run? Or keep it? If graph re-enters loop node later?
+				// Typically reset on "done".
+				delete(arg.GlobalContext, idxKey)
+				return NodeOutput{Signal: "done", Output: arg.Input}
+			}
+
+			// Process Item
+			currentItem := items[idx]
+			logf("[Workflow] Loop iteration %d/%d: %v\n", idx+1, len(items), currentItem)
+
+			// Increment for next visit
+			arg.GlobalContext[idxKey] = idx + 1
+
+			// Output: Merge item into stream?
+			// n8n puts item in output.
+			newInput := make(map[string]interface{})
+			if inputMap, ok := arg.Input.(map[string]interface{}); ok {
+				for k, v := range inputMap {
+					newInput[k] = v
+				}
+			}
+			newInput["item"] = currentItem
+			newInput["index"] = idx
+
+			return NodeOutput{Signal: "body", Output: newInput}
 		}
 
 	case "convert":
@@ -622,13 +731,19 @@ func (e *FlowEngine) Execute(ctx context.Context, input interface{}) (*Execution
 		// Record result
 		e.NodeResults[node.ID] = nodeOutput
 
-		executionPath = append(executionPath, ExecutionStep{
+		step := ExecutionStep{
 			NodeID:   node.ID,
 			NodeName: node.Name,
 			NodeType: string(node.Type),
 			Signal:   nodeOutput.Signal,
 			Output:   nodeOutput.Output,
-		})
+		}
+
+		executionPath = append(executionPath, step)
+
+		if e.OnStep != nil {
+			e.OnStep(step)
+		}
 
 		currentSignal = nodeOutput.Signal
 		currentData = nodeOutput.Output
