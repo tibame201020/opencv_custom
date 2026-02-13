@@ -2,13 +2,19 @@ package utils
 
 import (
 	"os/exec"
+	"runtime"
 	"testing"
 )
 
 func TestKillProcess_Alive(t *testing.T) {
 	// Start a process that will stay alive for a bit
-	// Using 'ping' as a reliable cross-version windows command for delay
-	cmd := exec.Command("ping", "127.0.0.1", "-n", "10")
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("ping", "127.0.0.1", "-n", "10")
+	} else {
+		cmd = exec.Command("sleep", "10")
+	}
+
 	HideConsole(cmd)
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("Failed to start test process: %v", err)
@@ -33,7 +39,13 @@ func TestKillProcess_Alive(t *testing.T) {
 
 func TestKillProcess_AlreadyDead(t *testing.T) {
 	// Start a process that exits immediately
-	cmd := exec.Command("cmd", "/c", "exit 0")
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("cmd", "/c", "exit 0")
+	} else {
+		cmd = exec.Command("true")
+	}
+
 	HideConsole(cmd)
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("Failed to run test process: %v", err)

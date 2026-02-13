@@ -16,7 +16,6 @@ import {
     type OnConnectStart,
     Handle,
     Position,
-    NodeResizer,
     type NodeProps,
     getBezierPath,
     BaseEdge,
@@ -27,7 +26,7 @@ import '@xyflow/react/dist/style.css';
 import Editor from '@monaco-editor/react';
 import { useAppStore, type WorkflowTab } from '../store';
 import {
-    Trash2, ChevronDown, X, GripVertical, Plus,
+    Trash2, ChevronDown, X, Plus,
     Braces, ToggleLeft, Play, Maximize,
     Check, Loader2, AlertCircle, Zap,
     ZoomIn, ZoomOut, Search, Eye, EyeOff, MoreHorizontal
@@ -44,7 +43,6 @@ import { WorkflowSidebar } from '../components/WorkflowSidebar';
 /* ============================================================
  *  Generic Node Component (driven by NodeRegistry)
  * ============================================================ */
-const RESIZER_LINE_STYLE = { borderWidth: 0 };
 const PAN_ON_DRAG = [2];
 const DEFAULT_EDGE_OPTIONS = {
     type: 'hover' as const,
