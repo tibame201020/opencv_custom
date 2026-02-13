@@ -18,7 +18,7 @@ import {
     Position,
     NodeResizer,
     type NodeProps,
-    getSmoothStepPath,
+    getBezierPath,
     BaseEdge,
     EdgeLabelRenderer,
     type EdgeProps,
@@ -30,16 +30,16 @@ import {
     Trash2, ChevronDown, X, GripVertical, Plus,
     Braces, ToggleLeft, Play, Maximize,
     Check, Loader2, AlertCircle, Zap,
-    ZoomIn, ZoomOut, Search
+    ZoomIn, ZoomOut, Search, Eye, EyeOff, MoreHorizontal
 } from 'lucide-react';
 import clsx from 'clsx';
 import { v4 as uuidv4 } from 'uuid';
 import {
-    getNodeDef, getNodesByCategory, getDefaultConfig,
-    CATEGORY_LABELS, CATEGORY_COLORS,
-    type NodeCategory, type ParamSchema
+    getNodeDef, getDefaultConfig,
+    type ParamSchema
 } from '../workflow/nodeRegistry';
 import { ExpressionInput } from '../components/ExpressionInput';
+import { WorkflowSidebar } from '../components/WorkflowSidebar';
 
 /* ============================================================
  *  Generic Node Component (driven by NodeRegistry)
@@ -49,7 +49,7 @@ const PAN_ON_DRAG = [2];
 const DEFAULT_EDGE_OPTIONS = {
     type: 'hover' as const,
     animated: true,
-    style: { strokeWidth: 3, stroke: '#94a3b8' },
+    style: { strokeWidth: 3, stroke: '#9ca3af' }, // Gray-400
     interactionWidth: 20
 };
 
@@ -60,8 +60,9 @@ const HoverEdge: React.FC<EdgeProps> = (props) => {
     const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, markerEnd, selected } = props;
     const [hovered, setHovered] = useState(false);
 
-    const [edgePath, labelX, labelY] = getSmoothStepPath({
-        sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, borderRadius: 16,
+    // Changed to Bezier Path for n8n style smooth curves
+    const [edgePath, labelX, labelY] = getBezierPath({
+        sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition,
     });
 
     return (
@@ -138,19 +139,26 @@ const GenericNode = React.memo(({ data, id, type, selected }: NodeProps<any>) =>
     const def = getNodeDef(type || data.nodeType || 'click');
     const IconComp = def?.icon;
     const borderColor = selected ? 'border-primary' : 'border-base-300';
+    const [hovered, setHovered] = useState(false);
 
     // Status Logic
     const isRunning = data.status === 'running';
     const isSuccess = data.status === 'success';
     const isError = data.status === 'error';
+    const isDisabled = data.disabled;
 
     return (
-        <div className={clsx(
-            "group relative bg-white rounded-xl border transition-all duration-200 shadow-sm hover:shadow-md min-w-[180px]",
-            borderColor === 'border-primary' ? "ring-2 ring-primary border-transparent" : "border-gray-200 hover:border-gray-300",
-            isRunning && "n8n-node-running ring-4 ring-primary/20",
-            "n8n-node-pop" // Pop-in animation on mount
-        )}>
+        <div
+            className={clsx(
+                "group relative bg-white rounded-xl border transition-all duration-200 shadow-sm hover:shadow-md min-w-[180px]",
+                borderColor === 'border-primary' ? "ring-2 ring-primary border-transparent" : "border-gray-200 hover:border-gray-300",
+                isRunning && "n8n-node-running ring-4 ring-primary/20",
+                isDisabled && "opacity-60 grayscale-[0.5]",
+                "n8n-node-pop" // Pop-in animation on mount
+            )}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+        >
             {selected && (
                 <NodeResizer
                     minWidth={180}
@@ -159,6 +167,59 @@ const GenericNode = React.memo(({ data, id, type, selected }: NodeProps<any>) =>
                     handleClassName="w-2.5 h-2.5 bg-primary border-2 border-white rounded-full shadow-sm"
                 />
             )}
+
+            {/* n8n Style Hover Toolbar (Top) */}
+            <div className={clsx(
+                "absolute -top-10 left-1/2 -translate-x-1/2 bg-white rounded-full shadow-lg border border-gray-100 p-1 flex items-center gap-1 z-30 transition-all duration-200",
+                (hovered || selected) ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
+            )}>
+                <button
+                    className="p-1.5 rounded-full hover:bg-gray-100 text-gray-600 hover:text-primary transition-colors"
+                    title="Execute Step"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        // Dispatch execute event
+                        window.dispatchEvent(new CustomEvent('workflow-node-execute', { detail: { nodeId: id } }));
+                    }}
+                >
+                    <Play size={14} fill="currentColor" />
+                </button>
+                <div className="w-px h-3 bg-gray-200" />
+                <button
+                    className={clsx("p-1.5 rounded-full hover:bg-gray-100 transition-colors", isDisabled ? "text-red-500" : "text-gray-600")}
+                    title={isDisabled ? "Enable Step" : "Disable Step"}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        window.dispatchEvent(new CustomEvent('workflow-node-toggle', { detail: { nodeId: id, disabled: !isDisabled } }));
+                    }}
+                >
+                    {isDisabled ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+                <button
+                    className="p-1.5 rounded-full hover:bg-red-50 text-gray-600 hover:text-red-500 transition-colors"
+                    title="Delete Step"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        window.dispatchEvent(new CustomEvent('workflow-node-delete', { detail: { nodeId: id } }));
+                    }}
+                >
+                    <Trash2 size={14} />
+                </button>
+                <button
+                    className="p-1.5 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
+                    title="More Actions"
+                    onClick={(e) => {
+                         // Trigger context menu manually
+                         e.stopPropagation();
+                         const rect = e.currentTarget.getBoundingClientRect();
+                         window.dispatchEvent(new CustomEvent('workflow-context-menu', {
+                             detail: { type: 'node', x: rect.right, y: rect.bottom, id, data }
+                         }));
+                    }}
+                >
+                    <MoreHorizontal size={14} />
+                </button>
+            </div>
 
             {/* n8n Style Status Indicator (Top-Right) */}
             {(isRunning || isSuccess || isError) && (
@@ -199,11 +260,11 @@ const GenericNode = React.memo(({ data, id, type, selected }: NodeProps<any>) =>
                 <Handle
                     type="target"
                     position={Position.Left}
-                    className="!w-3 !h-3 !border-2 !border-white !bg-gray-400 hover:!bg-primary transition-colors shadow-sm -ml-1.5"
+                    className="!w-2.5 !h-2.5 !border-2 !border-white !bg-gray-400 hover:!bg-primary transition-colors shadow-sm -ml-1.5"
                 />
             )}
 
-            {/* Dynamic Output Handles */}
+            {/* Dynamic Output Handles (Stub Design) */}
             {(() => {
                 const config = def?.handleConfig;
                 let sources = config?.sources || [{ id: 'success', label: 'Success' }];
@@ -227,28 +288,41 @@ const GenericNode = React.memo(({ data, id, type, selected }: NodeProps<any>) =>
                 return sources.map((source, index) => {
                     // Distribute handles vertically on the right
                     const top = sources.length === 1 ? '50%' : `${((index + 1) * 100) / (sources.length + 1)}%`;
-                    // Color logic
-                    let bg = 'bg-success';
-                    if (source.id === 'false' || source.id === 'default') bg = 'bg-base-content/20'; // Grey/False
-                    if (type === 'switch') bg = 'bg-accent';
 
                     return (
-                        <div key={source.id} className="absolute right-0" style={{ top, transform: 'translate(50%, -50%)' }}>
-                            <Handle
-                                type="source"
-                                position={Position.Right}
-                                id={source.id}
-                                className={clsx("w-3 h-3 border-2 border-base-100 rounded-full hover:scale-125 transition-transform", bg)}
+                        <div
+                            key={source.id}
+                            className="absolute right-0 flex items-center group/stub pointer-events-auto"
+                            style={{ top, transform: 'translate(100%, -50%)', zIndex: 10 }} // Extend OUTSIDE the node
+                        >
+                            {/* The Stub Line */}
+                            <div className="w-4 h-0.5 bg-gray-300 group-hover/stub:bg-primary transition-colors origin-left" />
+
+                            {/* The Handle Button */}
+                            <div
+                                className="relative w-5 h-5 -ml-0.5 rounded-full bg-white border border-gray-300 group-hover/stub:border-primary flex items-center justify-center shadow-sm cursor-pointer transition-all group-hover/stub:scale-110"
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    // Calculate position for sidebar? Or just open sidebar.
+                                    // Ideally sidebar opens and we know we are connecting FROM this node.
                                     window.dispatchEvent(new CustomEvent('workflow-quick-add', {
-                                        detail: { x: rect.right + 20, y: rect.top - 150, sourceNodeId: id, sourceHandleId: source.id }
+                                        detail: { x: 0, y: 0, sourceNodeId: id, sourceHandleId: source.id } // x,y ignored for sidebar
                                     }));
                                 }}
-                            />
+                            >
+                                <Plus size={10} className="text-gray-400 group-hover/stub:text-primary transition-colors" />
+
+                                {/* Invisible React Flow Handle on top for dragging */}
+                                <Handle
+                                    type="source"
+                                    position={Position.Right}
+                                    id={source.id}
+                                    className="!opacity-0 !absolute !inset-0 !w-full !h-full !border-0 cursor-crosshair"
+                                />
+                            </div>
+
                             {/* Hover Label */}
-                            <div className="absolute left-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap text-[9px] font-bold bg-base-100 px-1 rounded shadow-sm transition-opacity z-10">
+                            <div className="absolute left-full ml-2 opacity-0 group-hover/stub:opacity-100 pointer-events-none whitespace-nowrap text-[9px] font-bold bg-gray-800 text-white px-1.5 py-0.5 rounded shadow-sm transition-opacity">
                                 {source.label}
                             </div>
                         </div>
@@ -335,78 +409,6 @@ const GraphContextMenu: React.FC<GraphContextMenuProps> = ({
                     <Trash2 size={14} /> Delete
                 </button>
             )}
-        </div>
-    );
-};
-
-/* ============================================================
- *  n8n Style Quick Add Menu
- * ============================================================ */
-interface QuickAddMenuProps {
-    x: number;
-    y: number;
-    onClose: () => void;
-    onAdd: (type: string) => void;
-}
-
-const QuickAddMenu: React.FC<QuickAddMenuProps> = ({ x, y, onClose, onAdd }) => {
-    const categories = getNodesByCategory();
-    const [search, setSearch] = useState('');
-
-    return (
-        <div
-            className="fixed bg-base-100 border border-base-300 shadow-2xl rounded-2xl p-3 z-[100] w-64 backdrop-blur-md animate-in fade-in zoom-in-95 duration-150"
-            style={{ left: x, top: y }}
-        >
-            <div className="relative mb-3">
-                <input
-                    autoFocus
-                    type="text"
-                    placeholder="Search nodes..."
-                    className="input input-sm input-bordered w-full pr-8 rounded-lg outline-none focus:border-primary/50 transition-colors"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                />
-                <div className="absolute top-1/2 -translate-y-1/2 right-2 flex gap-1 items-center">
-                    <kbd className="kbd kbd-xs opacity-20 font-sans">Esc</kbd>
-                </div>
-            </div>
-
-            <div className="max-h-[320px] overflow-y-auto custom-scrollbar space-y-4">
-                {(Object.keys(categories) as NodeCategory[]).map(cat => (
-                    <div key={cat}>
-                        <div className={clsx("text-[9px] font-bold uppercase tracking-widest opacity-40 mb-1.5 px-1", CATEGORY_COLORS[cat])}>
-                            {CATEGORY_LABELS[cat]}
-                        </div>
-                        <div className="space-y-0.5">
-                            {categories[cat].filter(d => d.label.toLowerCase().includes(search.toLowerCase())).map(def => {
-                                const IconComp = def.icon;
-                                return (
-                                    <button
-                                        key={def.type}
-                                        className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-primary/5 hover:text-primary transition-all text-left group"
-                                        onClick={() => onAdd(def.type)}
-                                    >
-                                        <div className={clsx("p-1.5 rounded-md bg-base-200 group-hover:bg-primary/10 transition-colors", `text-${def.color}`)}>
-                                            <IconComp size={14} />
-                                        </div>
-                                        <div>
-                                            <div className="text-xs font-bold leading-none">{def.label}</div>
-                                            <div className="text-[9px] opacity-40 mt-1 line-clamp-1">{def.description}</div>
-                                        </div>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            <div className="absolute top-0 right-0 p-2">
-                <button onClick={onClose} className="btn btn-xs btn-ghost btn-square opacity-20 hover:opacity-100">
-                    <X size={12} />
-                </button>
-            </div>
         </div>
     );
 };
@@ -883,6 +885,13 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
     const [newVarValue, setNewVarValue] = useState('');
     const [showSettingsModal, setShowSettingsModal] = useState(false);
 
+    // Sidebar State
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [pendingConnection, setPendingConnection] = useState<{
+        sourceNodeId?: string;
+        sourceHandleId?: string;
+    } | null>(null);
+
     // Context Menu State
     const [graphContextMenu, setGraphContextMenu] = useState<{
         type: 'node' | 'edge' | 'pane';
@@ -892,32 +901,9 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
         data?: any;
     } | null>(null);
 
-    // n8n Quick Add State
-    const [quickAddMenu, setQuickAddMenu] = useState<{
-        x: number;
-        y: number;
-        sourceNodeId?: string;
-        sourceHandleId?: string;
-    } | null>(null);
-
     // Ref to handle connection end events
     const connectingNodeId = useRef<string | null>(null);
     const connectingHandleId = useRef<string | null>(null);
-
-
-    // Handle Quick Add Event from Nodes
-    useEffect(() => {
-        const handleQuickAdd = (e: any) => {
-            setQuickAddMenu({
-                x: e.detail.x,
-                y: e.detail.y,
-                sourceNodeId: e.detail.sourceNodeId,
-                sourceHandleId: e.detail.sourceHandleId
-            });
-        };
-        window.addEventListener('workflow-quick-add', handleQuickAdd);
-        return () => window.removeEventListener('workflow-quick-add', handleQuickAdd);
-    }, []);
 
     // Parse workflow data from tab content
     const workflowData = useMemo(() => {
@@ -939,13 +925,7 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
             const executedStep = executionState.find(s => s.nodeId === n.id);
             let status = undefined;
             if (executedStep) {
-                status = 'success'; // Or based on signal?
-                // If it's the last one and isExecuting is true, maybe running?
-                // But executionState arrives as completed steps.
-            } else if (isExecuting) {
-                // Check if currently running? We don't have real-time "started" events yet, only "completed" steps.
-                // We can infer "running" if it's connected to the last completed step?
-                // For now, simpler: highlight completed nodes.
+                status = 'success';
             }
 
             return {
@@ -959,6 +939,7 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                     subtitle,
                     style: n.style,
                     status,
+                    disabled: n.disabled || false, // Support disabled state
                 },
             };
         });
@@ -967,8 +948,7 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
 
     const initialEdges: Edge[] = useMemo(() => {
         const edgeArr = workflowData.edges || [];
-        // Map of completed nodes and their output signals
-        const completedNodes = new Map<string, string>(); // NodeID -> Signal
+        const completedNodes = new Map<string, string>();
         executionState.forEach(step => {
             completedNodes.set(step.nodeId, step.signal);
         });
@@ -976,36 +956,26 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
         return edgeArr.map((e: any) => {
             const { stroke, strokeWidth } = e.style || {};
 
-            // Check if this edge was traversed
-            // An edge is traversed if:
-            // 1. Source node was executed
-            // 2. Source output signal matches edge signal (or default success)
-            // 3. Target node was executed (implies flow continued)
-            //    OR just source executed with matching signal implies this path was CHOSEN.
-
             const sourceSignal = completedNodes.get(e.fromNodeId || e.source);
             const edgeSignal = e.signal || 'success';
-            // Edge sourceHandle might be 'false' or 'true'.
-            // engine.go uses "true"/"false" strings for signal.
 
             const isTraversed = sourceSignal && (
                 sourceSignal === edgeSignal ||
-                (edgeSignal === 'success' && sourceSignal === 'success') // Default match
+                (edgeSignal === 'success' && sourceSignal === 'success')
             );
 
-            // Determine style
-            let edgeColor = stroke || '#94a3b8';
+            let edgeColor = stroke || '#9ca3af'; // Gray-400
             let animated = isExecuting;
 
             if (isTraversed) {
                 edgeColor = '#22c55e'; // Green
-                animated = false; // Stop animating if completed? Or keep generic animation?
+                animated = false;
             } else if (isExecuting) {
-                edgeColor = '#ff6d5a'; // Active/Pending color
+                edgeColor = '#ff6d5a'; // Active
             }
 
-            if (e.signal === 'false') edgeColor = '#ff52d9'; // Logic False branch base color
-            if (isTraversed) edgeColor = '#22c55e'; // Traversed overrides
+            if (e.signal === 'false') edgeColor = '#ff52d9';
+            if (isTraversed) edgeColor = '#22c55e';
 
             return {
                 id: e.id,
@@ -1031,28 +1001,66 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-    // Track internal updates to prevent echo loops
+    // Handle Quick Add Event from Nodes (Stubs)
+    useEffect(() => {
+        const handleQuickAdd = (e: any) => {
+            // Open sidebar
+            setIsSidebarOpen(true);
+            setPendingConnection({
+                sourceNodeId: e.detail.sourceNodeId,
+                sourceHandleId: e.detail.sourceHandleId
+            });
+        };
+        const handleNodeDelete = (e: any) => {
+            const { nodeId } = e.detail;
+            setNodes(nds => nds.filter(n => n.id !== nodeId));
+            setEdges(eds => eds.filter(ed => ed.source !== nodeId && ed.target !== nodeId));
+            if (selectedNode?.id === nodeId) setSelectedNode(null);
+        };
+        const handleNodeToggle = (e: any) => {
+             const { nodeId, disabled } = e.detail;
+             setNodes(nds => nds.map(n => n.id === nodeId ? { ...n, data: { ...n.data, disabled } } : n));
+        };
+        const handleNodeExecute = (e: any) => {
+             const { nodeId } = e.detail;
+             // Here we might need to propagate this up to trigger partial execution
+             // For now, just log or maybe show a toast
+             console.log("Execute node requested:", nodeId);
+        };
+        const handleContextMenu = (e: any) => {
+             const { type, x, y, id, data } = e.detail;
+             setGraphContextMenu({ type, x, y, id, data });
+        };
+
+        window.addEventListener('workflow-quick-add', handleQuickAdd);
+        window.addEventListener('workflow-node-delete', handleNodeDelete);
+        window.addEventListener('workflow-node-toggle', handleNodeToggle);
+        window.addEventListener('workflow-node-execute', handleNodeExecute);
+        window.addEventListener('workflow-context-menu', handleContextMenu);
+
+        return () => {
+            window.removeEventListener('workflow-quick-add', handleQuickAdd);
+            window.removeEventListener('workflow-node-delete', handleNodeDelete);
+            window.removeEventListener('workflow-node-toggle', handleNodeToggle);
+            window.removeEventListener('workflow-node-execute', handleNodeExecute);
+            window.removeEventListener('workflow-context-menu', handleContextMenu);
+        };
+    }, [selectedNode, setNodes, setEdges]); // Removed pendingConnection dependency loop
+
     const isInternalUpdate = useRef(false);
 
-    // Sync from UPSTREAM (tab.content) -> DOWNSTREAM (nodes/edges)
-    // Only if the content actually changed and it wasn't us who changed it.
     useEffect(() => {
         if (isInternalUpdate.current) {
             isInternalUpdate.current = false;
             return;
         }
-        // Deep compare or simple length check to avoid unnecessary resets?
-        // For now, simpler: just set them.
-        // Optimization: Check if JSON.stringify(nodes) !== JSON.stringify(initialNodes)
         setNodes(initialNodes);
         setEdges(initialEdges);
-    }, [workflowData, setNodes, setEdges, executionState, isExecuting]); // Removed initialNodes/initialEdges from dep array to rely on stable workflowData
+    }, [workflowData, setNodes, setEdges, executionState, isExecuting]);
 
-    // Sync from DOWNSTREAM (nodes/edges) -> UPSTREAM (tab.content)
     useEffect(() => {
         if (!nodes || !edges) return;
 
-        // Form the new data
         const nodesMap: Record<string, any> = {};
         nodes.forEach(n => {
             nodesMap[n.id] = {
@@ -1060,9 +1068,10 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                 name: (n.data as any).label || '',
                 type: n.type || 'click',
                 config: (n.data as any).config || {},
-                x: Math.round(n.position.x), // Round to avoid jitter
+                x: Math.round(n.position.x),
                 y: Math.round(n.position.y),
                 style: { width: n.width, height: n.height, ...n.style },
+                disabled: (n.data as any).disabled, // Persist disabled state
             };
         });
         const edgeArr = edges.map(e => ({
@@ -1073,15 +1082,13 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
         const updated = { ...workflowData, nodes: nodesMap, edges: edgeArr };
         const json = JSON.stringify(updated, null, 2);
 
-        // Only propagate if actually different
         if (json !== tab.content) {
-            isInternalUpdate.current = true; // Mark as internal so we ignore the echo
+            isInternalUpdate.current = true;
             if (onContentChange) onContentChange(json);
         }
-    }, [nodes, edges]); // Dependencies: nodes, edges
+    }, [nodes, edges]);
 
 
-    // Edge Toolbar Events (from HoverEdge component)
     useEffect(() => {
         const handleEdgeDelete = (e: any) => {
             setEdges(eds => eds.filter(edge => edge.id !== e.detail.edgeId));
@@ -1090,12 +1097,17 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
             const { edgeId } = e.detail;
             const edge = edges.find(ed => ed.id === edgeId);
             if (!edge) return;
-            setQuickAddMenu({
-                x: e.detail.x || 400,
-                y: e.detail.y || 300,
+
+            // Open sidebar
+            setIsSidebarOpen(true);
+            setPendingConnection({
                 sourceNodeId: edge.source,
                 sourceHandleId: edge.sourceHandle || undefined,
             });
+            // We should remove the edge only AFTER adding the new node?
+            // Or remove it now and expect the user to add?
+            // Usually insert means "replace connection".
+            // For now, let's remove it.
             setEdges(eds => eds.filter(ed => ed.id !== edgeId));
         };
         window.addEventListener('workflow-edge-delete', handleEdgeDelete);
@@ -1112,7 +1124,7 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
             label: 'success',
             type: 'hover',
             animated: true,
-            style: { strokeWidth: 3, stroke: '#94a3b8' },
+            style: { strokeWidth: 3, stroke: '#9ca3af' },
             interactionWidth: 20,
         } as any, eds));
     }, [setEdges]);
@@ -1126,9 +1138,8 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
         if (!connectingNodeId.current) return;
         const targetIsPane = (event.target as Element).classList.contains('react-flow__pane');
         if (targetIsPane) {
-            setQuickAddMenu({
-                x: (event as MouseEvent).clientX - 100,
-                y: (event as MouseEvent).clientY - 200,
+            setIsSidebarOpen(true);
+            setPendingConnection({
                 sourceNodeId: connectingNodeId.current || undefined,
                 sourceHandleId: connectingHandleId.current || undefined,
             });
@@ -1224,9 +1235,27 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
         setGraphContextMenu(null);
     }, [selectedNode]);
 
-    const addConnectedNode = useCallback((nodeType: string, x: number, y: number, sourceId?: string, handleId?: string) => {
+    const addConnectedNode = useCallback((nodeType: string) => {
         const def = getNodeDef(nodeType);
         const newNodeId = uuidv4();
+
+        // Calculate position
+        let x = 0, y = 0;
+
+        if (pendingConnection?.sourceNodeId) {
+            // Find source node position
+            const sourceNode = nodes.find(n => n.id === pendingConnection.sourceNodeId);
+            if (sourceNode) {
+                x = sourceNode.position.x + 300; // Place to the right
+                y = sourceNode.position.y;
+            }
+        } else {
+             // Center of view? Or random?
+             // Since we don't have viewport center easily here without hook, let's default to (100, 100) or last click.
+             x = 100;
+             y = 100;
+        }
+
         const newNode: Node = {
             id: newNodeId,
             type: nodeType,
@@ -1234,18 +1263,21 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
             data: { label: def?.label || 'Node', nodeType, config: {}, subtitle: '' },
         };
         setNodes((nds) => nds.concat(newNode));
-        if (sourceId) {
+
+        if (pendingConnection?.sourceNodeId) {
             setEdges((eds) => addEdge({
                 id: uuidv4(),
-                source: sourceId,
+                source: pendingConnection.sourceNodeId,
                 target: newNodeId,
-                sourceHandle: handleId,
-                label: handleId === 'false' ? 'false' : 'success',
+                sourceHandle: pendingConnection.sourceHandleId,
+                label: pendingConnection.sourceHandleId === 'false' ? 'false' : 'success',
                 ...DEFAULT_EDGE_OPTIONS
             } as any, eds));
         }
-        setQuickAddMenu(null);
-    }, [setNodes, setEdges]);
+
+        setPendingConnection(null);
+        setIsSidebarOpen(false); // Close sidebar after adding
+    }, [setNodes, setEdges, nodes, pendingConnection]);
 
     const onDragOver = useCallback((event: React.DragEvent) => {
         event.preventDefault();
@@ -1397,9 +1429,9 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                                     <button
                                         className="p-2.5 hover:bg-gray-100 text-gray-700 transition-colors rounded-lg tooltip tooltip-left flex items-center justify-center"
                                         data-tip="Add node"
-                                        onClick={(e) => {
-                                            const rect = e.currentTarget.getBoundingClientRect();
-                                            setQuickAddMenu({ x: rect.left - 280, y: rect.top });
+                                        onClick={() => {
+                                            setPendingConnection(null);
+                                            setIsSidebarOpen(true);
                                         }}
                                     >
                                         <Plus size={20} />
@@ -1433,9 +1465,9 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                                     <div className="flex items-center gap-8 pointer-events-auto animate-in fade-in zoom-in duration-300">
                                         <button
                                             className="flex flex-col items-center gap-4 group w-[140px] h-[140px] justify-center rounded-2xl border-2 border-dashed border-gray-300 hover:border-primary hover:bg-primary/5 transition-all"
-                                            onClick={(e) => {
-                                                const rect = e.currentTarget.getBoundingClientRect();
-                                                setQuickAddMenu({ x: rect.left + rect.width / 2 - 128, y: rect.top + rect.height + 10 });
+                                            onClick={() => {
+                                                setPendingConnection(null);
+                                                setIsSidebarOpen(true);
                                             }}
                                         >
                                             <Plus size={32} className="text-gray-300 group-hover:text-primary transition-colors" />
@@ -1461,20 +1493,18 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                                 onToBack={graphContextMenu.type === 'node' ? moveNodeToBack : undefined}
                                 onProperties={graphContextMenu.type === 'node' ? handlePropertiesFromMenu : undefined}
                                 onAddNode={() => {
-                                    setQuickAddMenu({ x: graphContextMenu.x, y: graphContextMenu.y });
+                                    setPendingConnection(null);
+                                    setIsSidebarOpen(true);
                                     setGraphContextMenu(null);
                                 }}
                             />
                         )}
 
-                        {quickAddMenu && (
-                            <QuickAddMenu
-                                x={quickAddMenu.x}
-                                y={quickAddMenu.y}
-                                onClose={() => setQuickAddMenu(null)}
-                                onAdd={(type) => addConnectedNode(type, quickAddMenu.x, quickAddMenu.y, quickAddMenu.sourceNodeId, quickAddMenu.sourceHandleId)}
-                            />
-                        )}
+                        <WorkflowSidebar
+                            isOpen={isSidebarOpen}
+                            onClose={() => setIsSidebarOpen(false)}
+                            onAddNode={addConnectedNode}
+                        />
 
                         {/* n8n-Style Full-Screen Node Settings Modal */}
                         {showSettingsModal && selectedNode && selectedNodeDef && (
