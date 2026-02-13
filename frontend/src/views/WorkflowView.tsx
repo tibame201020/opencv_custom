@@ -2,8 +2,8 @@ import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import {
     ReactFlow,
     MiniMap,
-    Controls,
     Background,
+    BackgroundVariant,
     useNodesState,
     useEdgesState,
     addEdge,
@@ -30,7 +30,7 @@ import {
     Trash2, ChevronDown, X, GripVertical, Plus,
     Braces, ToggleLeft, Play, Maximize,
     Check, Loader2, AlertCircle, Zap,
-    ZoomIn, ZoomOut
+    ZoomIn, ZoomOut, Search
 } from 'lucide-react';
 import clsx from 'clsx';
 import { v4 as uuidv4 } from 'uuid';
@@ -82,15 +82,15 @@ const HoverEdge: React.FC<EdgeProps> = (props) => {
                 markerEnd={markerEnd}
                 style={{
                     ...style,
-                    strokeWidth: (hovered || selected) ? 4 : 3,
-                    stroke: (hovered || selected) ? 'oklch(var(--p))' : (style?.stroke || '#94a3b8'),
+                    strokeWidth: (hovered || selected) ? 4 : 2,
+                    stroke: (hovered || selected) ? '#22c55e' : (style?.stroke || '#cbd5e1'), // Green on hover, Gray-300 default
                     transition: 'stroke 0.15s, stroke-width 0.15s',
                 }}
             />
             <EdgeLabelRenderer>
                 <div
                     className={clsx(
-                        "absolute flex items-center gap-1 px-1 py-0.5 rounded-lg bg-base-100 border border-base-300 shadow-lg transition-all duration-150 pointer-events-auto",
+                        "absolute flex items-center gap-1 p-0.5 rounded-full bg-white border border-gray-200 shadow-sm transition-all duration-150 pointer-events-auto z-10",
                         (hovered || selected) ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"
                     )}
                     style={{
@@ -100,7 +100,7 @@ const HoverEdge: React.FC<EdgeProps> = (props) => {
                     onMouseLeave={() => setHovered(false)}
                 >
                     <button
-                        className="btn btn-xs btn-ghost btn-circle hover:btn-primary hover:text-primary-content transition-colors"
+                        className="w-6 h-6 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-primary transition-colors"
                         title="Insert node"
                         onClick={(e) => {
                             e.stopPropagation();
@@ -111,8 +111,9 @@ const HoverEdge: React.FC<EdgeProps> = (props) => {
                     >
                         <Plus size={14} />
                     </button>
+                    <div className="w-px h-3 bg-gray-200" />
                     <button
-                        className="btn btn-xs btn-ghost btn-circle hover:btn-error hover:text-error-content transition-colors"
+                        className="w-6 h-6 rounded-full flex items-center justify-center text-gray-500 hover:bg-red-50 hover:text-red-500 transition-colors"
                         title="Delete connection"
                         onClick={(e) => {
                             e.stopPropagation();
@@ -121,7 +122,7 @@ const HoverEdge: React.FC<EdgeProps> = (props) => {
                             }));
                         }}
                     >
-                        <Trash2 size={14} />
+                        <Trash2 size={12} />
                     </button>
                 </div>
             </EdgeLabelRenderer>
@@ -145,49 +146,51 @@ const GenericNode = React.memo(({ data, id, type, selected }: NodeProps<any>) =>
 
     return (
         <div className={clsx(
-            "group relative bg-base-100 rounded-xl border-2 transition-all duration-300 shadow-sm hover:shadow-md",
-            borderColor,
+            "group relative bg-white rounded-xl border transition-all duration-200 shadow-sm hover:shadow-md min-w-[180px]",
+            borderColor === 'border-primary' ? "ring-2 ring-primary border-transparent" : "border-gray-200 hover:border-gray-300",
             isRunning && "n8n-node-running ring-4 ring-primary/20",
             "n8n-node-pop" // Pop-in animation on mount
         )}>
             {selected && (
                 <NodeResizer
-                    minWidth={160}
+                    minWidth={180}
                     minHeight={80}
                     lineStyle={RESIZER_LINE_STYLE}
-                    handleClassName="w-2 h-2 bg-primary border-none rounded-full"
+                    handleClassName="w-2.5 h-2.5 bg-primary border-2 border-white rounded-full shadow-sm"
                 />
             )}
 
             {/* n8n Style Status Indicator (Top-Right) */}
             {(isRunning || isSuccess || isError) && (
                 <div className={clsx(
-                    "absolute -top-3 -right-3 w-7 h-7 rounded-full flex items-center justify-center shadow-lg border-2 border-base-100 z-20 animate-in zoom-in duration-300",
+                    "absolute -top-2.5 -right-2.5 w-6 h-6 rounded-full flex items-center justify-center shadow-lg border-2 border-white z-20 animate-in zoom-in duration-300",
                     isSuccess && "bg-success text-white",
                     isRunning && "bg-primary text-white",
                     isError && "bg-error text-white"
                 )}>
-                    {isSuccess && <Check size={14} strokeWidth={3} />}
-                    {isRunning && <Loader2 size={14} className="animate-spin" />}
-                    {isError && <AlertCircle size={14} strokeWidth={3} />}
+                    {isSuccess && <Check size={12} strokeWidth={3} />}
+                    {isRunning && <Loader2 size={12} className="animate-spin" />}
+                    {isError && <AlertCircle size={12} strokeWidth={3} />}
                 </div>
             )}
 
-            <div className="flex items-center gap-3 p-3 min-w-[160px]">
+            <div className="flex items-center gap-3 p-3">
                 {/* Node Icon - n8n style rounded box */}
                 <div className={clsx(
-                    "w-10 h-10 rounded-lg flex items-center justify-center shrink-0 shadow-inner group-hover:scale-105 transition-transform",
-                    `bg-${def?.color || 'base-200'} text-white`
+                    "w-10 h-10 rounded-lg flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform",
+                    `bg-${def?.color || 'gray-100'} text-white`
                 )}>
                     {IconComp ? <IconComp size={20} /> : <div className="text-[10px] font-bold">Node</div>}
                 </div>
 
-                <div className="min-w-0 pr-4">
-                    <div className="text-xs font-bold truncate leading-tight">{data.label || def?.label || 'Node'}</div>
-                    <div className="text-[9px] opacity-40 truncate">{data.subtitle || def?.description}</div>
+                <div className="min-w-0 flex-1 pr-2">
+                    <div className="text-sm font-semibold text-gray-800 truncate leading-tight">{data.label || def?.label || 'Node'}</div>
+                    <div className="text-[10px] text-gray-500 truncate mt-0.5">{data.subtitle || def?.description}</div>
                 </div>
-                <div className="ml-auto opacity-10 group-hover:opacity-30 cursor-grab active:cursor-grabbing">
-                    <GripVertical size={14} />
+
+                {/* Drag Handle (visible on hover) */}
+                <div className="opacity-0 group-hover:opacity-40 hover:!opacity-100 cursor-grab active:cursor-grabbing transition-opacity">
+                    <GripVertical size={16} className="text-gray-400" />
                 </div>
             </div>
 
@@ -196,7 +199,7 @@ const GenericNode = React.memo(({ data, id, type, selected }: NodeProps<any>) =>
                 <Handle
                     type="target"
                     position={Position.Left}
-                    className="w-3 h-3 border-2 border-base-100 bg-base-300 rounded-full hover:bg-primary transition-colors"
+                    className="!w-3 !h-3 !border-2 !border-white !bg-gray-400 hover:!bg-primary transition-colors shadow-sm -ml-1.5"
                 />
             )}
 
@@ -873,7 +876,7 @@ interface WorkflowViewProps {
 function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, executionState = EMPTY_ARRAY }: WorkflowViewProps) {
     const { theme } = useAppStore();
     const [selectedNode, setSelectedNode] = useState<Node | null>(null);
-    const { screenToFlowPosition, zoomIn, zoomOut, fitView, zoomTo } = useReactFlow();
+    const { screenToFlowPosition, zoomIn, zoomOut, fitView } = useReactFlow();
     const [expressionModes, setExpressionModes] = useState<Record<string, boolean>>({});
     const [showRightPanel, setShowRightPanel] = useState(false);
     const [newVarKey, setNewVarKey] = useState('');
@@ -1370,13 +1373,14 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                             onConnectStart={onConnectStart}
                             onConnectEnd={onConnectEnd}
                         >
-                            <Background gap={24} color="#f8fafc" />
-                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-4">
+                            <Background gap={20} size={1} color="#d4d4d8" variant={BackgroundVariant.Dots} style={{ backgroundColor: '#f5f5f5' }} />
+
+                            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-4">
                                 {onRun && (
                                     <button
                                         className={clsx(
                                             "btn btn-lg text-white border-none shadow-xl rounded-full px-8 gap-3 animate-in fade-in slide-in-from-bottom duration-300 group transition-all",
-                                            isExecuting ? "bg-primary/50 cursor-not-allowed" : "bg-[#ff6d5a] hover:bg-[#ff5a45]"
+                                            isExecuting ? "bg-primary/50 cursor-not-allowed" : "bg-primary hover:bg-primary-focus"
                                         )}
                                         disabled={isExecuting}
                                         onClick={onRun}
@@ -1386,67 +1390,62 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                                     </button>
                                 )}
                             </div>
-                            {/* n8n Style Top-Right Toolbar */}
-                            <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
-                                <div className="flex flex-col bg-base-100 shadow-xl rounded-xl border border-base-300 overflow-hidden">
+
+                            {/* n8n Style Right Toolbar */}
+                            <div className="absolute top-20 right-4 z-10 flex flex-col gap-3">
+                                <div className="flex flex-col bg-white shadow-lg rounded-xl border border-gray-100 p-1.5 space-y-1">
                                     <button
-                                        className="p-3 hover:bg-base-200 text-primary transition-colors tooltip tooltip-left"
+                                        className="p-2.5 hover:bg-gray-100 text-gray-700 transition-colors rounded-lg tooltip tooltip-left flex items-center justify-center"
                                         data-tip="Add node"
                                         onClick={(e) => {
                                             const rect = e.currentTarget.getBoundingClientRect();
-                                            setQuickAddMenu({ x: rect.right - 280, y: rect.top });
+                                            setQuickAddMenu({ x: rect.left - 280, y: rect.top });
                                         }}
                                     >
                                         <Plus size={20} />
                                     </button>
+                                    <button
+                                        className="p-2.5 hover:bg-gray-100 text-gray-700 transition-colors rounded-lg tooltip tooltip-left flex items-center justify-center"
+                                        data-tip="Search"
+                                    >
+                                        <Search size={20} />
+                                    </button>
+                                    <div className="h-px bg-gray-100 w-full my-1" />
+                                    <button
+                                        className="p-2.5 hover:bg-gray-100 text-gray-700 transition-colors rounded-lg tooltip tooltip-left flex items-center justify-center"
+                                        data-tip="Variables"
+                                        onClick={() => setShowRightPanel(!showRightPanel)}
+                                    >
+                                        <Braces size={20} className={showRightPanel ? "text-primary" : ""} />
+                                    </button>
                                 </div>
 
-                                <div className="flex flex-col bg-base-100 shadow-xl rounded-xl border border-base-300 overflow-hidden p-1">
-                                    <button
-                                        className="p-2 hover:bg-base-200 text-base-content/70 transition-colors rounded-lg tooltip tooltip-left"
-                                        data-tip="Zoom In"
-                                        onClick={() => { zoomIn(); }}
-                                    >
-                                        <ZoomIn size={18} />
-                                    </button>
-                                    <button
-                                        className="p-2 hover:bg-base-200 text-base-content/70 transition-colors rounded-lg tooltip tooltip-left"
-                                        data-tip="Zoom Out"
-                                        onClick={() => { zoomOut(); }}
-                                    >
-                                        <ZoomOut size={18} />
-                                    </button>
-                                    <button
-                                        className="p-2 hover:bg-base-200 text-base-content/70 transition-colors rounded-lg tooltip tooltip-left"
-                                        data-tip="Fit View"
-                                        onClick={() => { fitView(); }}
-                                    >
-                                        <Maximize size={18} />
-                                    </button>
+                                <div className="flex flex-col bg-white shadow-lg rounded-xl border border-gray-100 p-1.5 space-y-1">
+                                    <button className="p-2 hover:bg-gray-100 text-gray-500 rounded-lg" onClick={() => zoomIn()}><ZoomIn size={18} /></button>
+                                    <button className="p-2 hover:bg-gray-100 text-gray-500 rounded-lg" onClick={() => zoomOut()}><ZoomOut size={18} /></button>
+                                    <button className="p-2 hover:bg-gray-100 text-gray-500 rounded-lg" onClick={() => fitView()}><Maximize size={18} /></button>
                                 </div>
                             </div>
 
-                            {/* n8n Style Center "Add first step" Button */}
+                            {/* n8n Style Center Empty State */}
                             {nodes.length === 0 && (
                                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                                    <button
-                                        className="pointer-events-auto flex flex-col items-center gap-4 group animate-in fade-in zoom-in duration-300"
-                                        onClick={(e) => {
-                                            const rect = e.currentTarget.getBoundingClientRect();
-                                            // Center the menu relative to the button
-                                            setQuickAddMenu({ x: rect.left + rect.width / 2 - 128, y: rect.top + rect.height + 10 });
-                                        }}
-                                    >
-                                        <div className="w-16 h-16 rounded-2xl border-2 border-dashed border-base-content/20 flex items-center justify-center bg-base-100/50 backdrop-blur-sm group-hover:border-primary group-hover:bg-primary/5 transition-all shadow-lg group-hover:scale-105">
-                                            <Plus size={32} className="text-base-content/30 group-hover:text-primary transition-colors" />
-                                        </div>
-                                        <span className="font-bold text-lg text-base-content/50 group-hover:text-primary transition-colors">
-                                            Add first step...
-                                        </span>
-                                    </button>
+                                    <div className="flex items-center gap-8 pointer-events-auto animate-in fade-in zoom-in duration-300">
+                                        <button
+                                            className="flex flex-col items-center gap-4 group w-[140px] h-[140px] justify-center rounded-2xl border-2 border-dashed border-gray-300 hover:border-primary hover:bg-primary/5 transition-all"
+                                            onClick={(e) => {
+                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                setQuickAddMenu({ x: rect.left + rect.width / 2 - 128, y: rect.top + rect.height + 10 });
+                                            }}
+                                        >
+                                            <Plus size={32} className="text-gray-300 group-hover:text-primary transition-colors" />
+                                            <span className="font-bold text-sm text-gray-400 group-hover:text-primary transition-colors">
+                                                Add first step...
+                                            </span>
+                                        </button>
+                                    </div>
                                 </div>
                             )}
-                            <Controls />
                             <MiniMap zoomable pannable />
                         </ReactFlow>
 
@@ -1491,17 +1490,6 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                                 nodes={nodes}
                                 executionState={executionState}
                             />
-                        )}
-
-                        {!showRightPanel && (
-                            <button
-                                className="absolute top-3 right-3 btn btn-sm btn-ghost gap-1 bg-base-100/80 backdrop-blur border border-base-300 shadow-lg z-10"
-                                onClick={() => { setShowRightPanel(true); }}
-                                title="Workflow Variables"
-                            >
-                                <Braces size={14} className="text-warning" /> Vars
-                                {varEntries.length > 0 && <span className="badge badge-xs badge-warning">{varEntries.length}</span>}
-                            </button>
                         )}
                     </div>
 

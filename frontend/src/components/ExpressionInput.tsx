@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Braces, X, Search, ChevronRight, ChevronDown } from 'lucide-react';
-import clsx from 'clsx';
+import { Braces, Search } from 'lucide-react';
 
 interface ExpressionInputProps {
     value: string;
@@ -46,7 +45,6 @@ export const ExpressionInput: React.FC<ExpressionInputProps> = ({ value, onChang
     };
 
     // Prepare data for picker
-    const previousNodes = nodes.filter(n => n.id !== 'current'); // Todo: filter by graph topology?
     // For now, list all other nodes. 
     
     // Group execution results by node
