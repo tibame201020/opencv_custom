@@ -35,6 +35,14 @@ func TestGetAssetPath_Security(t *testing.T) {
 	mainScriptPath := filepath.Join("custom", "test_project", "main.py")
 	projectRoot := filepath.Join(sm.CorePath, filepath.Dir(mainScriptPath))
 
+	// Determine an absolute path that is definitely outside the project root
+	var absPath string
+	if os.PathSeparator == '\\' {
+		absPath = "C:\\Windows\\System32\\cmd.exe"
+	} else {
+		absPath = "/etc/passwd"
+	}
+
 	tests := []struct {
 		name      string
 		relPath   string
@@ -53,8 +61,8 @@ func TestGetAssetPath_Security(t *testing.T) {
 			errSub:    "security",
 		},
 		{
-			name:      "Path escape attempt (absolute Windows)",
-			relPath:   "C:\\Windows\\System32\\cmd.exe",
+			name:      "Path escape attempt (absolute)",
+			relPath:   absPath,
 			expectErr: true,
 			errSub:    "security",
 		},
@@ -67,11 +75,7 @@ func TestGetAssetPath_Security(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fullPath := filepath.Join(projectRoot, tt.relPath)
-
 			// Security Check Logic
-			cleanBase, _ := filepath.Abs(projectRoot)
-
 			if filepath.IsAbs(tt.relPath) {
 				if !tt.expectErr {
 					t.Errorf("Expected success for %s, but filepath.IsAbs is true", tt.relPath)
@@ -79,6 +83,8 @@ func TestGetAssetPath_Security(t *testing.T) {
 				return
 			}
 
+			fullPath := filepath.Join(projectRoot, tt.relPath)
+			cleanBase, _ := filepath.Abs(projectRoot)
 			cleanTarget, _ := filepath.Abs(fullPath)
 
 			// t.Logf("rel: %s, target: %s, base: %s", tt.relPath, cleanTarget, cleanBase)

@@ -15,5 +15,12 @@ func KillProcess(cmd *exec.Cmd) error {
 	if cmd == nil || cmd.Process == nil {
 		return nil
 	}
-	return cmd.Process.Kill()
+	if err := cmd.Process.Kill(); err != nil {
+		// Ignore "process already finished" error
+		if err.Error() == "os: process already finished" {
+			return nil
+		}
+		return err
+	}
+	return nil
 }
