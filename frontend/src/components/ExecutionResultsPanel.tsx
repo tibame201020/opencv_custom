@@ -168,7 +168,7 @@ export const ExecutionResultsPanel: React.FC<ExecutionResultsPanelProps> = ({
                                             "text-[10px] px-1.5 py-0.5 rounded font-medium",
                                             selectedStep.status === 'success' ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
                                         )}>
-                                            {selectedStep.status.toUpperCase()}
+                                            {(selectedStep.status || 'unknown').toUpperCase()}
                                         </span>
                                     </div>
 
