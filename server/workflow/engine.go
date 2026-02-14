@@ -86,11 +86,15 @@ func NewFlowEngine(wf *Workflow) *FlowEngine {
 
 // ExecutionStep 每個節點的執行記錄
 type ExecutionStep struct {
-	NodeID   string      `json:"nodeId"`
-	NodeName string      `json:"nodeName"`
-	NodeType string      `json:"nodeType"`
-	Signal   string      `json:"signal"`
-	Output   interface{} `json:"output,omitempty"`
+	NodeID    string      `json:"nodeId"`
+	NodeName  string      `json:"nodeName"`
+	NodeType  string      `json:"nodeType"`
+	Signal    string      `json:"signal"`
+	Status    string      `json:"status"` // success, error, cancelled
+	StartTime time.Time   `json:"startTime"`
+	EndTime   time.Time   `json:"endTime"`
+	Duration  int64       `json:"duration"` // milliseconds
+	Output    interface{} `json:"output,omitempty"`
 }
 
 // ExecutionResult 執行結果
@@ -755,6 +759,8 @@ func (e *FlowEngine) Execute(ctx context.Context, input interface{}) (*Execution
 			NodeNames:     nodeNames,
 		}
 
+		startTime := time.Now()
+
 		if node.Type == NodeSubWorkflow && node.SubWorkflow != nil {
 			subEngine := NewFlowEngine(node.SubWorkflow)
 			// Pass parent context? For now separate scope.
@@ -770,15 +776,30 @@ func (e *FlowEngine) Execute(ctx context.Context, input interface{}) (*Execution
 			return nil, fmt.Errorf("node %s (%s) has no executor", node.Name, currentNodeId)
 		}
 
+		endTime := time.Now()
+		duration := endTime.Sub(startTime).Milliseconds()
+
 		// Record result
 		e.NodeResults[node.ID] = nodeOutput
 
+		// Determine Status
+		status := "success"
+		if nodeOutput.Signal == "error" {
+			status = "error"
+		} else if nodeOutput.Signal == "cancelled" {
+			status = "cancelled"
+		}
+
 		step := ExecutionStep{
-			NodeID:   node.ID,
-			NodeName: node.Name,
-			NodeType: string(node.Type),
-			Signal:   nodeOutput.Signal,
-			Output:   nodeOutput.Output,
+			NodeID:    node.ID,
+			NodeName:  node.Name,
+			NodeType:  string(node.Type),
+			Signal:    nodeOutput.Signal,
+			Status:    status,
+			StartTime: startTime,
+			EndTime:   endTime,
+			Duration:  duration,
+			Output:    nodeOutput.Output,
 		}
 
 		executionPath = append(executionPath, step)
