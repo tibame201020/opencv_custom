@@ -14,9 +14,6 @@ import {
     type Node,
     type OnConnectEnd,
     type OnConnectStart,
-    Handle,
-    Position,
-    type NodeProps,
     getBezierPath,
     BaseEdge,
     EdgeLabelRenderer,
@@ -28,21 +25,21 @@ import { useAppStore, type WorkflowTab } from '../store';
 import {
     Trash2, ChevronDown, X, Plus,
     Braces, ToggleLeft, Play, Maximize,
-    Check, Loader2, AlertCircle, Zap,
-    ZoomIn, ZoomOut, Search, Eye, EyeOff, MoreHorizontal
+    Loader2, Zap,
+    ZoomIn, ZoomOut, Search
 } from 'lucide-react';
 import clsx from 'clsx';
 import { v4 as uuidv4 } from 'uuid';
 import {
     getNodeDef, getDefaultConfig,
-    type ParamSchema
+    type ParamSchema,
+    NODE_DEFINITIONS
 } from '../workflow/nodeRegistry';
 import { ExpressionInput } from '../components/ExpressionInput';
 import { WorkflowSidebar } from '../components/WorkflowSidebar';
+import { N8nNode } from '../components/nodes/N8nNode';
+import { ExecutionInspector } from '../components/ExecutionInspector';
 
-/* ============================================================
- *  Generic Node Component (driven by NodeRegistry)
- * ============================================================ */
 const PAN_ON_DRAG = [2];
 const DEFAULT_EDGE_OPTIONS = {
     type: 'hover' as const,
@@ -58,14 +55,12 @@ const HoverEdge: React.FC<EdgeProps> = (props) => {
     const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, markerEnd, selected, label } = props;
     const [hovered, setHovered] = useState(false);
 
-    // Changed to Bezier Path for n8n style smooth curves
     const [edgePath, labelX, labelY] = getBezierPath({
         sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition,
     });
 
     return (
         <>
-            {/* Invisible wide path for easier hover */}
             <path
                 d={edgePath}
                 fill="none"
@@ -82,13 +77,12 @@ const HoverEdge: React.FC<EdgeProps> = (props) => {
                 style={{
                     ...style,
                     strokeWidth: (hovered || selected) ? 4 : 2,
-                    stroke: (hovered || selected) ? '#22c55e' : (style?.stroke || '#cbd5e1'), // Green on hover, Gray-300 default
+                    stroke: (hovered || selected) ? '#22c55e' : (style?.stroke || '#cbd5e1'),
                     transition: 'stroke 0.15s, stroke-width 0.15s',
                 }}
             />
 
             <EdgeLabelRenderer>
-                {/* Permanent Label (e.g. "1 item", "true") */}
                 {label && label !== 'success' && (
                     <div
                         className="absolute px-2 py-0.5 rounded-full bg-white border border-gray-200 text-[10px] font-medium text-gray-500 shadow-sm pointer-events-none z-10"
@@ -100,7 +94,6 @@ const HoverEdge: React.FC<EdgeProps> = (props) => {
                     </div>
                 )}
 
-                {/* Hover Toolbar */}
                 <div
                     className={clsx(
                         "absolute flex items-center gap-1 p-0.5 rounded-full bg-white border border-gray-200 shadow-sm transition-all duration-150 pointer-events-auto z-20",
@@ -147,213 +140,16 @@ const edgeTypes = {
     hover: HoverEdge,
 };
 
-const GenericNode = React.memo(({ data, id, type, selected }: NodeProps<any>) => {
-    const def = getNodeDef(type || data.nodeType || 'click');
-    const IconComp = def?.icon;
-    const [hovered, setHovered] = useState(false);
-
-    // Status Logic
-    const isRunning = data.status === 'running';
-    const isSuccess = data.status === 'success';
-    const isError = data.status === 'error';
-    const isDisabled = data.disabled;
-
-    return (
-        <div
-            className="group relative flex flex-col items-center overflow-visible w-16 h-16"
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
-        >
-            {/* Main Square Container */}
-            <div
-                className={clsx(
-                    "w-16 h-16 rounded-2xl bg-white border-2 flex items-center justify-center shadow-sm transition-all duration-200 z-10",
-                    selected ? "border-primary ring-4 ring-primary/20" : "border-gray-200 hover:border-gray-400",
-                    isRunning && "border-primary animate-pulse",
-                    isError && "border-error",
-                    isDisabled && "opacity-60 grayscale"
-                )}
-            >
-                {/* Icon */}
-                <div className={clsx(
-                    "transition-transform duration-200 group-hover:scale-110",
-                    `text-${def?.color || 'gray-500'}`
-                )}>
-                     {IconComp ? <IconComp size={28} /> : <div className="text-[8px] font-bold">Node</div>}
-                </div>
-            </div>
-
-            {/* Status Indicator (Bottom-Right Inside) */}
-            {(isRunning || isSuccess || isError) && (
-                <div className={clsx(
-                    "absolute bottom-0 right-0 translate-x-1/4 translate-y-1/4 w-5 h-5 rounded-full flex items-center justify-center border-2 border-white z-20 shadow-sm animate-in zoom-in duration-300",
-                    isSuccess && "bg-success text-white",
-                    isRunning && "bg-primary text-white",
-                    isError && "bg-error text-white"
-                )}>
-                    {isSuccess && <Check size={10} strokeWidth={4} />}
-                    {isRunning && <Loader2 size={10} className="animate-spin" />}
-                    {isError && <AlertCircle size={10} strokeWidth={4} />}
-                </div>
-            )}
-
-            {/* External Label (Below, Transparent) */}
-            <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-32 text-center pointer-events-none z-20">
-                <div className={clsx(
-                    "text-[11px] font-bold leading-tight drop-shadow-sm transition-colors duration-200",
-                    selected ? "text-primary" : "text-gray-700"
-                )}>
-                    {data.label || def?.label || 'Node'}
-                </div>
-                 {(data.subtitle || def?.description) && (
-                    <div className="text-[9px] text-gray-500 mt-0.5 truncate max-w-full px-1">
-                        {data.subtitle}
-                    </div>
-                )}
-            </div>
-
-            {/* Transparent Hover Toolbar (Floating Above) */}
-            <div className={clsx(
-                "absolute -top-12 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-30 transition-all duration-200",
-                (hovered || selected) ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
-            )}>
-                <button
-                    className="p-1.5 rounded-full bg-white shadow-sm border border-gray-100 hover:border-primary text-gray-500 hover:text-primary transition-colors"
-                    title="Execute Step"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        window.dispatchEvent(new CustomEvent('workflow-node-execute', { detail: { nodeId: id } }));
-                    }}
-                >
-                    <Play size={12} fill="currentColor" />
-                </button>
-                <button
-                    className={clsx(
-                        "p-1.5 rounded-full bg-white shadow-sm border border-gray-100 hover:border-primary transition-colors",
-                        isDisabled ? "text-red-500 hover:text-red-600" : "text-gray-500 hover:text-primary"
-                    )}
-                    title={isDisabled ? "Enable Step" : "Disable Step"}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        window.dispatchEvent(new CustomEvent('workflow-node-toggle', { detail: { nodeId: id, disabled: !isDisabled } }));
-                    }}
-                >
-                    {isDisabled ? <EyeOff size={12} /> : <Eye size={12} />}
-                </button>
-                <button
-                    className="p-1.5 rounded-full bg-white shadow-sm border border-gray-100 hover:border-red-300 text-gray-500 hover:text-red-500 transition-colors"
-                    title="Delete Step"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        window.dispatchEvent(new CustomEvent('workflow-node-delete', { detail: { nodeId: id } }));
-                    }}
-                >
-                    <Trash2 size={12} />
-                </button>
-                <button
-                    className="p-1.5 rounded-full bg-white shadow-sm border border-gray-100 hover:border-primary text-gray-500 hover:text-primary transition-colors"
-                    title="More Actions"
-                    onClick={(e) => {
-                         e.stopPropagation();
-                         const rect = e.currentTarget.getBoundingClientRect();
-                         window.dispatchEvent(new CustomEvent('workflow-context-menu', {
-                             detail: { type: 'node', x: rect.right, y: rect.bottom, id, data }
-                         }));
-                    }}
-                >
-                    <MoreHorizontal size={12} />
-                </button>
-            </div>
-
-            {/* Input Handle (Left) */}
-            {def?.type !== 'click' && (
-                <Handle
-                    type="target"
-                    position={Position.Left}
-                    className="!w-2.5 !h-2.5 !border-2 !border-white !bg-gray-400 hover:!bg-primary transition-colors shadow-sm -ml-1.5 z-0"
-                />
-            )}
-
-            {/* Dynamic Output Handles (Stub Design) */}
-            {(() => {
-                const config = def?.handleConfig;
-                let sources = config?.sources || [{ id: 'success', label: 'Success' }];
-
-                // Special handling for Switch: Add handles for cases
-                if (type === 'switch') {
-                    // Try to parse config.cases
-                    const caseStr = data.config?.cases;
-                    try {
-                        const cases = typeof caseStr === 'string' ? JSON.parse(caseStr) : caseStr;
-                        if (Array.isArray(cases)) {
-                            const caseHandles = cases.map((c, i) => ({
-                                id: `${i}`,
-                                label: `Case ${i} (${c})`
-                            }));
-                            sources = [...caseHandles, { id: 'default', label: 'Default' }];
-                        }
-                    } catch { }
-                }
-
-                return sources.map((source, index) => {
-                    // Distribute handles vertically on the right
-                    const top = sources.length === 1 ? '50%' : `${((index + 1) * 100) / (sources.length + 1)}%`;
-
-                    return (
-                        <div
-                            key={source.id}
-                            className="absolute right-0 flex items-center group/stub pointer-events-auto"
-                            style={{ top, transform: 'translate(100%, -50%)', zIndex: 10 }} // Extend OUTSIDE the node
-                        >
-                            {/* The Stub Line */}
-                            <div className="w-4 h-0.5 bg-gray-300 group-hover/stub:bg-primary transition-colors origin-left" />
-
-                            {/* The Handle Button */}
-                            <div
-                                className="relative w-5 h-5 -ml-0.5 rounded-full bg-white border border-gray-300 group-hover/stub:border-primary flex items-center justify-center shadow-sm cursor-pointer transition-all group-hover/stub:scale-110"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    // Calculate position for sidebar? Or just open sidebar.
-                                    // Ideally sidebar opens and we know we are connecting FROM this node.
-                                    window.dispatchEvent(new CustomEvent('workflow-quick-add', {
-                                        detail: { x: 0, y: 0, sourceNodeId: id, sourceHandleId: source.id } // x,y ignored for sidebar
-                                    }));
-                                }}
-                            >
-                                <Plus size={10} className="text-gray-400 group-hover/stub:text-primary transition-colors" />
-
-                                {/* Invisible React Flow Handle on top for dragging */}
-                                <Handle
-                                    type="source"
-                                    position={Position.Right}
-                                    id={source.id}
-                                    className="!opacity-0 !absolute !inset-0 !w-full !h-full !border-0 cursor-crosshair"
-                                />
-                            </div>
-
-                            {/* Hover Label */}
-                            <div className="absolute left-full ml-2 opacity-0 group-hover/stub:opacity-100 pointer-events-none whitespace-nowrap text-[9px] font-bold bg-gray-800 text-white px-1.5 py-0.5 rounded shadow-sm transition-opacity">
-                                {source.label}
-                            </div>
-                        </div>
-                    );
-                });
-            })()}
-        </div>
-    );
-});
-
-import { NODE_DEFINITIONS } from '../workflow/nodeRegistry';
+// Map all registered nodes to the N8nNode component
 const nodeTypes: Record<string, any> = {};
 NODE_DEFINITIONS.forEach(def => {
-    nodeTypes[def.type] = GenericNode;
+    nodeTypes[def.type] = N8nNode;
 });
 
 const EMPTY_ARRAY: any[] = [];
 
-
 /* ============================================================
- *  Context Menu Component (n8n Style)
+ *  Context Menu Component
  * ============================================================ */
 interface GraphContextMenuProps {
     type: 'node' | 'edge' | 'pane';
@@ -405,7 +201,6 @@ const GraphContextMenu: React.FC<GraphContextMenuProps> = ({
                 </button>
             )}
 
-            {/* Minimap (Bottom Right) */}
             {onToBack && (
                 <button onClick={onToBack} className="w-full text-left px-4 py-2 hover:bg-base-200 text-xs flex items-center gap-2">
                     <ChevronDown size={14} /> Send to Back
@@ -424,7 +219,7 @@ const GraphContextMenu: React.FC<GraphContextMenuProps> = ({
 };
 
 /* ============================================================
- *  n8n-Style Full-Screen Node Settings Modal
+ *  Node Settings Modal
  * ============================================================ */
 interface NodeSettingsModalProps {
     node: Node;
@@ -531,7 +326,6 @@ const NodeSettingsModal: React.FC<NodeSettingsModalProps> = ({
                         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
                             {activeTab === 'parameters' ? (
                                 <div className="max-w-xl mx-auto space-y-4">
-                                    {/* Node Name */}
                                     <div className="form-control w-full">
                                         <label className="label py-1"><span className="text-[10px] uppercase font-bold opacity-50">Name</span></label>
                                         <input
@@ -559,7 +353,6 @@ const NodeSettingsModal: React.FC<NodeSettingsModalProps> = ({
                                         />
                                     ))}
 
-                                    {/* Delete */}
                                     <div className="pt-4 border-t border-base-300">
                                         <button className="btn btn-sm btn-error btn-outline gap-2 w-full" onClick={onDelete}>
                                             <Trash2 size={14} /> Delete Node
@@ -575,10 +368,6 @@ const NodeSettingsModal: React.FC<NodeSettingsModalProps> = ({
                                     <div className="form-control w-full">
                                         <label className="label py-1"><span className="text-[10px] uppercase font-bold opacity-50">Type</span></label>
                                         <input type="text" value={nodeDef.type} readOnly className="input input-bordered font-mono text-xs opacity-40 bg-base-200" />
-                                    </div>
-                                    <div className="form-control w-full">
-                                        <label className="label py-1"><span className="text-[10px] uppercase font-bold opacity-50">Category</span></label>
-                                        <input type="text" value={nodeDef.category} readOnly className="input input-bordered text-xs opacity-40 bg-base-200" />
                                     </div>
                                     <div className="text-[10px] opacity-30 mt-6">
                                         {nodeDef.description}
@@ -617,7 +406,7 @@ const NodeSettingsModal: React.FC<NodeSettingsModalProps> = ({
 };
 
 /* ============================================================
- *  Typed Properties Panel Components
+ *  Param Field Component
  * ============================================================ */
 interface ParamFieldProps {
     param: ParamSchema;
@@ -871,38 +660,31 @@ const ParamField: React.FC<ParamFieldProps> = ({
     }
 };
 
-/* ============================================================
- *  Props
- * ============================================================ */
 interface WorkflowViewProps {
     tab: WorkflowTab;
     onContentChange?: (content: string) => void;
     onRun?: () => void;
     isExecuting?: boolean;
-    executionState?: any[]; // List of executed steps
+    executionState?: any[];
 }
 
-/* ============================================================
- *  Inner Component (needs ReactFlowProvider)
- * ============================================================ */
 function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, executionState = EMPTY_ARRAY }: WorkflowViewProps) {
     const { theme } = useAppStore();
     const [selectedNode, setSelectedNode] = useState<Node | null>(null);
     const { screenToFlowPosition, zoomIn, zoomOut, fitView } = useReactFlow();
     const [expressionModes, setExpressionModes] = useState<Record<string, boolean>>({});
     const [showRightPanel, setShowRightPanel] = useState(false);
+    const [isInspectorOpen, setIsInspectorOpen] = useState(false);
     const [newVarKey, setNewVarKey] = useState('');
     const [newVarValue, setNewVarValue] = useState('');
     const [showSettingsModal, setShowSettingsModal] = useState(false);
 
-    // Sidebar State
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [pendingConnection, setPendingConnection] = useState<{
         sourceNodeId?: string;
         sourceHandleId?: string;
     } | null>(null);
 
-    // Context Menu State
     const [graphContextMenu, setGraphContextMenu] = useState<{
         type: 'node' | 'edge' | 'pane';
         x: number;
@@ -911,16 +693,20 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
         data?: any;
     } | null>(null);
 
-    // Ref to handle connection end events
     const connectingNodeId = useRef<string | null>(null);
     const connectingHandleId = useRef<string | null>(null);
 
-    // Parse workflow data from tab content
     const workflowData = useMemo(() => {
         try { return JSON.parse(tab.content); } catch { return { nodes: {}, edges: [], variables: {} }; }
     }, [tab.id, tab.content]);
 
-    // Convert backend format to React Flow format
+    // Open inspector automatically when execution starts
+    useEffect(() => {
+        if (isExecuting) {
+            setIsInspectorOpen(true);
+        }
+    }, [isExecuting]);
+
     const initialNodes: Node[] = useMemo(() => {
         const nodesMap = workflowData.nodes || {};
         const nodeList = Object.values(nodesMap).map((n: any) => {
@@ -931,11 +717,26 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                 subtitle = entries.map(([k, v]) => `${k}: ${v}`).join(', ');
             }
 
-            // Check execution state
             const executedStep = executionState.find(s => s.nodeId === n.id);
             let status = undefined;
             if (executedStep) {
                 status = 'success';
+                // Find last status if multiple steps?
+                // executionState is ordered list. Last one wins?
+                // Actually if any error, show error.
+            }
+
+            // Check if currently running (last step is running and this is it)
+            if (isExecuting) {
+                 // Logic to determine if *this* node is running could be complex without granular events
+                 // For now, if status is 'running' in step
+            }
+
+            // Find specific step for this node
+            const steps = executionState.filter(s => s.nodeId === n.id);
+            if (steps.length > 0) {
+                const lastStep = steps[steps.length - 1];
+                status = lastStep.status;
             }
 
             return {
@@ -949,7 +750,7 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                     subtitle,
                     style: n.style,
                     status,
-                    disabled: n.disabled || false, // Support disabled state
+                    disabled: n.disabled || false,
                 },
             };
         });
@@ -982,12 +783,9 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                 if (e.signal === 'false') edgeColor = '#ef4444'; // Red for false
                 else edgeColor = '#22c55e'; // Green for true/success
                 animated = false;
-
-                // Add item count to label if available (mocked for now as "1 item")
-                // In a real scenario, we'd check executionState for item count
-                if (label === 'success') label = '1 item';
+                if (label === 'success') label = '1 item'; // Mock count
             } else if (isExecuting) {
-                edgeColor = '#ff6d5a'; // Active Orange
+                edgeColor = '#ff6d5a';
             }
 
             return {
@@ -1010,14 +808,11 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
         });
     }, [workflowData, isExecuting, executionState]);
 
-    // State for nodes and edges
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-    // Handle Quick Add Event from Nodes (Stubs)
     useEffect(() => {
         const handleQuickAdd = (e: any) => {
-            // Open sidebar
             setIsSidebarOpen(true);
             setPendingConnection({
                 sourceNodeId: e.detail.sourceNodeId,
@@ -1036,9 +831,7 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
         };
         const handleNodeExecute = (e: any) => {
              const { nodeId } = e.detail;
-             // Here we might need to propagate this up to trigger partial execution
-             // For now, just log or maybe show a toast
-             console.log("Execute node requested:", nodeId);
+             // Execute node logic here
         };
         const handleContextMenu = (e: any) => {
              const { type, x, y, id, data } = e.detail;
@@ -1058,7 +851,7 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
             window.removeEventListener('workflow-node-execute', handleNodeExecute);
             window.removeEventListener('workflow-context-menu', handleContextMenu);
         };
-    }, [selectedNode, setNodes, setEdges]); // Removed pendingConnection dependency loop
+    }, [selectedNode, setNodes, setEdges]);
 
     const isInternalUpdate = useRef(false);
 
@@ -1084,7 +877,7 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                 x: Math.round(n.position.x),
                 y: Math.round(n.position.y),
                 style: { width: n.width, height: n.height, ...n.style },
-                disabled: (n.data as any).disabled, // Persist disabled state
+                disabled: (n.data as any).disabled,
             };
         });
         const edgeArr = edges.map(e => ({
@@ -1101,7 +894,6 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
         }
     }, [nodes, edges]);
 
-
     useEffect(() => {
         const handleEdgeDelete = (e: any) => {
             setEdges(eds => eds.filter(edge => edge.id !== e.detail.edgeId));
@@ -1110,17 +902,11 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
             const { edgeId } = e.detail;
             const edge = edges.find(ed => ed.id === edgeId);
             if (!edge) return;
-
-            // Open sidebar
             setIsSidebarOpen(true);
             setPendingConnection({
                 sourceNodeId: edge.source,
                 sourceHandleId: edge.sourceHandle || undefined,
             });
-            // We should remove the edge only AFTER adding the new node?
-            // Or remove it now and expect the user to add?
-            // Usually insert means "replace connection".
-            // For now, let's remove it.
             setEdges(eds => eds.filter(ed => ed.id !== edgeId));
         };
         window.addEventListener('workflow-edge-delete', handleEdgeDelete);
@@ -1252,19 +1038,14 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
         const def = getNodeDef(nodeType);
         const newNodeId = uuidv4();
 
-        // Calculate position
         let x = 0, y = 0;
-
         if (pendingConnection?.sourceNodeId) {
-            // Find source node position
             const sourceNode = nodes.find(n => n.id === pendingConnection.sourceNodeId);
             if (sourceNode) {
-                x = sourceNode.position.x + 300; // Place to the right
+                x = sourceNode.position.x + 300;
                 y = sourceNode.position.y;
             }
         } else {
-             // Center of view? Or random?
-             // Since we don't have viewport center easily here without hook, let's default to (100, 100) or last click.
              x = 100;
              y = 100;
         }
@@ -1289,7 +1070,7 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
         }
 
         setPendingConnection(null);
-        setIsSidebarOpen(false); // Close sidebar after adding
+        setIsSidebarOpen(false);
     }, [setNodes, setEdges, nodes, pendingConnection]);
 
     const onDragOver = useCallback((event: React.DragEvent) => {
@@ -1420,7 +1201,7 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                         >
                             <Background gap={20} size={1} color="#d4d4d8" variant={BackgroundVariant.Dots} style={{ backgroundColor: '#f5f5f5' }} />
 
-                            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-4">
+                            <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-4">
                                 {onRun && (
                                     <button
                                         className={clsx(
@@ -1467,7 +1248,7 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                             </div>
 
                             {/* Zoom Controls (Bottom Left) */}
-                            <div className="absolute bottom-8 left-8 z-10 flex gap-2">
+                            <div className="absolute bottom-16 left-8 z-10 flex gap-2">
                                 <div className="flex items-center bg-white shadow-lg rounded-xl border border-gray-100 p-1">
                                     <button className="p-2 hover:bg-gray-100 text-gray-500 rounded-lg" onClick={() => fitView()} title="Fit View"><Maximize size={18} /></button>
                                     <div className="w-px h-4 bg-gray-200 mx-1" />
@@ -1538,6 +1319,22 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                                 executionState={executionState}
                             />
                         )}
+
+                        {/* Execution Inspector */}
+                        <ExecutionInspector
+                            isOpen={isInspectorOpen}
+                            onClose={() => setIsInspectorOpen(false)}
+                            executionState={executionState}
+                            selectedNodeId={selectedNode?.id}
+                            onSelectNode={(id) => {
+                                const node = nodes.find(n => n.id === id);
+                                if (node) {
+                                    setSelectedNode(node);
+                                    fitView({ nodes: [node], duration: 500 });
+                                }
+                            }}
+                            onClear={() => { /* Handle clear if needed */ }}
+                        />
                     </div>
 
                     {showRightPanel && (

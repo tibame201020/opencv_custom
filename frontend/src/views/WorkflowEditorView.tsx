@@ -8,7 +8,6 @@ import {
 
 import { WorkflowView } from './WorkflowView';
 import { ConfirmModal } from '../components/ConfirmModal';
-import { ExecutionResultsPanel } from '../components/ExecutionResultsPanel';
 import { showToast } from '../utils/toast';
 import clsx from 'clsx';
 
@@ -32,10 +31,7 @@ export const WorkflowEditorView: React.FC = () => {
     const [deletingWfId, setDeletingWfId] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isRunning, setIsRunning] = useState(false);
-    const [runResult, setRunResult] = useState<any>(null);
-    const [logs, setLogs] = useState<any[]>([]);
     const [executionState, setExecutionState] = useState<any[]>([]);
-    const [isExecutionPanelOpen, setIsExecutionPanelOpen] = useState(false);
 
     // Rename Modal State
     const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
@@ -144,17 +140,14 @@ export const WorkflowEditorView: React.FC = () => {
         const tabId = `wf:${id}`;
         const existing = workflowTabs.find(t => t.id === tabId);
         if (existing) {
-            console.log(`[Workflow] Tab ${tabId} exists, switching to it.`);
             setActiveWorkflowTab(tabId);
             return;
         }
 
-        console.log(`[Workflow] Fetching workflow ${id}...`);
         try {
             const res = await fetch(`${apiBaseUrl}/workflows/${id}`);
             if (res.ok) {
                 const data = await res.json();
-                console.log(`[Workflow] Loaded data for ${id}, opening tab.`);
                 openWorkflowTab(id, projectId, data.name, JSON.stringify(data, null, 2));
             } else {
                 const errText = await res.text();
@@ -260,10 +253,7 @@ export const WorkflowEditorView: React.FC = () => {
         const tab = workflowTabs.find(t => t.id === activeWorkflowTabId);
         if (!tab) return;
         setIsRunning(true);
-        setRunResult(null);
-        setLogs([]);
         setExecutionState([]); // Reset visual feedback
-        setIsExecutionPanelOpen(true); // Auto-open panel
         try {
             const res = await fetch(`${apiBaseUrl}/workflows/${tab.workflowId}/run`, {
                 method: 'POST',
@@ -271,7 +261,6 @@ export const WorkflowEditorView: React.FC = () => {
             });
             const data = await res.json();
             if (res.ok) {
-                setRunResult(data);
                 showToast("Workflow started", "success");
 
                 // Connect to WebSocket for logs
@@ -291,7 +280,6 @@ export const WorkflowEditorView: React.FC = () => {
                     ws.onmessage = (event) => {
                         try {
                             const msg = JSON.parse(event.data);
-                            setLogs(prev => [...prev, msg]);
 
                             // Handle Execution Events
                             if (msg.type === 'execution_step') {
@@ -304,7 +292,7 @@ export const WorkflowEditorView: React.FC = () => {
                                 ws.close();
                             }
                         } catch (e) {
-                            setLogs(prev => [...prev, { type: 'stdout', message: event.data }]);
+                            // Ignore raw logs for now
                         }
                     };
                     ws.onerror = (e) => {
@@ -587,16 +575,6 @@ export const WorkflowEditorView: React.FC = () => {
                             executionState={executionState}
                         />
 
-                        {/* Run Result Panel */}
-                        <ExecutionResultsPanel
-                            isOpen={isExecutionPanelOpen}
-                            onClose={() => setIsExecutionPanelOpen(false)}
-                            executionState={executionState}
-                            logs={logs}
-                            isRunning={isRunning}
-                            runId={runResult?.runId}
-                            onClear={() => { setRunResult(null); setLogs([]); setExecutionState([]); }}
-                        />
                     </div>
                 </div>
             )}
