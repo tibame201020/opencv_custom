@@ -255,6 +255,16 @@ export const WorkflowEditorView: React.FC = () => {
         setIsRunning(true);
         setExecutionState([]); // Reset visual feedback
         try {
+            // Auto-save before running
+            console.log("Auto-saving workflow before run:", tab.workflowId);
+            const workflowData = JSON.parse(tab.content);
+            await fetch(`${apiBaseUrl}/workflows/${tab.workflowId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(workflowData),
+            });
+            saveWorkflowTab(activeWorkflowTabId);
+
             const res = await fetch(`${apiBaseUrl}/workflows/${tab.workflowId}/run`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

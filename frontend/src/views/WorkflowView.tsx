@@ -829,8 +829,8 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
              const { nodeId, disabled } = e.detail;
              setNodes(nds => nds.map(n => n.id === nodeId ? { ...n, data: { ...n.data, disabled } } : n));
         };
-        const handleNodeExecute = (e: any) => {
-             const { nodeId } = e.detail;
+        const handleNodeExecute = (_: any) => {
+             // const { nodeId } = e.detail;
              // Execute node logic here
         };
         const handleContextMenu = (e: any) => {
