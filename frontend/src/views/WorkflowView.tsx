@@ -55,7 +55,7 @@ const DEFAULT_EDGE_OPTIONS = {
  *  n8n-Style Hover Edge with Midpoint Toolbar
  * ============================================================ */
 const HoverEdge: React.FC<EdgeProps> = (props) => {
-    const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, markerEnd, selected } = props;
+    const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, markerEnd, selected, label } = props;
     const [hovered, setHovered] = useState(false);
 
     // Changed to Bezier Path for n8n style smooth curves
@@ -86,10 +86,24 @@ const HoverEdge: React.FC<EdgeProps> = (props) => {
                     transition: 'stroke 0.15s, stroke-width 0.15s',
                 }}
             />
+
             <EdgeLabelRenderer>
+                {/* Permanent Label (e.g. "1 item", "true") */}
+                {label && label !== 'success' && (
+                    <div
+                        className="absolute px-2 py-0.5 rounded-full bg-white border border-gray-200 text-[10px] font-medium text-gray-500 shadow-sm pointer-events-none z-10"
+                        style={{
+                            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY - 15}px)`,
+                        }}
+                    >
+                        {label}
+                    </div>
+                )}
+
+                {/* Hover Toolbar */}
                 <div
                     className={clsx(
-                        "absolute flex items-center gap-1 p-0.5 rounded-full bg-white border border-gray-200 shadow-sm transition-all duration-150 pointer-events-auto z-10",
+                        "absolute flex items-center gap-1 p-0.5 rounded-full bg-white border border-gray-200 shadow-sm transition-all duration-150 pointer-events-auto z-20",
                         (hovered || selected) ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"
                     )}
                     style={{
@@ -962,23 +976,26 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
 
             let edgeColor = stroke || '#9ca3af'; // Gray-400
             let animated = isExecuting;
+            let label = e.signal || 'success';
 
             if (isTraversed) {
-                edgeColor = '#22c55e'; // Green
+                if (e.signal === 'false') edgeColor = '#ef4444'; // Red for false
+                else edgeColor = '#22c55e'; // Green for true/success
                 animated = false;
-            } else if (isExecuting) {
-                edgeColor = '#ff6d5a'; // Active
-            }
 
-            if (e.signal === 'false') edgeColor = '#ff52d9';
-            if (isTraversed) edgeColor = '#22c55e';
+                // Add item count to label if available (mocked for now as "1 item")
+                // In a real scenario, we'd check executionState for item count
+                if (label === 'success') label = '1 item';
+            } else if (isExecuting) {
+                edgeColor = '#ff6d5a'; // Active Orange
+            }
 
             return {
                 id: e.id,
                 source: e.fromNodeId || e.source,
                 target: e.toNodeId || e.target,
                 sourceHandle: e.signal && e.signal !== 'success' ? e.signal : undefined,
-                label: e.signal || 'success',
+                label: label,
                 type: 'hover',
                 animated: animated,
                 className: isExecuting || isTraversed ? 'n8n-flow-active' : '',
@@ -1419,7 +1436,7 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                                 )}
                             </div>
 
-                            {/* n8n Style Right Toolbar */}
+                            {/* n8n Style Right Toolbar (Add/Vars) */}
                             <div className="absolute top-20 right-4 z-10 flex flex-col gap-3">
                                 <div className="flex flex-col bg-white shadow-lg rounded-xl border border-gray-100 p-1.5 space-y-1">
                                     <button
@@ -1447,11 +1464,15 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                                         <Braces size={20} className={showRightPanel ? "text-primary" : ""} />
                                     </button>
                                 </div>
+                            </div>
 
-                                <div className="flex flex-col bg-white shadow-lg rounded-xl border border-gray-100 p-1.5 space-y-1">
-                                    <button className="p-2 hover:bg-gray-100 text-gray-500 rounded-lg" onClick={() => zoomIn()}><ZoomIn size={18} /></button>
+                            {/* Zoom Controls (Bottom Left) */}
+                            <div className="absolute bottom-8 left-8 z-10 flex gap-2">
+                                <div className="flex items-center bg-white shadow-lg rounded-xl border border-gray-100 p-1">
+                                    <button className="p-2 hover:bg-gray-100 text-gray-500 rounded-lg" onClick={() => fitView()} title="Fit View"><Maximize size={18} /></button>
+                                    <div className="w-px h-4 bg-gray-200 mx-1" />
                                     <button className="p-2 hover:bg-gray-100 text-gray-500 rounded-lg" onClick={() => zoomOut()}><ZoomOut size={18} /></button>
-                                    <button className="p-2 hover:bg-gray-100 text-gray-500 rounded-lg" onClick={() => fitView()}><Maximize size={18} /></button>
+                                    <button className="p-2 hover:bg-gray-100 text-gray-500 rounded-lg" onClick={() => zoomIn()}><ZoomIn size={18} /></button>
                                 </div>
                             </div>
 

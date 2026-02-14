@@ -8,6 +8,7 @@ import {
 
 import { WorkflowView } from './WorkflowView';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { ExecutionResultsPanel } from '../components/ExecutionResultsPanel';
 import { showToast } from '../utils/toast';
 import clsx from 'clsx';
 
@@ -34,6 +35,7 @@ export const WorkflowEditorView: React.FC = () => {
     const [runResult, setRunResult] = useState<any>(null);
     const [logs, setLogs] = useState<any[]>([]);
     const [executionState, setExecutionState] = useState<any[]>([]);
+    const [isExecutionPanelOpen, setIsExecutionPanelOpen] = useState(false);
 
     // Rename Modal State
     const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
@@ -261,6 +263,7 @@ export const WorkflowEditorView: React.FC = () => {
         setRunResult(null);
         setLogs([]);
         setExecutionState([]); // Reset visual feedback
+        setIsExecutionPanelOpen(true); // Auto-open panel
         try {
             const res = await fetch(`${apiBaseUrl}/workflows/${tab.workflowId}/run`, {
                 method: 'POST',
@@ -585,40 +588,15 @@ export const WorkflowEditorView: React.FC = () => {
                         />
 
                         {/* Run Result Panel */}
-                        {(runResult || logs.length > 0) && (
-                            <div className="absolute bottom-0 left-0 right-0 bg-base-200 border-t border-base-300 p-0 max-h-64 flex flex-col font-mono text-xs shadow-[0_-4px_20px_rgba(0,0,0,0.1)] z-20 transition-all">
-                                <div className="flex items-center justify-between px-4 py-2 bg-base-100 border-b border-base-300">
-                                    <span className="text-xs font-bold uppercase tracking-wider text-base-content/50 flex items-center gap-2">
-                                        <div className={clsx("w-2 h-2 rounded-full", isRunning ? "bg-warning animate-pulse" : "bg-success")} />
-                                        Execution Log
-                                    </span>
-                                    <div className="flex gap-2">
-                                        <button className="btn btn-xs btn-ghost" onClick={() => { setRunResult(null); setLogs([]); }}>Clear</button>
-                                        <button className="btn btn-xs btn-ghost btn-square" onClick={() => { setRunResult(null); setLogs([]); }}>
-                                            <X size={14} />
-                                        </button>
-                                    </div>
-                                </div>
-                                <div className="flex-1 overflow-y-auto p-4 space-y-1 bg-base-100/50">
-                                    {logs.map((log, i) => (
-                                        <div key={i} className={clsx(
-                                            "break-all font-mono",
-                                            log.level === 'error' || log.type === 'error' ? "text-error bg-error/5 p-1 rounded" :
-                                                log.level === 'warn' ? "text-warning" :
-                                                    log.type === 'status' ? "text-info opacity-70" : "text-base-content/70"
-                                        )}>
-                                            <span className="opacity-30 mr-3 select-none">[{new Date().toLocaleTimeString()}]</span>
-                                            {typeof log === 'string' ? log : (log.message || JSON.stringify(log))}
-                                        </div>
-                                    ))}
-                                    {logs.length === 0 && runResult && (
-                                        <div className="text-success p-2 bg-success/10 rounded border border-success/20">
-                                            Started Run ID: {runResult.runId}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
+                        <ExecutionResultsPanel
+                            isOpen={isExecutionPanelOpen}
+                            onClose={() => setIsExecutionPanelOpen(false)}
+                            executionState={executionState}
+                            logs={logs}
+                            isRunning={isRunning}
+                            runId={runResult?.runId}
+                            onClear={() => { setRunResult(null); setLogs([]); setExecutionState([]); }}
+                        />
                     </div>
                 </div>
             )}
