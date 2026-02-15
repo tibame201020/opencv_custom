@@ -59,7 +59,6 @@ export interface WorkflowTab {
     content: string; // JSON string of the workflow data
     originalContent: string;
     isDirty: boolean;
-    viewMode: 'graph' | 'yaml';
 }
 
 export interface LogMessage {
@@ -102,7 +101,6 @@ interface AppState {
     closeWorkflowTab: (tabId: string) => void;
     setActiveWorkflowTab: (tabId: string) => void;
     updateWorkflowTabContent: (tabId: string, content: string) => void;
-    updateWorkflowTabViewMode: (tabId: string, mode: 'graph' | 'yaml') => void;
     saveWorkflowTab: (tabId: string) => void;
 
     // Editor State (Persisted) — Script Editor only
@@ -198,7 +196,6 @@ export const useAppStore = create<AppState>()(
                     content,
                     originalContent: content,
                     isDirty: false,
-                    viewMode: 'graph',
                 };
                 set({
                     workflowTabs: [...workflowTabs, newTab],
@@ -224,11 +221,7 @@ export const useAppStore = create<AppState>()(
                 )
             })),
 
-            updateWorkflowTabViewMode: (tabId: string, mode: 'graph' | 'yaml') => set(state => ({
-                workflowTabs: state.workflowTabs.map(t =>
-                    t.id === tabId ? { ...t, viewMode: mode } : t
-                )
-            })),
+
 
             saveWorkflowTab: (tabId: string) => set(state => ({
                 workflowTabs: state.workflowTabs.map(t =>

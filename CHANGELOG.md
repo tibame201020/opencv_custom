@@ -62,6 +62,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 ### Changed — 2026-02-09
 - **Workflow Engine**: Refactored `loop` node to be a pass-through node; loop logic is now composed via Graph (If + Back-edge) instead of internal counters.
 
+### Changed — 2026-02-16
+- **Frontend / Workflow Editor**: Removed YAML/Code View conversion logic (`viewMode`) to enforce a strict low-code environment.
+- **Frontend / Workflow Editor**: Removed `Monaco Editor` from Workflow View; node outputs are now displayed in read-only JSON blocks.
+- **Frontend / Workflow Editor**: Consolidated parameter inputs to use `textarea` for JSON editing instead of full code editor.
+
 ### Fixed — 2026-02-16
 - **Backend**: Fixed `Code` node execution failure by ensuring Python bridge is initialized when a Code node is present.
 - **Frontend / Workflow Editor**: Implemented missing keyboard shortcuts: Select All (`Ctrl+A`), Copy (`Ctrl+C`), Paste (`Ctrl+V`), and Duplicate (`Ctrl+D`).

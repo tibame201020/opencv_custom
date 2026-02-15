@@ -117,6 +117,7 @@
 | 3.9.1 | Floating Action Bar (FAB) | ✅ | ⬜ | Top-Right Toolbar |
 | 3.9.2 | Add First Step Button | ✅ | ⬜ | Empty State Action |
 | 3.9.3 | Quick Add Menu Integration | ✅ | ⬜ | Unified Node Picker |
+| 3.9.4 | Remove YAML View (Low Code) | ✅ | ⬜ | Enforce Low-Code Only |
 
 ### 3.10 V2 UI Overhaul (Visual Redesign)
 

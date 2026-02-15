@@ -3,7 +3,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '../store';
 import {
     LayoutGrid, Plus, Search, ChevronLeft,
-    Save, Play, X, Code2, Network, FolderOpen, FolderMinus, FolderPlus
+    Save, Play, X, FileEdit, FolderOpen, FolderMinus, FolderPlus
 } from 'lucide-react';
 
 import { WorkflowView } from './WorkflowView';
@@ -19,7 +19,7 @@ export const WorkflowEditorView: React.FC = () => {
         workflowSelectedId, setWorkflowSelectedId,
         workflowTabs, activeWorkflowTabId,
         openWorkflowTab, closeWorkflowTab, setActiveWorkflowTab,
-        updateWorkflowTabContent, updateWorkflowTabViewMode, saveWorkflowTab,
+        updateWorkflowTabContent, saveWorkflowTab,
     } = useAppStore();
 
     const [searchTerm, setSearchTerm] = useState('');
@@ -417,7 +417,7 @@ export const WorkflowEditorView: React.FC = () => {
                                                     setIsRenameModalOpen(true);
                                                 }}
                                             >
-                                                <Code2 size={14} />
+                                                <FileEdit size={14} />
                                                 Rename
                                             </button>
                                             <button
@@ -464,7 +464,7 @@ export const WorkflowEditorView: React.FC = () => {
                                                             title="Rename"
                                                             onClick={(e) => { e.stopPropagation(); setRenameTarget({ type: 'workflow', id: wf.id, name: wf.name }); setRenameValue(wf.name); setIsRenameModalOpen(true); }}
                                                         >
-                                                            <Code2 size={12} />
+                                                            <FileEdit size={12} />
                                                         </button>
                                                         <button
                                                             className="btn btn-xs btn-ghost btn-square text-error"
@@ -539,22 +539,6 @@ export const WorkflowEditorView: React.FC = () => {
                         </div>
 
                         <div className="flex items-center gap-2">
-                            {/* View Mode Toggle */}
-                            <div className="join border border-base-300 bg-base-200/50 p-0.5 rounded-lg mr-2">
-                                <button
-                                    className={clsx("join-item btn btn-xs px-3 border-none shadow-none rounded-md", activeTab.viewMode === 'graph' ? "bg-base-100 text-base-content shadow-sm" : "bg-transparent text-base-content/50")}
-                                    onClick={() => updateWorkflowTabViewMode(activeTab.id, 'graph')}
-                                >
-                                    <Network size={12} className="mr-1" /> Graph
-                                </button>
-                                <button
-                                    className={clsx("join-item btn btn-xs px-3 border-none shadow-none rounded-md", activeTab.viewMode === 'yaml' ? "bg-base-100 text-base-content shadow-sm" : "bg-transparent text-base-content/50")}
-                                    onClick={() => updateWorkflowTabViewMode(activeTab.id, 'yaml')}
-                                >
-                                    <Code2 size={12} className="mr-1" /> YAML
-                                </button>
-                            </div>
-
                             <button
                                 className={clsx("btn btn-sm gap-2", activeTab.isDirty ? "btn-primary" : "btn-ghost")}
                                 onClick={handleSave}
@@ -671,7 +655,7 @@ export const WorkflowEditorView: React.FC = () => {
             <dialog className={clsx("modal", isRenameModalOpen && "modal-open")}>
                 <div className="modal-box">
                     <h3 className="font-bold text-lg flex items-center gap-2">
-                        <Code2 size={20} className="text-primary" /> Rename {renameTarget?.type}
+                        <FileEdit size={20} className="text-primary" /> Rename {renameTarget?.type}
                     </h3>
                     <div className="py-4 space-y-4">
                         <div className="form-control w-full">
