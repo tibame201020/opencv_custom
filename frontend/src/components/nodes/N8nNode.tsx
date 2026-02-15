@@ -27,15 +27,15 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
             {/* Main Card Container */}
             <div
                 className={clsx(
-                    "relative flex flex-col bg-white rounded-lg shadow-sm border transition-all duration-200 z-10 overflow-hidden",
+                    "relative flex flex-col bg-white rounded-lg shadow-sm border transition-all duration-200 z-10 overflow-visible",
                     selected ? "border-primary ring-2 ring-primary/20 shadow-md" : "border-gray-200 hover:border-gray-300",
-                    isRunning && "border-primary animate-pulse",
+                    isRunning && "n8n-node-running border-primary",
                     isError && "border-error",
                     isDisabled && "opacity-60 grayscale"
                 )}
             >
                 {/* Header Section */}
-                <div className="flex items-center p-3 gap-3 border-b border-gray-100 bg-gray-50/50">
+                <div className="flex items-center p-3 gap-3 border-b border-gray-100 bg-gray-50/50 rounded-t-lg">
                     {/* Icon Box */}
                     <div className={clsx(
                         "w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-110",
@@ -63,7 +63,7 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                 {/* Status Indicator (Top-Right Badge) */}
                 {(isRunning || isSuccess || isError) && (
                     <div className={clsx(
-                        "absolute top-2 right-2 w-4 h-4 rounded-full flex items-center justify-center shadow-sm animate-in zoom-in duration-300 z-20",
+                        "absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center shadow-sm animate-in zoom-in duration-300 z-20 border-2 border-white",
                         isSuccess && "bg-success text-white",
                         isRunning && "bg-primary text-white",
                         isError && "bg-error text-white"
@@ -77,7 +77,7 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
 
             {/* Floating Toolbar (Above Node) */}
             <div className={clsx(
-                "absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1 rounded-full bg-white shadow-md border border-gray-100 z-30 transition-all duration-200",
+                "absolute -top-12 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1 rounded-full bg-white shadow-xl border border-gray-100 z-30 transition-all duration-200",
                 (hovered || selected) ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-95 pointer-events-none"
             )}>
                 <button
@@ -88,7 +88,7 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                         window.dispatchEvent(new CustomEvent('workflow-node-execute', { detail: { nodeId: id } }));
                     }}
                 >
-                    <Play size={12} fill="currentColor" />
+                    <Play size={14} fill="currentColor" />
                 </button>
                 <button
                     className={clsx(
@@ -101,7 +101,7 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                         window.dispatchEvent(new CustomEvent('workflow-node-toggle', { detail: { nodeId: id, disabled: !isDisabled } }));
                     }}
                 >
-                    {isDisabled ? <EyeOff size={12} /> : <Eye size={12} />}
+                    {isDisabled ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
                 <button
                     className="p-1.5 rounded-full hover:bg-red-50 text-gray-500 hover:text-red-500 transition-colors"
@@ -111,7 +111,7 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                         window.dispatchEvent(new CustomEvent('workflow-node-delete', { detail: { nodeId: id } }));
                     }}
                 >
-                    <Trash2 size={12} />
+                    <Trash2 size={14} />
                 </button>
                 <div className="w-px h-3 bg-gray-200 mx-0.5" />
                 <button
@@ -125,7 +125,7 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                          }));
                     }}
                 >
-                    <MoreHorizontal size={12} />
+                    <MoreHorizontal size={14} />
                 </button>
             </div>
 
@@ -134,7 +134,7 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                 <Handle
                     type="target"
                     position={Position.Left}
-                    className="!w-3 !h-3 !border-2 !border-white !bg-gray-400 hover:!bg-primary transition-colors shadow-sm -ml-1.5 z-0"
+                    className="!w-3.5 !h-3.5 !border-2 !border-gray-300 !bg-white hover:!border-primary hover:!bg-white transition-colors shadow-sm -ml-2 z-0"
                 />
             )}
 
@@ -150,9 +150,9 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                     try {
                         const cases = typeof caseStr === 'string' ? JSON.parse(caseStr) : caseStr;
                         if (Array.isArray(cases)) {
-                            const caseHandles = cases.map((_: any, i: number) => ({
+                            const caseHandles = cases.map((caseVal: any, i: number) => ({
                                 id: `${i}`,
-                                label: `Case ${i}`
+                                label: typeof caseVal === 'object' ? JSON.stringify(caseVal) : String(caseVal)
                             }));
                             sources = [...caseHandles, { id: 'default', label: 'Default' }];
                         }
@@ -172,12 +172,7 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                         >
                             {/* The Handle Dot */}
                             <div
-                                className="relative w-3 h-3 rounded-full bg-gray-400 border-2 border-white hover:bg-primary hover:scale-125 transition-all shadow-sm cursor-crosshair"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    // Logic for quick-add on click is handled by ReactFlow's onConnect usually,
-                                    // but n8n allows dragging from here.
-                                }}
+                                className="relative w-3.5 h-3.5 rounded-full bg-white border-2 border-gray-300 hover:border-primary hover:scale-110 transition-all shadow-sm cursor-crosshair"
                             >
                                 {/* Invisible React Flow Handle on top for dragging */}
                                 <Handle
@@ -188,9 +183,9 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                                 />
                             </div>
 
-                            {/* Floating "+" Button on Hover (n8n style stub) */}
+                            {/* Floating "+" Button on Hover (n8n style stub) - positioned to the right of handle */}
                             <div
-                                className="absolute left-full ml-1 opacity-0 group-hover/stub:opacity-100 transition-all duration-200 translate-x-[-5px] group-hover/stub:translate-x-0"
+                                className="absolute left-full ml-2 opacity-0 group-hover/stub:opacity-100 transition-all duration-200 translate-x-[-5px] group-hover/stub:translate-x-0"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     window.dispatchEvent(new CustomEvent('workflow-quick-add', {
@@ -198,14 +193,19 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                                     }));
                                 }}
                             >
-                                <div className="w-5 h-5 rounded-full bg-white border border-primary text-primary flex items-center justify-center shadow-sm hover:bg-primary hover:text-white cursor-pointer">
-                                    <Plus size={10} strokeWidth={3} />
+                                <div className="w-5 h-5 rounded-full bg-white border border-primary text-primary flex items-center justify-center shadow-md hover:bg-primary hover:text-white cursor-pointer transition-colors">
+                                    <Plus size={12} strokeWidth={3} />
                                 </div>
                             </div>
 
-                            {/* Hover Label */}
+                            {/* Label (Always visible for Switch/If, else Hover) */}
                             {source.label && sources.length > 1 && (
-                                <div className="absolute right-full mr-2 opacity-0 group-hover/stub:opacity-100 pointer-events-none whitespace-nowrap text-[9px] font-bold bg-gray-800 text-white px-1.5 py-0.5 rounded shadow-sm transition-opacity z-50">
+                                <div className={clsx(
+                                    "absolute right-full mr-3 pointer-events-none whitespace-nowrap text-[10px] font-medium px-1 py-0.5 rounded transition-opacity z-20",
+                                    (type === 'if_condition' || type === 'switch')
+                                        ? "text-gray-400 bg-white/80 backdrop-blur-sm border border-gray-100 shadow-sm"
+                                        : "bg-gray-800 text-white shadow-md opacity-0 group-hover/stub:opacity-100"
+                                )}>
                                     {source.label}
                                 </div>
                             )}

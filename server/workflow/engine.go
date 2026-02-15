@@ -472,8 +472,18 @@ func createBuiltinExecutor(node *WorkflowNode, bridge *PythonBridge, logger func
 			// Implementation: Return signal "0", "1", "2" for index, or "default".
 
 			// Check "cases" from config (parsed as slice of interface{})
-			casesRaw, ok := config["cases"].([]interface{})
-			if ok {
+			var casesRaw []interface{}
+			if slice, ok := config["cases"].([]interface{}); ok {
+				casesRaw = slice
+			} else if str, ok := config["cases"].(string); ok {
+				// Try to parse JSON string
+				var parsed []interface{}
+				if err := json.Unmarshal([]byte(str), &parsed); err == nil {
+					casesRaw = parsed
+				}
+			}
+
+			if casesRaw != nil {
 				for i, caseValRaw := range casesRaw {
 					caseValStr := fmt.Sprintf("%v", caseValRaw)
 					matched := false
@@ -630,6 +640,37 @@ func createBuiltinExecutor(node *WorkflowNode, bridge *PythonBridge, logger func
 			wfId := getConfigStr(config, "workflow_id", "")
 			logf("[Workflow] SubWorkflow id=%s (stub)\n", wfId)
 			return NodeOutput{Signal: "success", Output: arg.Input}
+		}
+
+	case "code":
+		return func(ctx context.Context, arg NodeArg) NodeOutput {
+			// Resolve config to get "code" string.
+			// This allows users to inject variables directly into the code string using {{ ... }}.
+			config := ResolveConfig(rawConfig, arg)
+			code := getConfigStr(config, "code", "")
+
+			logf("[Workflow] Executing Python Code...\n")
+
+			if bridge == nil {
+				return NodeOutput{Signal: "error", Output: map[string]interface{}{"error": "Python bridge not available"}}
+			}
+
+			// Pass inputs as params so they are accessible in Python via params['input']
+			params := map[string]interface{}{
+				"code":  code,
+				"input": arg.Input,
+			}
+
+			resp, err := bridge.Call("exec_code", params)
+			if err != nil {
+				return NodeOutput{Signal: "error", Output: map[string]interface{}{"error": err.Error()}}
+			}
+			if resp.Error != "" {
+				return NodeOutput{Signal: "error", Output: map[string]interface{}{"error": resp.Error}}
+			}
+
+			// The 'result' variable from Python scope is returned as Output
+			return NodeOutput{Signal: "success", Output: resp.Output}
 		}
 
 	default:

@@ -174,6 +174,23 @@ def handle_action(action: str, params: dict):
         print(f"[{level.upper()}] {msg}", file=sys.stderr)
         respond("success", {"message": msg, "level": level})
 
+    elif action == "exec_code":
+        code = params.get("code", "")
+        # Provide useful context
+        local_scope = {
+            "platform": platform,
+            "opencv": opencv_service,
+            "params": params,
+            "result": None
+        }
+        try:
+            # Allow imports and standard functions
+            exec(code, {}, local_scope)
+            respond("success", {"output": local_scope.get("result")})
+        except Exception as e:
+            # traceback might be useful
+            respond("error", error=f"{str(e)}")
+
     else:
         respond("error", error=f"unknown action: {action}")
 

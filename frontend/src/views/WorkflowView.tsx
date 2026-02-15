@@ -18,6 +18,7 @@ import {
     BaseEdge,
     EdgeLabelRenderer,
     type EdgeProps,
+    MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import Editor from '@monaco-editor/react';
@@ -44,7 +45,8 @@ const PAN_ON_DRAG = [2];
 const DEFAULT_EDGE_OPTIONS = {
     type: 'hover' as const,
     animated: true,
-    style: { strokeWidth: 3, stroke: '#9ca3af' }, // Gray-400
+    style: { strokeWidth: 2, stroke: '#9ca3af' }, // Gray-400, thinner line
+    markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: '#9ca3af' },
     interactionWidth: 20
 };
 
@@ -64,9 +66,9 @@ const HoverEdge: React.FC<EdgeProps> = (props) => {
             <path
                 d={edgePath}
                 fill="none"
-                strokeWidth={28}
+                strokeWidth={40}
                 stroke="transparent"
-                className="react-flow__edge-interaction"
+                className="react-flow__edge-interaction cursor-pointer"
                 onMouseEnter={() => setHovered(true)}
                 onMouseLeave={() => setHovered(false)}
             />
@@ -76,7 +78,7 @@ const HoverEdge: React.FC<EdgeProps> = (props) => {
                 markerEnd={markerEnd}
                 style={{
                     ...style,
-                    strokeWidth: (hovered || selected) ? 4 : 2,
+                    strokeWidth: (hovered || selected) ? 3 : 2,
                     stroke: (hovered || selected) ? '#22c55e' : (style?.stroke || '#cbd5e1'),
                     transition: 'stroke 0.15s, stroke-width 0.15s',
                 }}
@@ -632,21 +634,69 @@ const ParamField: React.FC<ParamFieldProps> = ({
         }
 
         case 'json':
+            // Special handling for Switch Cases (List of Strings)
+            if (param.key === 'cases' && param.label === 'Cases') {
+                let cases: string[] = [];
+                try {
+                    cases = JSON.parse(value || '[]');
+                    if (!Array.isArray(cases)) cases = [];
+                } catch { cases = []; }
+
+                const addCase = () => {
+                    const newCases = [...cases, `${cases.length}`];
+                    onChange(param.key, JSON.stringify(newCases));
+                };
+                const removeCase = (idx: number) => {
+                    const newCases = cases.filter((_, i) => i !== idx);
+                    onChange(param.key, JSON.stringify(newCases));
+                };
+                const updateCase = (idx: number, val: string) => {
+                    const newCases = [...cases];
+                    newCases[idx] = val;
+                    onChange(param.key, JSON.stringify(newCases));
+                };
+
+                return (
+                    <div className="form-control w-full">
+                        {commonLabel}
+                        <div className="space-y-2 mb-2">
+                            {cases.map((c, i) => (
+                                <div key={i} className="flex gap-2 items-center">
+                                    <div className="text-[10px] font-mono opacity-50 w-4 text-center">{i}</div>
+                                    <input
+                                        className="input input-xs input-bordered flex-1 font-mono"
+                                        value={c}
+                                        onChange={(e) => updateCase(i, e.target.value)}
+                                        placeholder={`Case Value`}
+                                    />
+                                    <button className="btn btn-xs btn-ghost btn-square text-error opacity-50 hover:opacity-100" onClick={() => removeCase(i)}>
+                                        <Trash2 size={12} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                        <button className="btn btn-xs btn-outline btn-dashed w-full gap-2 opacity-60 hover:opacity-100" onClick={addCase}>
+                            <Plus size={12} /> Add Case
+                        </button>
+                    </div>
+                );
+            }
+
             return (
-                <div className="form-control w-full h-[200px]">
+                <div className="form-control w-full h-[300px]">
                     {commonLabel}
                     <div className="h-full border border-base-300 rounded-lg overflow-hidden">
                         <Editor
                             height="100%"
-                            defaultLanguage="json"
-                            value={typeof value === 'object' ? JSON.stringify(value, null, 2) : (value ?? '{}')}
+                            defaultLanguage={param.language || 'json'}
+                            value={typeof value === 'object' ? JSON.stringify(value, null, 2) : (value ?? (param.language ? '' : '{}'))}
                             onChange={(val) => onChange(param.key, val)}
                             options={{
                                 minimap: { enabled: false },
-                                lineNumbers: 'off',
+                                lineNumbers: 'on',
                                 scrollBeyondLastLine: false,
                                 fontSize: 12,
-                                fontFamily: 'monospace',
+                                fontFamily: "'JetBrains Mono', monospace",
                                 automaticLayout: true
                             }}
                             theme={theme === 'dark' ? 'vs-dark' : 'light'}
@@ -799,8 +849,9 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                 className: isExecuting || isTraversed ? 'n8n-flow-active' : '',
                 style: {
                     stroke: edgeColor,
-                    strokeWidth: isTraversed ? 4 : (strokeWidth || 3)
+                    strokeWidth: isTraversed ? 3 : (strokeWidth || 2)
                 },
+                markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: edgeColor },
                 interactionWidth: 20,
                 selectable: true,
                 updatable: true,
@@ -923,7 +974,8 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
             label: 'success',
             type: 'hover',
             animated: true,
-            style: { strokeWidth: 3, stroke: '#9ca3af' },
+            style: { strokeWidth: 2, stroke: '#9ca3af' },
+            markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: '#9ca3af' },
             interactionWidth: 20,
         } as any, eds));
     }, [setEdges]);
