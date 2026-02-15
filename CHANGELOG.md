@@ -62,6 +62,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 ### Changed — 2026-02-09
 - **Workflow Engine**: Refactored `loop` node to be a pass-through node; loop logic is now composed via Graph (If + Back-edge) instead of internal counters.
 
+### Fixed — 2026-02-16
+- **Backend**: Fixed `Code` node execution failure by ensuring Python bridge is initialized when a Code node is present.
+- **Frontend / Workflow Editor**: Implemented missing keyboard shortcuts: Select All (`Ctrl+A`), Copy (`Ctrl+C`), Paste (`Ctrl+V`), and Duplicate (`Ctrl+D`).
+
 ### Fixed — 2026-02-11
 - **Backend**: Fixed Node Discovery API 500 error — Python command execution and output parsing.
 

@@ -1279,7 +1279,7 @@ func runWorkflow(c *gin.Context) {
 			switch t {
 			case "click", "swipe", "type_text", "key_event", "screenshot",
 				"find_image", "click_image", "wait_image", "wait_click_image",
-				"ocr_text", "ocr_pattern":
+				"ocr_text", "ocr_pattern", "code":
 				needsBridge = true
 			}
 			if needsBridge {
