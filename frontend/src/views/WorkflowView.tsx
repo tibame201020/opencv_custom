@@ -1,4 +1,4 @@
-﻿import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
     ReactFlow,
     MiniMap,
@@ -28,8 +28,8 @@ import { useAppStore, type WorkflowTab } from '../store';
 import {
     Trash2, ChevronDown, X, Plus,
     Braces, ToggleLeft, Play, Maximize,
-    Loader2, Zap, Database, Type,
-    ZoomIn, ZoomOut, Search
+    Loader2, Database, Type,
+    ZoomIn, ZoomOut, Search, Table, FileJson
 } from 'lucide-react';
 import clsx from 'clsx';
 import { v4 as uuidv4 } from 'uuid';
@@ -42,6 +42,7 @@ import { ExpressionInput } from '../components/ExpressionInput';
 import { WorkflowSidebar } from '../components/WorkflowSidebar';
 import { N8nNode } from '../components/nodes/N8nNode';
 import { ExecutionInspector } from '../components/ExecutionInspector';
+import Editor from '@monaco-editor/react';
 
 const PAN_ON_DRAG = [2];
 const DEFAULT_EDGE_OPTIONS = {
@@ -59,9 +60,6 @@ const HoverEdge: React.FC<EdgeProps> = (props) => {
     const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, markerEnd, selected, label } = props;
     const [hovered, setHovered] = useState(false);
 
-    // Hybrid Edge Strategy:
-    // - Forward Connections (Standard): Use Bezier for smooth S-curve.
-    // - Backward/Loop Connections: Use SmoothStep (Manhattan) to avoid messy overlaps.
     const isForward = targetX > sourceX + 50;
 
     const [edgePath, labelX, labelY] = isForward
@@ -153,7 +151,6 @@ const edgeTypes = {
     hover: HoverEdge,
 };
 
-// Map all registered nodes to the N8nNode component
 const nodeTypes: Record<string, any> = {};
 NODE_DEFINITIONS.forEach(def => {
     nodeTypes[def.type] = N8nNode;
@@ -232,6 +229,129 @@ const GraphContextMenu: React.FC<GraphContextMenuProps> = ({
 };
 
 /* ============================================================
+ *  Data Preview Component (Table/JSON)
+ * ============================================================ */
+const DataPreview: React.FC<{
+    data: any[];
+    title: string;
+    emptyMessage: string;
+    icon?: React.ReactNode;
+}> = ({ data, title, emptyMessage, icon }) => {
+    const [viewMode, setViewMode] = useState<'table' | 'json'>('table');
+    const { theme } = useAppStore();
+    const monacoTheme = theme === 'dark' ? 'vs-dark' : 'light';
+
+    const isEmpty = !data || data.length === 0;
+
+    // Collect all unique keys for table headers
+    const keys = useMemo(() => {
+        if (isEmpty) return [];
+        const keySet = new Set<string>();
+        data.forEach(item => {
+            if (item.json) {
+                Object.keys(item.json).forEach(k => keySet.add(k));
+            } else {
+                // Fallback if data is not wrapped in {json: ...}
+                Object.keys(item).forEach(k => keySet.add(k));
+            }
+        });
+        return Array.from(keySet).sort();
+    }, [data, isEmpty]);
+
+    return (
+        <div className="flex flex-col h-full bg-base-50/50">
+            {/* Header */}
+            <div className="px-4 py-2 border-b border-base-200 bg-base-50 flex items-center justify-between shrink-0 h-10">
+                <div className="flex items-center gap-2">
+                    {icon}
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-base-content/60">{title}</span>
+                    {!isEmpty && <span className="text-[10px] bg-base-200 px-1.5 py-0.5 rounded text-base-content/50">{data.length} items</span>}
+                </div>
+                {!isEmpty && (
+                    <div className="flex bg-base-200/50 p-0.5 rounded-lg">
+                        <button
+                            className={clsx("p-1 rounded-md transition-all", viewMode === 'table' ? "bg-white shadow-sm text-primary" : "text-base-content/40 hover:text-base-content/70")}
+                            onClick={() => setViewMode('table')}
+                            title="Table View"
+                        >
+                            <Table size={12} />
+                        </button>
+                        <button
+                            className={clsx("p-1 rounded-md transition-all", viewMode === 'json' ? "bg-white shadow-sm text-primary" : "text-base-content/40 hover:text-base-content/70")}
+                            onClick={() => setViewMode('json')}
+                            title="JSON View"
+                        >
+                            <FileJson size={12} />
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-hidden relative bg-white">
+                {isEmpty ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center text-base-content/40">
+                        <div className="w-12 h-12 bg-base-200 rounded-full flex items-center justify-center mb-3 opacity-50">
+                            <Database size={20} />
+                        </div>
+                        <div className="text-sm font-medium text-base-content/60">No Data</div>
+                        <div className="text-xs mt-1 opacity-60 leading-relaxed max-w-[200px]">{emptyMessage}</div>
+                    </div>
+                ) : (
+                    viewMode === 'table' ? (
+                        <div className="h-full overflow-auto custom-scrollbar">
+                            <table className="table table-xs w-full">
+                                <thead className="bg-base-100 sticky top-0 z-10">
+                                    <tr>
+                                        <th className="w-8 text-center bg-base-100">#</th>
+                                        {keys.map(k => <th key={k} className="bg-base-100 font-mono text-xs">{k}</th>)}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {data.map((item, i) => {
+                                        const valMap = item.json || item;
+                                        return (
+                                            <tr key={i} className="hover:bg-base-50 group">
+                                                <td className="text-center font-mono text-base-content/30 group-hover:text-base-content/50">{i + 1}</td>
+                                                {keys.map(k => {
+                                                    const val = valMap[k];
+                                                    const display = typeof val === 'object' && val !== null ? JSON.stringify(val) : String(val ?? '');
+                                                    return (
+                                                        <td key={k} className="font-mono text-xs max-w-[200px] truncate" title={display}>
+                                                            {display}
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <Editor
+                            height="100%"
+                            defaultLanguage="json"
+                            value={JSON.stringify(data, null, 2)}
+                            options={{
+                                readOnly: true,
+                                minimap: { enabled: false },
+                                fontSize: 11,
+                                fontFamily: "'JetBrains Mono', monospace",
+                                lineNumbers: 'on',
+                                folding: true,
+                                scrollBeyondLastLine: false,
+                            }}
+                            theme={monacoTheme}
+                        />
+                    )
+                )}
+            </div>
+        </div>
+    );
+};
+
+/* ============================================================
  *  Node Settings Modal
  * ============================================================ */
 interface NodeSettingsModalProps {
@@ -244,18 +364,73 @@ interface NodeSettingsModalProps {
     expressionModes: Record<string, boolean>;
     onToggleExpression: (key: string) => void;
     nodes: Node[];
+    edges: Edge[];
     executionState: any[];
 }
 
 const NodeSettingsModal: React.FC<NodeSettingsModalProps> = ({
     node, onClose, onConfigChange, onRename, onDelete,
-    expressionModes, onToggleExpression, nodes, executionState
+    expressionModes, onToggleExpression, nodes, edges, executionState
 }) => {
     if (!node) return null;
     const nodeDef = getNodeDef(node.type || 'click');
     const [activeTab, setActiveTab] = useState<'parameters' | 'settings'>('parameters');
     const [isRenaming, setIsRenaming] = useState(false);
     const [tempName, setTempName] = useState((node.data as any).label || '');
+
+    // Resolve Input Data
+    const inputData = useMemo(() => {
+        // Find edges where target is this node
+        // Ideally supports multiple inputs, but mostly 1
+        const incomingEdges = edges.filter(e => e.target === node.id);
+        if (incomingEdges.length === 0) return [];
+
+        // For simplicity, take the first connection that has data
+        // n8n usually merges or takes first based on node type.
+        for (const edge of incomingEdges) {
+            const sourceNodeId = edge.source;
+            const steps = executionState.filter(s => s.nodeId === sourceNodeId);
+            if (steps.length > 0) {
+                const lastStep = steps[steps.length - 1];
+                // Output is now map[string]ExecutionData
+                const outputMap = lastStep.output || {};
+
+                // Which signal? The edge.sourceHandle tells us.
+                // If edge.sourceHandle is null/undefined, assume 'success' or just take the first key?
+                const signal = edge.sourceHandle || 'success';
+
+                if (outputMap[signal]) {
+                    return outputMap[signal];
+                }
+
+                // Fallback: Check 'success' explicitly
+                if (outputMap['success']) return outputMap['success'];
+
+                // Fallback: Return first available output
+                const keys = Object.keys(outputMap);
+                if (keys.length > 0) return outputMap[keys[0]];
+            }
+        }
+        return [];
+    }, [node.id, edges, executionState]);
+
+    // Resolve Output Data
+    const outputData = useMemo(() => {
+        const steps = executionState.filter(s => s.nodeId === node.id);
+        if (steps.length === 0) return [];
+        const lastStep = steps[steps.length - 1];
+        const outputMap = lastStep.output || {};
+
+        // Show all outputs merged? Or tabs for outputs?
+        // n8n shows just one list usually, or tabs if multiple.
+        // For now, flatten all outputs into one list for preview, or pick 'success'.
+        // Let's pick 'success' or first one.
+        if (outputMap['success']) return outputMap['success'];
+        const keys = Object.keys(outputMap);
+        if (keys.length > 0) return outputMap[keys[0]];
+
+        return [];
+    }, [node.id, executionState]);
 
     if (!nodeDef) return null;
 
@@ -309,27 +484,20 @@ const NodeSettingsModal: React.FC<NodeSettingsModalProps> = ({
                     </div>
                 </div>
 
-                {/* Body ??3 columns */}
+                {/* Body - 3 Columns */}
                 <div className="flex-1 flex overflow-hidden bg-base-100">
                     {/* Left: INPUT */}
-                    <div className="w-[300px] border-r border-base-200 flex flex-col shrink-0 bg-base-50/50">
-                        <div className="px-5 py-3 border-b border-base-200 bg-base-50 flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-base-content/40" />
-                            <span className="text-[11px] font-bold uppercase tracking-widest text-base-content/60">Input Data</span>
-                        </div>
-                        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-base-content/40">
-                            <div className="w-12 h-12 bg-base-200 rounded-full flex items-center justify-center mb-3">
-                                <Database size={20} className="opacity-50" />
-                            </div>
-                            <div className="text-sm font-medium text-base-content/60">No Input Data</div>
-                            <div className="text-xs mt-1 opacity-60 leading-relaxed max-w-[200px]">
-                                Connect an input node and execute it to see data here.
-                            </div>
-                        </div>
+                    <div className="w-[350px] border-r border-base-200 flex flex-col shrink-0">
+                        <DataPreview
+                            data={inputData}
+                            title="Input"
+                            emptyMessage="Connect an input node and execute it to see data here."
+                            icon={<div className="w-1.5 h-1.5 rounded-full bg-base-content/40" />}
+                        />
                     </div>
 
                     {/* Center: Parameters / Settings */}
-                    <div className="flex-1 flex flex-col overflow-hidden min-w-[500px]">
+                    <div className="flex-1 flex flex-col overflow-hidden min-w-[450px]">
                         <div className="flex border-b border-base-200 shrink-0 px-6">
                             <button
                                 className={clsx(
@@ -354,36 +522,25 @@ const NodeSettingsModal: React.FC<NodeSettingsModalProps> = ({
                         <div className="flex-1 overflow-y-auto px-8 py-6 custom-scrollbar bg-white">
                             {activeTab === 'parameters' ? (
                                 <div className="max-w-2xl mx-auto space-y-6">
-                                    <div className="form-control w-full">
-                                        <label className="label py-1.5 justify-start gap-2">
-                                            <span className="text-xs font-bold text-base-content/70">Node Name</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            className="input input-sm input-bordered focus:input-primary transition-all font-medium"
-                                            value={(node.data as any).label}
-                                            onChange={(e) => onRename(e.target.value)}
-                                        />
-                                    </div>
-
-                                    {nodeDef.params.length > 0 && (
-                                        <>
-                                            <div className="h-px bg-base-200 my-2" />
-                                            <div className="space-y-6">
-                                                {nodeDef.params.map(param => (
-                                                    <ParamField
-                                                        key={param.key}
-                                                        param={param}
-                                                        value={(node.data as any).config?.[param.key]}
-                                                        onChange={onConfigChange}
-                                                        expressionMode={!!expressionModes[`${node.id}:${param.key}`]}
-                                                        onToggleExpression={() => onToggleExpression(`${node.id}:${param.key}`)}
-                                                        nodes={nodes}
-                                                        executionState={executionState}
-                                                    />
-                                                ))}
-                                            </div>
-                                        </>
+                                    {nodeDef.params.length > 0 ? (
+                                        <div className="space-y-6">
+                                            {nodeDef.params.map(param => (
+                                                <ParamField
+                                                    key={param.key}
+                                                    param={param}
+                                                    value={(node.data as any).config?.[param.key]}
+                                                    onChange={onConfigChange}
+                                                    expressionMode={!!expressionModes[`${node.id}:${param.key}`]}
+                                                    onToggleExpression={() => onToggleExpression(`${node.id}:${param.key}`)}
+                                                    nodes={nodes}
+                                                    executionState={executionState}
+                                                />
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-12 opacity-50 text-sm">
+                                            No parameters to configure for this node.
+                                        </div>
                                     )}
 
                                     <div className="pt-8 mt-4 border-t border-base-200">
@@ -426,35 +583,13 @@ const NodeSettingsModal: React.FC<NodeSettingsModalProps> = ({
                     </div>
 
                     {/* Right: OUTPUT */}
-                    <div className="w-[300px] border-l border-base-200 flex flex-col shrink-0 bg-base-50/50">
-                        <div className="px-5 py-3 border-b border-base-200 bg-base-50 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <div className="w-1.5 h-1.5 rounded-full bg-success/80" />
-                                <span className="text-[11px] font-bold uppercase tracking-widest text-base-content/60">Output Data</span>
-                            </div>
-                            {executionState.find(s => s.nodeId === node.id) && (
-                                <span className="text-[9px] bg-base-200 px-1.5 py-0.5 rounded text-base-content/50">JSON</span>
-                            )}
-                        </div>
-                        {executionState.find(s => s.nodeId === node.id) ? (
-                            <div className="flex-1 overflow-hidden relative bg-white">
-                                <div className="h-full overflow-auto custom-scrollbar p-2">
-                                    <pre className="text-[10px] font-mono leading-relaxed">
-                                        {JSON.stringify(executionState.slice().reverse().find(s => s.nodeId === node.id)?.output, null, 2)}
-                                    </pre>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-base-content/40">
-                                <div className="w-12 h-12 bg-base-200 rounded-full flex items-center justify-center mb-3">
-                                    <Zap size={20} className="opacity-50" />
-                                </div>
-                                <div className="text-sm font-medium text-base-content/60">No Output Yet</div>
-                                <div className="text-xs mt-1 opacity-60 leading-relaxed max-w-[200px]">
-                                    Click "Execute Step" to run this node and see the results.
-                                </div>
-                            </div>
-                        )}
+                    <div className="w-[350px] border-l border-base-200 flex flex-col shrink-0">
+                        <DataPreview
+                            data={outputData}
+                            title="Output"
+                            emptyMessage="Click 'Execute Step' to run this node and see results."
+                            icon={<div className="w-1.5 h-1.5 rounded-full bg-success/80" />}
+                        />
                     </div>
                 </div>
             </div>
@@ -1563,6 +1698,7 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                             expressionModes={expressionModes}
                             onToggleExpression={(key) => setExpressionModes(prev => ({ ...prev, [key]: !prev[key] }))}
                             nodes={nodes}
+                            edges={edges}
                             executionState={executionState}
                         />
                     )}
@@ -1581,6 +1717,8 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                             }
                         }}
                         onClear={() => { /* Handle clear if needed */ }}
+                        nodes={nodes}
+                        edges={edges}
                     />
                 </div>
 
