@@ -55,9 +55,9 @@
 | 3.2.2 | 選取高亮 (Dashed Border) | ✅ | ⬜ | 取消外圈光暈 |
 | 3.2.3 | 節點調整大小 (NodeResizer) | ✅ | ⬜ | 圓形 Handle |
 | 3.2.4 | 雙擊開啟屬性面板 | ✅ | ⬜ | 單擊僅選取 |
-| 3.2.5 | 節點複製/貼上 (Ctrl+C/V) | ✅ | ⬜ | |
-| 3.2.6 | 節點複製 (Ctrl+D) | ✅ | ⬜ | |
-| 3.2.7 | 全選 (Ctrl+A) | ✅ | ⬜ | |
+| 3.2.5 | 節點複製/貼上 (Ctrl+C/V) | ✅ | ⬜ | Implement `workflow-clipboard` in localStorage |
+| 3.2.6 | 節點複製 (Ctrl+D) | ✅ | ⬜ | Duplicate selected nodes with offset |
+| 3.2.7 | 全選 (Ctrl+A) | ✅ | ⬜ | Select all nodes |
 | 3.2.8 | 刪除 (Delete/Backspace) | ✅ | ⬜ | |
 
 ### 3.3 邊 (Edge) 互動

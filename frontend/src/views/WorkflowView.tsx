@@ -1191,6 +1191,9 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
             if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
             if ((e.target as HTMLElement)?.contentEditable === 'true') return;
 
+            const isCtrl = e.ctrlKey || e.metaKey;
+
+            // Delete
             if (e.key === 'Delete' || e.key === 'Backspace') {
                 e.preventDefault();
                 const selectedIds = nodes.filter(n => n.selected).map(n => n.id);
@@ -1198,11 +1201,137 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                 setNodes(nds => nds.filter(n => !selectedIds.includes(n.id)));
                 setEdges(eds => eds.filter(e => !selectedIds.includes(e.source) && !selectedIds.includes(e.target)));
                 if (selectedNode && selectedIds.includes(selectedNode.id)) setSelectedNode(null);
+                return;
+            }
+
+            // Select All (Ctrl+A)
+            if (isCtrl && e.key === 'a') {
+                e.preventDefault();
+                setNodes(nds => nds.map(n => ({ ...n, selected: true })));
+                return;
+            }
+
+            // Copy (Ctrl+C)
+            if (isCtrl && e.key === 'c') {
+                e.preventDefault();
+                const selectedNodes = nodes.filter(n => n.selected);
+                if (selectedNodes.length === 0 && selectedNode) selectedNodes.push(selectedNode);
+
+                if (selectedNodes.length > 0) {
+                    const selectedIds = selectedNodes.map(n => n.id);
+                    // Copy internal edges
+                    const selectedEdges = edges.filter(e => selectedIds.includes(e.source) && selectedIds.includes(e.target));
+
+                    const clipboardData = {
+                        nodes: selectedNodes.map(n => ({ ...n, selected: false })),
+                        edges: selectedEdges.map(e => ({ ...e, selected: false }))
+                    };
+                    localStorage.setItem('workflow-clipboard', JSON.stringify(clipboardData));
+                }
+                return;
+            }
+
+            // Paste (Ctrl+V)
+            if (isCtrl && e.key === 'v') {
+                e.preventDefault();
+                try {
+                    const clipboardStr = localStorage.getItem('workflow-clipboard');
+                    if (!clipboardStr) return;
+                    const { nodes: pastedNodes, edges: pastedEdges } = JSON.parse(clipboardStr);
+                    if (!pastedNodes || pastedNodes.length === 0) return;
+
+                    // Map oldId -> newId
+                    const idMap = new Map<string, string>();
+                    const newNodes: Node[] = [];
+
+                    pastedNodes.forEach((n: any) => {
+                        const newId = uuidv4();
+                        idMap.set(n.id, newId);
+                        newNodes.push({
+                            ...n,
+                            id: newId,
+                            position: { x: n.position.x + 50, y: n.position.y + 50 },
+                            selected: true,
+                        });
+                    });
+
+                    const newEdges: Edge[] = [];
+                    if (pastedEdges) {
+                        pastedEdges.forEach((e: any) => {
+                            const newSource = idMap.get(e.source);
+                            const newTarget = idMap.get(e.target);
+                            if (newSource && newTarget) {
+                                newEdges.push({
+                                    ...e,
+                                    id: uuidv4(),
+                                    source: newSource,
+                                    target: newTarget,
+                                    selected: false
+                                });
+                            }
+                        });
+                    }
+
+                    setNodes(nds => nds.map(n => ({ ...n, selected: false })).concat(newNodes));
+                    setEdges(eds => eds.concat(newEdges));
+
+                    if (newNodes.length === 1) setSelectedNode(newNodes[0]);
+                    else setSelectedNode(null);
+
+                } catch (err) {
+                    console.error("Paste failed", err);
+                }
+                return;
+            }
+
+            // Duplicate (Ctrl+D)
+            if (isCtrl && e.key === 'd') {
+                e.preventDefault();
+                const selectedNodes = nodes.filter(n => n.selected);
+                if (selectedNodes.length === 0 && selectedNode) selectedNodes.push(selectedNode);
+
+                if (selectedNodes.length > 0) {
+                    const idMap = new Map<string, string>();
+                    const newNodes: Node[] = [];
+
+                    selectedNodes.forEach(n => {
+                        const newId = uuidv4();
+                        idMap.set(n.id, newId);
+                        newNodes.push({
+                            ...n,
+                            id: newId,
+                            position: { x: n.position.x + 20, y: n.position.y + 20 },
+                            selected: true
+                        });
+                    });
+
+                    const selectedIds = selectedNodes.map(n => n.id);
+                    const internalEdges = edges.filter(e => selectedIds.includes(e.source) && selectedIds.includes(e.target));
+                    const newEdges: Edge[] = [];
+
+                    internalEdges.forEach(e => {
+                        const newSource = idMap.get(e.source);
+                        const newTarget = idMap.get(e.target);
+                        if (newSource && newTarget) {
+                            newEdges.push({
+                                ...e,
+                                id: uuidv4(),
+                                source: newSource,
+                                target: newTarget,
+                                selected: false
+                            });
+                        }
+                    });
+
+                    setNodes(nds => nds.map(n => ({ ...n, selected: false })).concat(newNodes));
+                    setEdges(eds => eds.concat(newEdges));
+                }
+                return;
             }
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [nodes, selectedNode, setNodes, setEdges]);
+    }, [nodes, edges, selectedNode, setNodes, setEdges]);
 
     const getVars = useCallback(() => {
         try { return JSON.parse(tab.content)?.variables || {}; } catch { return {}; }
