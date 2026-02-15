@@ -82,7 +82,7 @@ def handle_action(action: str, params: dict):
         respond("success", {"result": result})
 
     elif action == "key_event":
-        key = params.get("key", "")
+        key = params.get("key", params.get("key_code", ""))
         # Try numeric keycode vs string
         try:
             key = int(key)
@@ -108,8 +108,9 @@ def handle_action(action: str, params: dict):
         respond("success", {"slept_ms": ms})
 
     elif action == "find_image":
+        template = params.get("template", params.get("image", ""))
         pos = platform.find_image(
-            params.get("template", ""),
+            template,
             region=_parse_region(params.get("region")),
             threshold=float(params.get("threshold", 0.8))
         )
@@ -119,16 +120,18 @@ def handle_action(action: str, params: dict):
             respond("success", {"found": False})
 
     elif action == "click_image":
+        template = params.get("template", params.get("image", ""))
         result = platform.click_image(
-            params.get("template", ""),
+            template,
             region=_parse_region(params.get("region")),
             threshold=float(params.get("threshold", 0.8))
         )
         respond("success", {"clicked": result})
 
     elif action == "wait_image":
+        template = params.get("template", params.get("image", ""))
         pos = platform.wait_image(
-            params.get("template", ""),
+            template,
             timeout=int(params.get("timeout", 10)),
             threshold=float(params.get("threshold", 0.8)),
             region=_parse_region(params.get("region"))
@@ -139,8 +142,9 @@ def handle_action(action: str, params: dict):
             respond("success", {"found": False, "timeout": True})
 
     elif action == "wait_click_image":
+        template = params.get("template", params.get("image", ""))
         result = platform.wait_click_image(
-            params.get("template", ""),
+            template,
             timeout=int(params.get("timeout", 10)),
             threshold=float(params.get("threshold", 0.8)),
             region=_parse_region(params.get("region"))
