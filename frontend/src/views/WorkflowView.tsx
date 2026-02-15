@@ -15,10 +15,12 @@ import {
     type OnConnectEnd,
     type OnConnectStart,
     getBezierPath,
+    getSmoothStepPath,
     BaseEdge,
     EdgeLabelRenderer,
     type EdgeProps,
     MarkerType,
+    ConnectionLineType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import Editor from '@monaco-editor/react';
@@ -45,8 +47,8 @@ const PAN_ON_DRAG = [2];
 const DEFAULT_EDGE_OPTIONS = {
     type: 'hover' as const,
     animated: true,
-    style: { strokeWidth: 2, stroke: '#9ca3af' }, // Gray-400, thinner line
-    markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: '#9ca3af' },
+    style: { strokeWidth: 2, stroke: '#b1b1b7' }, // n8n light grey
+    markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: '#b1b1b7' },
     interactionWidth: 20
 };
 
@@ -57,9 +59,18 @@ const HoverEdge: React.FC<EdgeProps> = (props) => {
     const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, markerEnd, selected, label } = props;
     const [hovered, setHovered] = useState(false);
 
-    const [edgePath, labelX, labelY] = getBezierPath({
-        sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition,
-    });
+    // Hybrid Edge Strategy:
+    // - Forward Connections (Standard): Use Bezier for smooth S-curve.
+    // - Backward/Loop Connections: Use SmoothStep (Manhattan) to avoid messy overlaps.
+    const isForward = targetX > sourceX + 50;
+
+    const [edgePath, labelX, labelY] = isForward
+        ? getBezierPath({
+            sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition,
+        })
+        : getSmoothStepPath({
+            sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, borderRadius: 20
+        });
 
     return (
         <>
@@ -778,8 +789,8 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
 
             // Check if currently running (last step is running and this is it)
             if (isExecuting) {
-                 // Logic to determine if *this* node is running could be complex without granular events
-                 // For now, if status is 'running' in step
+                // Logic to determine if *this* node is running could be complex without granular events
+                // For now, if status is 'running' in step
             }
 
             // Find specific step for this node
@@ -842,7 +853,7 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                 id: e.id,
                 source: e.fromNodeId || e.source,
                 target: e.toNodeId || e.target,
-                sourceHandle: e.signal && e.signal !== 'success' ? e.signal : undefined,
+                sourceHandle: e.signal || 'success',
                 label: label,
                 type: 'hover',
                 animated: animated,
@@ -877,16 +888,16 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
             if (selectedNode?.id === nodeId) setSelectedNode(null);
         };
         const handleNodeToggle = (e: any) => {
-             const { nodeId, disabled } = e.detail;
-             setNodes(nds => nds.map(n => n.id === nodeId ? { ...n, data: { ...n.data, disabled } } : n));
+            const { nodeId, disabled } = e.detail;
+            setNodes(nds => nds.map(n => n.id === nodeId ? { ...n, data: { ...n.data, disabled } } : n));
         };
         const handleNodeExecute = (_: any) => {
-             // const { nodeId } = e.detail;
-             // Execute node logic here
+            // const { nodeId } = e.detail;
+            // Execute node logic here
         };
         const handleContextMenu = (e: any) => {
-             const { type, x, y, id, data } = e.detail;
-             setGraphContextMenu({ type, x, y, id, data });
+            const { type, x, y, id, data } = e.detail;
+            setGraphContextMenu({ type, x, y, id, data });
         };
 
         window.addEventListener('workflow-quick-add', handleQuickAdd);
@@ -1098,8 +1109,8 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                 y = sourceNode.position.y;
             }
         } else {
-             x = 100;
-             y = 100;
+            x = 100;
+            y = 100;
         }
 
         const newNode: Node = {
@@ -1250,6 +1261,8 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                             defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
                             onConnectStart={onConnectStart}
                             onConnectEnd={onConnectEnd}
+                            connectionLineType={ConnectionLineType.Bezier}
+                            connectionLineStyle={{ stroke: '#b1b1b7', strokeWidth: 2 }}
                         >
                             <Background gap={20} size={1} color="#d4d4d8" variant={BackgroundVariant.Dots} style={{ backgroundColor: '#f5f5f5' }} />
 

@@ -127,6 +127,7 @@
 | 3.10.3 | Transparent Floating Toolbar | ✅ | ⬜ | Action buttons on hover |
 | 3.10.4 | Connection Stubs (+) | ✅ | ⬜ | Grow on hover, right side |
 | 3.10.5 | Sliding Add Node Sidebar | ✅ | ⬜ | Replaces context menu add |
+| 3.10.6 | Handle Interaction Refinement | ✅ | ⬜ | Left-click menu, Left-drag wire, Auto-hide stub |
 
 ## 4. Bug Fixes
 

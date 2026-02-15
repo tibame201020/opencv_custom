@@ -13,6 +13,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - **Frontend / Workflow Editor**: Replaced context menu node addition with a sliding `WorkflowSidebar` triggered by connection stubs or empty state.
 - **Frontend / Workflow Editor**: Updated edge styling to use Bezier curves (`getBezierPath`) for smoother connections.
 
+### Changed — 2026-02-15 (Handle Interaction)
+- **Frontend / Workflow Editor**: Refactored Node Handles to fully match n8n behavior.
+- **Frontend / Workflow Editor**: Implemented **Left-Click** on `+` stub to open "Quick Add" menu (fixed Right-Click issue).
+- **Frontend / Workflow Editor**: Implemented **Left-Drag** from `+` stub to create connections (wire originates from dot).
+- **Frontend / Workflow Editor**: Added `nodrag` to stub to prevent unintended node movement.
+- **Frontend / Workflow Editor**: Fixed stub visibility to automatically hide when dragging or connected.
+
 ### Added — 2026-02-13
 - **Frontend / Workflow Editor**: n8n-style Floating Action Bar (FAB) with Zoom/Fit controls.
 - **Frontend / Workflow Editor**: "Add first step" center button for empty workflows.
