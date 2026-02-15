@@ -29,7 +29,7 @@ type BridgeRequest struct {
 // BridgeResponse Python 回傳的回應
 type BridgeResponse struct {
 	Signal string                 `json:"signal"`
-	Output map[string]interface{} `json:"output,omitempty"`
+	Output interface{}            `json:"output,omitempty"` // Changed to interface{} to support lists/objects
 	Error  string                 `json:"error,omitempty"`
 }
 
@@ -58,7 +58,7 @@ func NewPythonBridge(ctx context.Context, pythonCmd, corePath, entryScript strin
 	}
 
 	// Redirect stderr to parent process stderr for debugging
-	cmd.Stderr = nil // Goes to os.Stderr by default when nil? Actually no.
+	cmd.Stderr = nil
 	// Let's capture stderr separately so user can see Python logs
 	stderrPipe, err := cmd.StderrPipe()
 	if err != nil {
@@ -193,11 +193,22 @@ func CreateIfNode(id, name string, condition func(interface{}) bool) *WorkflowNo
 		Name: name,
 		Type: NodeIf,
 		Executor: func(ctx context.Context, arg NodeArg) NodeOutput {
-			result := "false"
-			if condition(arg.Input) {
-				result = "true"
+			trueData := ExecutionData{}
+			falseData := ExecutionData{}
+
+			for _, item := range arg.Input {
+				if condition(item.JSON) {
+					trueData = append(trueData, item)
+				} else {
+					falseData = append(falseData, item)
+				}
 			}
-			return NodeOutput{Signal: result, Output: arg.Input}
+			return NodeOutput{
+				Outputs: map[string]ExecutionData{
+					"true":  trueData,
+					"false": falseData,
+				},
+			}
 		},
 	}
 }
@@ -208,7 +219,29 @@ func CreateConvertNode(id, name string, converter func(interface{}) interface{})
 		Name: name,
 		Type: NodeConvert,
 		Executor: func(ctx context.Context, arg NodeArg) NodeOutput {
-			return NodeOutput{Signal: "success", Output: converter(arg.Input)}
+			outData := ExecutionData{}
+			for _, item := range arg.Input {
+				newVal := converter(item.JSON)
+				// Wrap result in JSON if not map
+				newItem := ExecutionItem{JSON: make(map[string]interface{})}
+				if m, ok := newVal.(map[string]interface{}); ok {
+					newItem.JSON = m
+				} else {
+					// Check if nil
+					if newVal != nil {
+						newItem.JSON["value"] = newVal
+					}
+				}
+				// Copy binary?
+				newItem.Binary = item.Binary
+
+				outData = append(outData, newItem)
+			}
+			return NodeOutput{
+				Outputs: map[string]ExecutionData{
+					"success": outData,
+				},
+			}
 		},
 	}
 }

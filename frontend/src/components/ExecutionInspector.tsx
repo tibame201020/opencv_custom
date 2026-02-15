@@ -2,24 +2,25 @@ import React, { useState, useMemo } from 'react';
 import {
     X, Check, Clock, Database,
     RotateCcw,
-    Search, Maximize2, Minimize2
+    Search, Maximize2, Minimize2,
+    ArrowRight
 } from 'lucide-react';
-import Editor from '@monaco-editor/react';
 import clsx from 'clsx';
-import { useAppStore } from '../store';
 import { getNodeDef } from '../workflow/nodeRegistry';
+import { DataPreview } from './DataPreview';
+import type { Node, Edge } from '@xyflow/react';
 
 export interface ExecutionStep {
     nodeId: string;
     status: 'success' | 'error' | 'running';
-    input?: any;
-    output?: any;
+    output?: Record<string, any[]>; // Map signal -> items
     error?: any;
     startTime?: string;
     endTime?: string;
     duration?: number;
-    nodeName?: string; // Optional, if backend sends it
-    nodeType?: string; // Optional, to resolve icon
+    nodeName?: string;
+    nodeType?: string;
+    signal?: string;
 }
 
 interface ExecutionInspectorProps {
@@ -29,12 +30,13 @@ interface ExecutionInspectorProps {
     selectedNodeId?: string | null;
     onSelectNode: (nodeId: string) => void;
     onClear: () => void;
+    nodes: Node[];
+    edges: Edge[];
 }
 
 export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
-    isOpen, onClose, executionState, selectedNodeId, onSelectNode, onClear
+    isOpen, onClose, executionState, selectedNodeId, onSelectNode, onClear, edges
 }) => {
-    const { theme } = useAppStore();
     const [activeTab, setActiveTab] = useState<'input' | 'output'>('output');
     const [searchTerm, setSearchTerm] = useState('');
     const [isExpanded, setIsExpanded] = useState(false);
@@ -50,12 +52,57 @@ export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
 
     // Find selected step object
     const selectedStep = useMemo(() =>
-        executionState.find(s => s.nodeId === selectedNodeId) || executionState[executionState.length - 1],
+        executionState.slice().reverse().find(s => s.nodeId === selectedNodeId) || executionState[executionState.length - 1],
     [executionState, selectedNodeId]);
 
-    if (!isOpen && executionState.length === 0) return null;
+    // Resolve Data
+    const displayData = useMemo(() => {
+        if (!selectedStep) return [];
 
-    const monacoTheme = theme === 'dark' ? 'vs-dark' : 'light';
+        if (activeTab === 'output') {
+            // Flatten all outputs or pick 'success'?
+            // n8n shows tabs for output branches usually.
+            // For now, let's merge all outputs or take the first non-empty.
+            const outputs = selectedStep.output || {};
+            // If specific signal was followed?
+            if (selectedStep.signal && outputs[selectedStep.signal]) {
+                return outputs[selectedStep.signal];
+            }
+            // Fallback: merge all
+            return Object.values(outputs).flat();
+        } else {
+            // Input: Trace back
+            const incomingEdges = edges.filter(e => e.target === selectedStep.nodeId);
+            if (incomingEdges.length === 0) return [];
+
+            // Find inputs from source nodes
+            let inputs: any[] = [];
+            for (const edge of incomingEdges) {
+                const sourceSteps = executionState.filter(s => s.nodeId === edge.source);
+                if (sourceSteps.length > 0) {
+                    // Find the step that happened *before* this step?
+                    // Ideally check timestamps, but executionState is ordered.
+                    // Just take the latest execution of source?
+                    const lastSourceStep = sourceSteps[sourceSteps.length - 1];
+                    const out = lastSourceStep.output || {};
+                    const signal = edge.sourceHandle || 'success'; // Or wildcard
+
+                    if (out[signal]) {
+                        inputs = [...inputs, ...out[signal]];
+                    } else if (out['success']) {
+                        inputs = [...inputs, ...out['success']];
+                    } else {
+                         // Take first
+                         const keys = Object.keys(out);
+                         if (keys.length > 0) inputs = [...inputs, ...out[keys[0]]];
+                    }
+                }
+            }
+            return inputs;
+        }
+    }, [selectedStep, activeTab, edges, executionState]);
+
+    if (!isOpen && executionState.length === 0) return null;
 
     return (
         <div
@@ -67,7 +114,7 @@ export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
             {/* Header Bar */}
             <div
                 className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200 shrink-0 h-10 cursor-pointer hover:bg-gray-100 transition-colors"
-                onClick={() => !isOpen && onClose()} // If closed, clicking header opens it. If open, do nothing (handled by buttons)
+                onClick={() => !isOpen && onClose()}
             >
                 <div className="flex items-center gap-3">
                     <div className={clsx("w-2.5 h-2.5 rounded-full", executionState.some(s => s.status === 'running') ? "bg-orange-500 animate-pulse" : "bg-green-500")} />
@@ -191,19 +238,16 @@ export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
                                 {/* Toolbar */}
                                 <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 bg-white shrink-0">
                                     <div className="flex items-center gap-2">
-                                        <div className="text-xs font-bold text-gray-700">Data View</div>
-                                        <div className="h-4 w-px bg-gray-200" />
-
                                         {/* Tabs */}
                                         <div className="flex bg-gray-100 p-0.5 rounded-lg">
                                             <button
                                                 className={clsx(
-                                                    "px-3 py-1 text-[11px] font-bold rounded-md transition-all",
+                                                    "px-3 py-1 text-[11px] font-bold rounded-md transition-all flex items-center gap-1.5",
                                                     activeTab === 'input' ? "bg-white text-primary shadow-sm" : "text-gray-500 hover:text-gray-700"
                                                 )}
                                                 onClick={() => setActiveTab('input')}
                                             >
-                                                Input
+                                                Input <ArrowRight size={10} className="opacity-50" />
                                             </button>
                                             <button
                                                 className={clsx(
@@ -225,39 +269,11 @@ export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
                                 </div>
 
                                 {/* Content */}
-                                <div className="flex-1 relative bg-gray-50/20">
-                                    {(() => {
-                                        const data = activeTab === 'input' ? selectedStep.input : selectedStep.output;
-                                        const isEmpty = data === undefined || data === null || (Array.isArray(data) && data.length === 0) || (typeof data === 'object' && Object.keys(data).length === 0);
-
-                                        if (isEmpty) {
-                                            return (
-                                                <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-300">
-                                                    <Database size={40} className="mb-3 opacity-20" />
-                                                    <span className="text-xs font-medium opacity-60">No {activeTab} data available</span>
-                                                </div>
-                                            );
-                                        }
-
-                                        return (
-                                            <Editor
-                                                height="100%"
-                                                defaultLanguage="json"
-                                                value={JSON.stringify(data, null, 2)}
-                                                options={{
-                                                    readOnly: true,
-                                                    minimap: { enabled: false },
-                                                    fontSize: 12,
-                                                    fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-                                                    scrollBeyondLastLine: false,
-                                                    lineNumbers: 'on',
-                                                    renderLineHighlight: 'none',
-                                                    folding: true,
-                                                }}
-                                                theme={monacoTheme}
-                                            />
-                                        );
-                                    })()}
+                                <div className="flex-1 relative">
+                                    <DataPreview
+                                        data={displayData}
+                                        title={activeTab === 'input' ? 'Input Data' : 'Output Data'}
+                                    />
                                 </div>
                             </>
                         ) : (
