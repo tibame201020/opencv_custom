@@ -18,6 +18,7 @@ import {
     BaseEdge,
     EdgeLabelRenderer,
     type EdgeProps,
+    MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import Editor from '@monaco-editor/react';
@@ -44,7 +45,8 @@ const PAN_ON_DRAG = [2];
 const DEFAULT_EDGE_OPTIONS = {
     type: 'hover' as const,
     animated: true,
-    style: { strokeWidth: 3, stroke: '#9ca3af' }, // Gray-400
+    style: { strokeWidth: 2, stroke: '#9ca3af' }, // Gray-400, thinner line
+    markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: '#9ca3af' },
     interactionWidth: 20
 };
 
@@ -64,9 +66,9 @@ const HoverEdge: React.FC<EdgeProps> = (props) => {
             <path
                 d={edgePath}
                 fill="none"
-                strokeWidth={28}
+                strokeWidth={40}
                 stroke="transparent"
-                className="react-flow__edge-interaction"
+                className="react-flow__edge-interaction cursor-pointer"
                 onMouseEnter={() => setHovered(true)}
                 onMouseLeave={() => setHovered(false)}
             />
@@ -76,7 +78,7 @@ const HoverEdge: React.FC<EdgeProps> = (props) => {
                 markerEnd={markerEnd}
                 style={{
                     ...style,
-                    strokeWidth: (hovered || selected) ? 4 : 2,
+                    strokeWidth: (hovered || selected) ? 3 : 2,
                     stroke: (hovered || selected) ? '#22c55e' : (style?.stroke || '#cbd5e1'),
                     transition: 'stroke 0.15s, stroke-width 0.15s',
                 }}
@@ -847,8 +849,9 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                 className: isExecuting || isTraversed ? 'n8n-flow-active' : '',
                 style: {
                     stroke: edgeColor,
-                    strokeWidth: isTraversed ? 4 : (strokeWidth || 3)
+                    strokeWidth: isTraversed ? 3 : (strokeWidth || 2)
                 },
+                markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: edgeColor },
                 interactionWidth: 20,
                 selectable: true,
                 updatable: true,
@@ -971,7 +974,8 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
             label: 'success',
             type: 'hover',
             animated: true,
-            style: { strokeWidth: 3, stroke: '#9ca3af' },
+            style: { strokeWidth: 2, stroke: '#9ca3af' },
+            markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: '#9ca3af' },
             interactionWidth: 20,
         } as any, eds));
     }, [setEdges]);
