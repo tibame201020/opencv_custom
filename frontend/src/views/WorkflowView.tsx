@@ -632,21 +632,69 @@ const ParamField: React.FC<ParamFieldProps> = ({
         }
 
         case 'json':
+            // Special handling for Switch Cases (List of Strings)
+            if (param.key === 'cases' && param.label === 'Cases') {
+                let cases: string[] = [];
+                try {
+                    cases = JSON.parse(value || '[]');
+                    if (!Array.isArray(cases)) cases = [];
+                } catch { cases = []; }
+
+                const addCase = () => {
+                    const newCases = [...cases, `${cases.length}`];
+                    onChange(param.key, JSON.stringify(newCases));
+                };
+                const removeCase = (idx: number) => {
+                    const newCases = cases.filter((_, i) => i !== idx);
+                    onChange(param.key, JSON.stringify(newCases));
+                };
+                const updateCase = (idx: number, val: string) => {
+                    const newCases = [...cases];
+                    newCases[idx] = val;
+                    onChange(param.key, JSON.stringify(newCases));
+                };
+
+                return (
+                    <div className="form-control w-full">
+                        {commonLabel}
+                        <div className="space-y-2 mb-2">
+                            {cases.map((c, i) => (
+                                <div key={i} className="flex gap-2 items-center">
+                                    <div className="text-[10px] font-mono opacity-50 w-4 text-center">{i}</div>
+                                    <input
+                                        className="input input-xs input-bordered flex-1 font-mono"
+                                        value={c}
+                                        onChange={(e) => updateCase(i, e.target.value)}
+                                        placeholder={`Case Value`}
+                                    />
+                                    <button className="btn btn-xs btn-ghost btn-square text-error opacity-50 hover:opacity-100" onClick={() => removeCase(i)}>
+                                        <Trash2 size={12} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                        <button className="btn btn-xs btn-outline btn-dashed w-full gap-2 opacity-60 hover:opacity-100" onClick={addCase}>
+                            <Plus size={12} /> Add Case
+                        </button>
+                    </div>
+                );
+            }
+
             return (
-                <div className="form-control w-full h-[200px]">
+                <div className="form-control w-full h-[300px]">
                     {commonLabel}
                     <div className="h-full border border-base-300 rounded-lg overflow-hidden">
                         <Editor
                             height="100%"
-                            defaultLanguage="json"
-                            value={typeof value === 'object' ? JSON.stringify(value, null, 2) : (value ?? '{}')}
+                            defaultLanguage={param.language || 'json'}
+                            value={typeof value === 'object' ? JSON.stringify(value, null, 2) : (value ?? (param.language ? '' : '{}'))}
                             onChange={(val) => onChange(param.key, val)}
                             options={{
                                 minimap: { enabled: false },
-                                lineNumbers: 'off',
+                                lineNumbers: 'on',
                                 scrollBeyondLastLine: false,
                                 fontSize: 12,
-                                fontFamily: 'monospace',
+                                fontFamily: "'JetBrains Mono', monospace",
                                 automaticLayout: true
                             }}
                             theme={theme === 'dark' ? 'vs-dark' : 'light'}

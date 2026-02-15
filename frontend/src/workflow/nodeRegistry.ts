@@ -7,7 +7,7 @@
 import {
     MousePointerClick, Move, Type, Keyboard, Camera, Clock,
     Search, ImagePlus, Timer, Eye, ScanText, Grid3X3,
-    GitBranch, Repeat, Layers, FileText, Braces
+    GitBranch, Repeat, Layers, FileText, Braces, Code
 } from 'lucide-react';
 import type { FC } from 'react';
 
@@ -38,6 +38,7 @@ export interface ParamSchema {
     options?: { value: string; label: string }[];  // for 'select' type
     min?: number;
     max?: number;
+    language?: string; // For code editors
 }
 // ...
 
@@ -407,21 +408,45 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
                 ]
             },
             { key: 'value', label: 'Value', type: 'expression', required: true, placeholder: '{{ $json.category }}' },
-            // Simplified Cases: Just a list of values? Or dynamic inputs?
-            // For now, let's assume a JSON array of case values for MVP.
-            // A real UI would need a dynamic list builder.
-            { key: 'cases', label: 'Cases (JSON Array)', type: 'json', defaultValue: '["A", "B"]', description: '匹配值列表 (Case 0, Case 1...)' },
+            {
+                key: 'cases',
+                label: 'Cases',
+                type: 'json', // We will interpret this as a string array in the UI
+                defaultValue: '["0", "1"]',
+                description: '匹配值列表 (Case 0, Case 1...)',
+                language: 'json'
+            },
         ],
         outputs: [
             { key: 'output', label: 'Output', type: 'any' },
         ],
         handleConfig: {
             sources: [
-                // Dynamic handles usually handled in component, but we can define defaults
-                // We'll treat this specially in GenericNode
                 { id: 'default', label: 'Default' },
             ],
         },
+    },
+    {
+        type: 'code',
+        label: 'Code in Python',
+        description: '執行自定義 Python 程式碼',
+        category: 'platform',
+        group: 'Custom',
+        color: 'accent',
+        icon: Code,
+        params: [
+            {
+                key: 'code',
+                label: 'Python Code',
+                type: 'json', // Uses editor
+                defaultValue: '# Access input via params["input"]\n# Return result in local variable "result"\nresult = {"data": "Hello"}\n',
+                description: 'Python Code. Available: platform, opencv, params["input"]. Set "result" variable to return data.',
+                language: 'python'
+            },
+        ],
+        outputs: [
+            { key: 'output', label: 'Output', type: 'any' },
+        ],
     },
     {
         type: 'loop',

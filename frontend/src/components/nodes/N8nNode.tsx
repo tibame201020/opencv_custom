@@ -29,7 +29,7 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                 className={clsx(
                     "relative flex flex-col bg-white rounded-lg shadow-sm border transition-all duration-200 z-10 overflow-hidden",
                     selected ? "border-primary ring-2 ring-primary/20 shadow-md" : "border-gray-200 hover:border-gray-300",
-                    isRunning && "border-primary animate-pulse",
+                    isRunning && "n8n-node-running border-primary",
                     isError && "border-error",
                     isDisabled && "opacity-60 grayscale"
                 )}
@@ -150,9 +150,9 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                     try {
                         const cases = typeof caseStr === 'string' ? JSON.parse(caseStr) : caseStr;
                         if (Array.isArray(cases)) {
-                            const caseHandles = cases.map((_: any, i: number) => ({
+                            const caseHandles = cases.map((caseVal: any, i: number) => ({
                                 id: `${i}`,
-                                label: `Case ${i}`
+                                label: typeof caseVal === 'object' ? JSON.stringify(caseVal) : String(caseVal)
                             }));
                             sources = [...caseHandles, { id: 'default', label: 'Default' }];
                         }
