@@ -2,19 +2,20 @@ import React, { useEffect, useState, useCallback } from 'react';
 // import { useTranslation } from 'react-i18next';
 import { useAppStore } from '../store';
 import {
-    LayoutGrid, Plus, Search, ChevronLeft,
+    Smartphone, LayoutGrid, Plus, Search, ChevronLeft,
     Save, Play, X, FileEdit, FolderOpen, FolderMinus, FolderPlus
 } from 'lucide-react';
 
 import { WorkflowView } from './WorkflowView';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { AssetManagerModal } from '../components/AssetManagerModal';
 import { showToast } from '../utils/toast';
 import clsx from 'clsx';
 
 export const WorkflowEditorView: React.FC = () => {
     // const { t } = useTranslation(); // t is unused for now
     const {
-        projects, fetchProjects, apiBaseUrl,
+        projects, fetchProjects, apiBaseUrl, devices,
         projectSelectedId, setProjectSelectedId,
         workflowSelectedId, setWorkflowSelectedId,
         workflowTabs, activeWorkflowTabId,
@@ -33,6 +34,9 @@ export const WorkflowEditorView: React.FC = () => {
     const [isRunning, setIsRunning] = useState(false);
     const [executionState, setExecutionState] = useState<any[]>([]);
 
+    // Device Selection
+    const [selectedDevice, setSelectedDevice] = useState<string>('');
+
     // Rename Modal State
     const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
     const [renameTarget, setRenameTarget] = useState<{ type: 'project' | 'workflow', id: string, name: string } | null>(null);
@@ -41,9 +45,20 @@ export const WorkflowEditorView: React.FC = () => {
     // Delete Confirmation State
     const [deleteTarget, setDeleteTarget] = useState<{ type: 'project' | 'workflow', id: string, name: string } | null>(null);
 
+    // Asset Manager State
+    const [isAssetManagerOpen, setIsAssetManagerOpen] = useState(false);
+    const [assetManagerProject, setAssetManagerProject] = useState<{ id: string, name: string } | null>(null);
+
     useEffect(() => {
         // No global click listener needed anymore if we don't have custom context menu
     }, []);
+
+    // Init selected device
+    useEffect(() => {
+        if (!selectedDevice && devices.length > 0) {
+            setSelectedDevice(devices[0]);
+        }
+    }, [devices, selectedDevice]);
 
 
     const handleCreateProject = async () => {
@@ -252,6 +267,12 @@ export const WorkflowEditorView: React.FC = () => {
         if (!activeWorkflowTabId) return;
         const tab = workflowTabs.find(t => t.id === activeWorkflowTabId);
         if (!tab) return;
+
+        if (!selectedDevice) {
+            showToast("Please select a device first", "error");
+            return;
+        }
+
         setIsRunning(true);
         setExecutionState([]); // Reset visual feedback
         try {
@@ -265,7 +286,8 @@ export const WorkflowEditorView: React.FC = () => {
             });
             saveWorkflowTab(activeWorkflowTabId);
 
-            const res = await fetch(`${apiBaseUrl}/workflows/${tab.workflowId}/run`, {
+            // Pass deviceId query param
+            const res = await fetch(`${apiBaseUrl}/workflows/${tab.workflowId}/run?deviceId=${encodeURIComponent(selectedDevice)}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
             });
@@ -323,7 +345,7 @@ export const WorkflowEditorView: React.FC = () => {
             showToast("Execution error", "error");
             setIsRunning(false);
         }
-    }, [activeWorkflowTabId, workflowTabs, apiBaseUrl]);
+    }, [activeWorkflowTabId, workflowTabs, apiBaseUrl, selectedDevice]);
 
     // Keyboard shortcut
     useEffect(() => {
@@ -408,6 +430,16 @@ export const WorkflowEditorView: React.FC = () => {
                                             >
                                                 <Plus size={14} />
                                                 New Workflow
+                                            </button>
+                                            <button
+                                                className="btn btn-xs btn-ghost gap-1"
+                                                onClick={() => {
+                                                    setAssetManagerProject({ id: project.id, name: project.name });
+                                                    setIsAssetManagerOpen(true);
+                                                }}
+                                            >
+                                                <FolderOpen size={14} /> // Reusing or using ImageIcon
+                                                Assets
                                             </button>
                                             <button
                                                 className="btn btn-xs btn-ghost gap-1"
@@ -512,66 +544,83 @@ export const WorkflowEditorView: React.FC = () => {
 
 
             {/* Main Content Area - Editor (Only if activeTab) */}
-            {activeTab && (
-                <div className="flex-1 flex flex-col h-full overflow-hidden">
-                    {/* Header Toolbar */}
-                    <div className="flex items-center justify-between px-4 h-14 bg-base-100 border-b border-base-300 shrink-0 z-10">
-                        <div className="flex items-center gap-4">
-                            <button
-                                className="btn btn-sm btn-ghost gap-2 text-base-content/60"
-                                onClick={() => {
-                                    setWorkflowSelectedId(null);
-                                    setActiveWorkflowTab('');
-                                }}
-                            >
-                                <ChevronLeft size={16} /> Workflows
-                            </button>
-                            <div className="h-6 w-px bg-base-300" />
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <span className="font-bold text-lg leading-none">{activeTab.name}</span>
-                                    {activeTab.isDirty && <span className="w-2 h-2 rounded-full bg-warning" title="Unsaved changes" />}
+            {
+                activeTab && (
+                    <div className="flex-1 flex flex-col h-full overflow-hidden">
+                        {/* Header Toolbar */}
+                        <div className="flex items-center justify-between px-4 h-14 bg-base-100 border-b border-base-300 shrink-0 z-10">
+                            <div className="flex items-center gap-4">
+                                <button
+                                    className="btn btn-sm btn-ghost gap-2 text-base-content/60"
+                                    onClick={() => {
+                                        setWorkflowSelectedId(null);
+                                        setActiveWorkflowTab('');
+                                    }}
+                                >
+                                    <ChevronLeft size={16} /> Workflows
+                                </button>
+                                <div className="h-6 w-px bg-base-300" />
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-bold text-lg leading-none">{activeTab.name}</span>
+                                        {activeTab.isDirty && <span className="w-2 h-2 rounded-full bg-warning" title="Unsaved changes" />}
+                                    </div>
+                                    <div className="text-[10px] opacity-40 font-bold uppercase tracking-wider leading-none mt-1">
+                                        {activeProject?.name || 'Project'}
+                                    </div>
                                 </div>
-                                <div className="text-[10px] opacity-40 font-bold uppercase tracking-wider leading-none mt-1">
-                                    {activeProject?.name || 'Project'}
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                {/* Device Selector */}
+                                <div className="flex items-center gap-1 bg-base-200 rounded-lg px-2 h-8">
+                                    <Smartphone size={14} className="opacity-50" />
+                                    <select
+                                        className="select select-xs select-ghost focus:outline-none w-[140px] max-w-[140px] text-xs font-mono"
+                                        value={selectedDevice}
+                                        onChange={(e) => setSelectedDevice(e.target.value)}
+                                    >
+                                        {devices.length === 0 && <option value="" disabled>No devices</option>}
+                                        {devices.map(d => (
+                                            <option key={d} value={d}>{d}</option>
+                                        ))}
+                                    </select>
                                 </div>
+
+                                <button
+                                    className={clsx("btn btn-sm gap-2", activeTab.isDirty ? "btn-primary" : "btn-ghost")}
+                                    onClick={handleSave}
+                                    disabled={isSaving}
+                                >
+                                    <Save size={16} />
+                                    {isSaving ? 'Saving...' : 'Save'}
+                                </button>
+                                <button
+                                    className="btn btn-sm btn-success text-white gap-2 shadow-sm"
+                                    onClick={handleRun}
+                                    disabled={isRunning}
+                                >
+                                    {isRunning ? <span className="loading loading-spinner loading-xs" /> : <Play size={16} />}
+                                    {isRunning ? 'Running' : 'Execute'}
+                                </button>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                            <button
-                                className={clsx("btn btn-sm gap-2", activeTab.isDirty ? "btn-primary" : "btn-ghost")}
-                                onClick={handleSave}
-                                disabled={isSaving}
-                            >
-                                <Save size={16} />
-                                {isSaving ? 'Saving...' : 'Save'}
-                            </button>
-                            <button
-                                className="btn btn-sm btn-success text-white gap-2 shadow-sm"
-                                onClick={handleRun}
-                                disabled={isRunning}
-                            >
-                                {isRunning ? <span className="loading loading-spinner loading-xs" /> : <Play size={16} />}
-                                {isRunning ? 'Running' : 'Execute'}
-                            </button>
+                        {/* Workflow Canvas */}
+                        <div className="flex-1 overflow-hidden relative">
+                            <WorkflowView
+                                key={activeTab.id}
+                                tab={activeTab}
+                                onContentChange={(content: string) => updateWorkflowTabContent(activeTab.id, content)}
+                                onRun={handleRun}
+                                isExecuting={isRunning}
+                                executionState={executionState}
+                            />
+
                         </div>
                     </div>
-
-                    {/* Workflow Canvas */}
-                    <div className="flex-1 overflow-hidden relative">
-                        <WorkflowView
-                            key={activeTab.id}
-                            tab={activeTab}
-                            onContentChange={(content: string) => updateWorkflowTabContent(activeTab.id, content)}
-                            onRun={handleRun}
-                            isExecuting={isRunning}
-                            executionState={executionState}
-                        />
-
-                    </div>
-                </div>
-            )}
+                )
+            }
 
             {/* New Project Modal */}
             <dialog className={clsx("modal", isCreateProjectModalOpen && "modal-open")}>
@@ -651,7 +700,6 @@ export const WorkflowEditorView: React.FC = () => {
                 onCancel={() => setDeleteTarget(null)}
             />
 
-            {/* Rename Modal */}
             <dialog className={clsx("modal", isRenameModalOpen && "modal-open")}>
                 <div className="modal-box">
                     <h3 className="font-bold text-lg flex items-center gap-2">
@@ -680,6 +728,17 @@ export const WorkflowEditorView: React.FC = () => {
                     <button onClick={() => setIsRenameModalOpen(false)}>close</button>
                 </form>
             </dialog>
-        </div>
+
+            {
+                assetManagerProject && (
+                    <AssetManagerModal
+                        isOpen={isAssetManagerOpen}
+                        onClose={() => setIsAssetManagerOpen(false)}
+                        projectId={assetManagerProject.id}
+                        projectName={assetManagerProject.name}
+                    />
+                )
+            }
+        </div >
     );
 };

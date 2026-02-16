@@ -137,6 +137,15 @@
 | 4.1 | Python CLI UTF-8 Encoding (CP950) | ✅ | ⬜ | Windows 環境 |
 | 4.2 | Node Discovery 500 Error | ✅ | ⬜ | API 解析修復 |
 
+
+## 6. Project Management
+
+| # | 功能 | 實作狀態 | User 確認 | 備註 |
+|---|------|---------|-----------|------|
+| 6.1 | Project Asset API (Backend) | ✅ | ⬜ | Upload/List/Delete/Serve |
+| 6.2 | Asset Manager UI (Frontend) | 🔄 | ⬜ | **預覽無法顯示 (Windows Path Issue)** |
+| 6.3 | Node Asset Selector | ✅ | ⬜ | `click_image` integration |
+
 ---
 
 ## 5. 待開發 / 規劃中

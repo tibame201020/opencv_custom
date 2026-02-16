@@ -182,6 +182,10 @@ func SetupRouter() *gin.Engine {
 		api.POST("/projects", createProject)
 		api.POST("/projects/:id/rename", renameProject) // NEW
 		api.DELETE("/projects/:id", deleteProject)      // NEW
+		api.POST("/projects/:id/assets", uploadProjectAsset)
+		api.GET("/projects/:id/assets", listProjectAssets)
+		api.GET("/projects/:id/raw-assets/*filename", getProjectAsset) // NEW
+		api.DELETE("/projects/:id/assets/*filename", deleteProjectAsset)
 
 		api.POST("/workflows", createWorkflow)
 		api.GET("/workflows/:id", getWorkflow)
@@ -1351,4 +1355,150 @@ func runWorkflow(c *gin.Context) {
 		logger(fmt.Sprintf("\nExecution complete: %d steps\n", len(result.ExecutionPath)))
 		proc.Logs <- `{"type": "status", "message": "Workflow Execution Complete"}`
 	}()
+}
+
+func listProjectAssets(c *gin.Context) {
+	id := c.Param("id")
+	// Projects are stored in "workflows" dir in current architecture
+	projectRoot := filepath.Join(manager.CorePath, "workflows", id)
+
+	// Ensure root and images dir exist
+	if err := os.MkdirAll(filepath.Join(projectRoot, "images"), 0755); err != nil {
+		c.JSON(500, gin.H{"error": "Failed to create project directory"})
+		return
+	}
+
+	assets := manager.WalkWorkflowDir(projectRoot)
+	c.JSON(200, assets)
+}
+
+func deleteProjectAsset(c *gin.Context) {
+	id := c.Param("id")
+	relPath := c.Param("filename")
+	relPath = filepath.FromSlash(relPath)
+	relPath = strings.TrimLeft(relPath, string(os.PathSeparator))
+
+	projectRoot := filepath.Join(manager.CorePath, "workflows", id)
+	targetPath := filepath.Join(projectRoot, relPath)
+
+	// Security check
+	cleanBase, _ := filepath.Abs(projectRoot)
+	cleanTarget, _ := filepath.Abs(targetPath)
+	if !strings.HasPrefix(cleanTarget, cleanBase) {
+		c.JSON(403, gin.H{"error": "Forbidden"})
+		return
+	}
+
+	if err := os.RemoveAll(targetPath); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"status": "ok"})
+}
+
+func uploadProjectAsset(c *gin.Context) {
+	id := c.Param("id")
+	projectRoot := filepath.Join(manager.CorePath, "workflows", id)
+
+	// Ensure project directory structure exists
+	if err := os.MkdirAll(filepath.Join(projectRoot, "images"), 0755); err != nil {
+		c.JSON(500, gin.H{"error": "Failed to create project directory"})
+		return
+	}
+
+	// 1. Handle JSON/Base64 (Wails/Clipboard compatibility)
+	if strings.Contains(strings.ToLower(c.ContentType()), "application/json") || strings.Contains(strings.ToLower(c.Request.Header.Get("Content-Type")), "application/json") {
+		var req struct {
+			Filename string `json:"filename"`
+			Data     string `json:"data"` // Base64
+			RelPath  string `json:"relPath"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(400, gin.H{"error": "Invalid JSON: " + err.Error()})
+			return
+		}
+
+		data, err := base64.StdEncoding.DecodeString(req.Data)
+		if err != nil {
+			c.JSON(400, gin.H{"error": "Invalid Base64: " + err.Error()})
+			return
+		}
+
+		targetDir := filepath.Join(projectRoot, "images")
+		if req.RelPath != "" {
+			targetDir = filepath.Join(projectRoot, filepath.Dir(req.RelPath))
+		}
+
+		if err := os.MkdirAll(targetDir, 0755); err != nil {
+			c.JSON(500, gin.H{"error": "Failed to create directory"})
+			return
+		}
+
+		filename := filepath.Base(req.Filename)
+		if req.RelPath != "" {
+			filename = filepath.Base(req.RelPath)
+		}
+
+		if err := os.WriteFile(filepath.Join(targetDir, filename), data, 0644); err != nil {
+			c.JSON(500, gin.H{"error": "Failed to save file"})
+			return
+		}
+
+		c.JSON(200, gin.H{"status": "uploaded", "path": "images/" + filename})
+		return
+	}
+
+	// 2. Handle Multipart Form
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(400, gin.H{"error": "No file uploaded"})
+		return
+	}
+
+	// Default to images/ folder
+	targetDir := filepath.Join(projectRoot, "images")
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		c.JSON(500, gin.H{"error": "Failed to create images directory"})
+		return
+	}
+
+	filename := filepath.Base(file.Filename)
+	finalPath := filepath.Join(targetDir, filename)
+
+	if err := c.SaveUploadedFile(file, finalPath); err != nil {
+		c.JSON(500, gin.H{"error": "Failed to save file"})
+		return
+	}
+
+	c.JSON(200, gin.H{"status": "uploaded", "path": "images/" + filename})
+}
+
+func getProjectAsset(c *gin.Context) {
+	id := c.Param("id")
+	relPath := c.Param("filename")
+
+	// Normalize path:
+	// 1. Convert URLs (forward slash) to OS separators (backslashes on Windows)
+	// 2. Trim leading separators to ensure it's treated as relative
+	relPath = filepath.FromSlash(relPath)
+	relPath = strings.TrimLeft(relPath, string(os.PathSeparator))
+
+	projectRoot := filepath.Join(manager.CorePath, "workflows", id)
+	targetPath := filepath.Join(projectRoot, relPath)
+
+	// Security check
+	cleanBase, _ := filepath.Abs(projectRoot)
+	cleanTarget, _ := filepath.Abs(targetPath)
+
+	if !strings.HasPrefix(cleanTarget, cleanBase) {
+		c.JSON(403, gin.H{"error": "Forbidden"})
+		return
+	}
+
+	if _, err := os.Stat(targetPath); os.IsNotExist(err) {
+		c.JSON(404, gin.H{"error": "Asset not found"})
+		return
+	}
+
+	c.File(targetPath)
 }

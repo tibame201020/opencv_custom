@@ -42,6 +42,7 @@ import { ExpressionInput } from '../components/ExpressionInput';
 import { WorkflowSidebar } from '../components/WorkflowSidebar';
 import { N8nNode } from '../components/nodes/N8nNode';
 import { ExecutionInspector } from '../components/ExecutionInspector';
+import { AssetManagerModal } from '../components/AssetManagerModal'; // Import
 import Editor from '@monaco-editor/react';
 
 const PAN_ON_DRAG = [2];
@@ -366,11 +367,12 @@ interface NodeSettingsModalProps {
     nodes: Node[];
     edges: Edge[];
     executionState: any[];
+    projectId?: string; // Add projectId
 }
 
 const NodeSettingsModal: React.FC<NodeSettingsModalProps> = ({
     node, onClose, onConfigChange, onRename, onDelete,
-    expressionModes, onToggleExpression, nodes, edges, executionState
+    expressionModes, onToggleExpression, nodes, edges, executionState, projectId
 }) => {
     if (!node) return null;
     const nodeDef = getNodeDef(node.type || 'click');
@@ -534,6 +536,7 @@ const NodeSettingsModal: React.FC<NodeSettingsModalProps> = ({
                                                     onToggleExpression={() => onToggleExpression(`${node.id}:${param.key}`)}
                                                     nodes={nodes}
                                                     executionState={executionState}
+                                                    projectId={projectId}
                                                 />
                                             ))}
                                         </div>
@@ -608,11 +611,15 @@ interface ParamFieldProps {
     onToggleExpression: () => void;
     nodes: Node[];
     executionState: any[];
+    projectId?: string;
 }
 
 const ParamField: React.FC<ParamFieldProps> = ({
-    param, value, onChange, expressionMode, onToggleExpression, nodes, executionState
+    param, value, onChange, expressionMode, onToggleExpression, nodes, executionState, projectId
 }) => {
+    const { projects } = useAppStore();
+    const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
+    const projectName = useMemo(() => projects.find(p => p.id === projectId)?.name || 'Project', [projects, projectId]);
 
     if (expressionMode) {
         return (
@@ -749,8 +756,34 @@ const ParamField: React.FC<ParamFieldProps> = ({
                             onChange={(e) => onChange(param.key, e.target.value)}
                             placeholder="images/button.png"
                         />
+                        {projectId && (
+                            <button
+                                className="btn btn-sm btn-square"
+                                onClick={() => setIsAssetModalOpen(true)}
+                                title="Select Asset"
+                            >
+                                <Search size={14} />
+                            </button>
+                        )}
                     </div>
                     {param.description && <div className="text-[9px] opacity-30 mt-0.5 pl-1">{param.description}</div>}
+
+                    {projectId && (
+                        <AssetManagerModal
+                            isOpen={isAssetModalOpen}
+                            onClose={() => setIsAssetModalOpen(false)}
+                            projectId={projectId}
+                            projectName={projectName}
+                            onSelect={(path) => {
+                                // Default path is relative to project root?
+                                // AssetManager returns relative path like "images/foo.png" or just "foo.png" inside images?
+                                // Our backend lists relative to project root.
+                                // If lists "images/foo.png", we set that.
+                                onChange(param.key, path);
+                                setIsAssetModalOpen(false);
+                            }}
+                        />
+                    )}
                 </div>
             );
 
@@ -1700,6 +1733,7 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                             nodes={nodes}
                             edges={edges}
                             executionState={executionState}
+                            projectId={tab.projectId}
                         />
                     )}
 
