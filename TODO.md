@@ -143,8 +143,10 @@
 | # | 功能 | 實作狀態 | User 確認 | 備註 |
 |---|------|---------|-----------|------|
 | 6.1 | Project Asset API (Backend) | ✅ | ⬜ | Upload/List/Delete/Serve |
-| 6.2 | Asset Manager UI (Frontend) | 🔄 | ⬜ | **預覽無法顯示 (Windows Path Issue)** |
-| 6.3 | Node Asset Selector | ✅ | ⬜ | `click_image` integration |
+| 6.2 | Asset Manager UI (Frontend) | ✅ | ⬜ | Grid/List View, I18n |
+| 6.3 | Node Asset Selector | ✅ | ⬜ | Read-only input, Preview |
+| 6.4 | Canvas Node Preview | ✅ | ⬜ | Thumbnail in Node |
+| 6.5 | I18n Coverage | ✅ | ⬜ | Asset Manager & Node Props |
 
 ---
 

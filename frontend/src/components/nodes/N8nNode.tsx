@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { getNodeDef } from '../../workflow/nodeRegistry';
+import { useAppStore } from '../../store';
 
 // Separate component for Output Handle to use hooks safely
 const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, nodeId: string, index: number, total: number, type: string }) => {
@@ -129,10 +130,20 @@ const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, 
 };
 
 export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
+    const { apiBaseUrl } = useAppStore();
     const nodeType = (type || (data.nodeType as string) || 'click');
     const def = getNodeDef(nodeType);
     const IconComp = def?.icon;
     const [hovered, setHovered] = useState(false);
+    const [imageError, setImageError] = useState(false);
+
+    // Asset Preview Logic
+    const assetParam = def?.params.find(p => p.type === 'asset');
+    const assetValue = assetParam ? (data.config as any)?.[assetParam.key] : null;
+    const projectId = (data as any).projectId;
+    const previewUrl = assetValue && projectId && !imageError
+        ? `${apiBaseUrl}/projects/${projectId}/raw-assets/${assetValue}`
+        : null;
 
     // Status Logic
     const isRunning = data.status === 'running';
@@ -152,7 +163,7 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
             {/* 1. Node Box (The Interactable Area) */}
             <div
                 className={clsx(
-                    "relative flex items-center justify-center w-24 h-24 bg-white transition-all duration-200 z-10",
+                    "relative flex items-center justify-center w-24 h-24 bg-white transition-all duration-200 z-10 overflow-hidden",
                     isTrigger ? "rounded-l-[36px] rounded-r-lg" : "rounded-lg",
                     selected ? "border-2 border-primary ring-2 ring-primary/20 shadow-md" : "border-[0.5px] border-gray-300 shadow-sm hover:shadow-md hover:border-gray-400",
                     isRunning && "border-primary",
@@ -160,12 +171,22 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                     isDisabled && "opacity-60 grayscale"
                 )}
             >
-                {/* Icon */}
+                {/* Icon or Image Preview */}
                 <div className={clsx(
-                    "transition-transform duration-200 group-hover:scale-110",
-                    `text-${(def?.color as string) || 'gray'}`
+                    "transition-transform duration-200 group-hover:scale-110 flex items-center justify-center",
+                    `text-${(def?.color as string) || 'gray'}`,
+                    previewUrl && "w-full h-full p-2 bg-base-100"
                 )}>
-                    {IconComp ? <IconComp size={32} strokeWidth={1.5} /> : <div className="text-[10px] font-bold">Node</div>}
+                    {previewUrl ? (
+                        <img
+                            src={previewUrl}
+                            alt="Asset"
+                            className="w-full h-full object-contain rounded-sm"
+                            onError={() => setImageError(true)}
+                        />
+                    ) : (
+                        IconComp ? <IconComp size={32} strokeWidth={1.5} /> : <div className="text-[10px] font-bold">Node</div>
+                    )}
                 </div>
 
                 {/* Status Indicator (Top-Right Badge) */}

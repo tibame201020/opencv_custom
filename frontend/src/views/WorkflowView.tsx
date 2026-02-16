@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { v4 as uuidv4 } from 'uuid';
+import { useTranslation } from 'react-i18next';
 import {
     getNodeDef, getDefaultConfig,
     type ParamSchema,
@@ -617,7 +618,8 @@ interface ParamFieldProps {
 const ParamField: React.FC<ParamFieldProps> = ({
     param, value, onChange, expressionMode, onToggleExpression, nodes, executionState, projectId
 }) => {
-    const { projects } = useAppStore();
+    const { t } = useTranslation();
+    const { projects, apiBaseUrl } = useAppStore();
     const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
     const projectName = useMemo(() => projects.find(p => p.id === projectId)?.name || 'Project', [projects, projectId]);
 
@@ -745,27 +747,55 @@ const ParamField: React.FC<ParamFieldProps> = ({
             );
 
         case 'asset':
+            const previewUrl = value && projectId
+                ? `${apiBaseUrl}/projects/${projectId}/raw-assets/${value}`
+                : null;
+
             return (
                 <div className="form-control w-full mb-4">
                     <CommonLabel />
                     <div className="flex gap-1">
-                        <input
-                            type="text"
-                            className="input input-sm input-bordered flex-1 font-mono"
-                            value={value ?? ''}
-                            onChange={(e) => onChange(param.key, e.target.value)}
-                            placeholder="images/button.png"
-                        />
+                        <div className="relative flex-1">
+                            <input
+                                type="text"
+                                className="input input-sm input-bordered w-full font-mono pr-8 cursor-pointer"
+                                value={value ?? ''}
+                                readOnly
+                                placeholder="Select an image..."
+                                onClick={() => projectId && setIsAssetModalOpen(true)}
+                            />
+                            {value && (
+                                <button
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 btn btn-xs btn-ghost btn-circle text-base-content/50 hover:text-base-content/100"
+                                    onClick={(e) => { e.stopPropagation(); onChange(param.key, ''); }}
+                                    title={t('ui.assetManager.delete')}
+                                >
+                                    <X size={12} />
+                                </button>
+                            )}
+                        </div>
                         {projectId && (
                             <button
                                 className="btn btn-sm btn-square"
                                 onClick={() => setIsAssetModalOpen(true)}
-                                title="Select Asset"
+                                title={t('ui.assetManager.select')}
                             >
                                 <Search size={14} />
                             </button>
                         )}
                     </div>
+
+                    {previewUrl && (
+                        <div className="mt-2 relative group rounded-lg overflow-hidden border border-base-300 bg-base-200/50 pattern-checkerboard pattern-opacity-50 h-32 flex items-center justify-center">
+                            <img
+                                src={previewUrl}
+                                alt="Preview"
+                                className="max-w-full max-h-full object-contain"
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                            />
+                        </div>
+                    )}
+
                     {param.description && <div className="text-[9px] opacity-30 mt-0.5 pl-1">{param.description}</div>}
 
                     {projectId && (
@@ -775,10 +805,6 @@ const ParamField: React.FC<ParamFieldProps> = ({
                             projectId={projectId}
                             projectName={projectName}
                             onSelect={(path) => {
-                                // Default path is relative to project root?
-                                // AssetManager returns relative path like "images/foo.png" or just "foo.png" inside images?
-                                // Our backend lists relative to project root.
-                                // If lists "images/foo.png", we set that.
                                 onChange(param.key, path);
                                 setIsAssetModalOpen(false);
                             }}
@@ -1037,6 +1063,7 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                     style: n.style,
                     status,
                     disabled: n.disabled || false,
+                    projectId: tab.projectId,
                 },
             };
         });

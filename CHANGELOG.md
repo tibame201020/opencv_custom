@@ -73,8 +73,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added — 2026-02-16 (Project Asset Management)
 - **Backend / Project**: Implemented Project Asset API (`/projects/:id/assets`) for Upload, List, Delete, and Serve.
-- **Frontend / Project**: Added `Asset Manager` modal (Work in Progress - Preview issue unresolved).
-- **Frontend / Workflow Editor**: Integrated `Asset Selector` for `click_image` nodes.
+- **Frontend / Project**: Added `Asset Manager` modal with Grid/List view toggle and i18n support.
+- **Frontend / Workflow Editor**: Integrated `Asset Selector` for `click_image` nodes with read-only input, clear button, and inline preview.
+- **Frontend / Workflow Editor**: Added Canvas Node Preview (thumbnail) for nodes with asset configurations.
+- **I18n**: Added comprehensive translations for Asset Manager, Node Properties, and UI elements.
 
 ### Fixed — 2026-02-11
 - **Backend**: Fixed Node Discovery API 500 error — Python command execution and output parsing.

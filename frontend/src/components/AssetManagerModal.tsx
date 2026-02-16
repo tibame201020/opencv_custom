@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Upload, Trash2, Image as ImageIcon, RefreshCw } from 'lucide-react';
+import { X, Upload, Trash2, Image as ImageIcon, RefreshCw, Grid, List } from 'lucide-react';
 import { useAppStore } from '../store';
 import clsx from 'clsx';
 import { showToast } from '../utils/toast';
+import { useTranslation } from 'react-i18next';
 
 interface AssetManagerModalProps {
     isOpen: boolean;
@@ -17,17 +18,19 @@ interface AssetFile {
     path: string; // relative path
     isDir: boolean;
     children?: AssetFile[];
+    size?: number; // Backend might send size in future, adding placeholders
+    modTime?: string;
 }
 
 export const AssetManagerModal: React.FC<AssetManagerModalProps> = ({
     isOpen, onClose, projectId, projectName, onSelect
 }) => {
+    const { t } = useTranslation();
     const { apiBaseUrl } = useAppStore();
     const [assets, setAssets] = useState<AssetFile[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
-    // The current backend walk returns a tree. For the grid, we might want to flatten it or show folders.
-    // For simplicity, let's show a flattened list of IMAGES only for now, or traverse the "images" folder.
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
     const fetchAssets = useCallback(async () => {
         setIsLoading(true);
@@ -60,8 +63,6 @@ export const AssetManagerModal: React.FC<AssetManagerModalProps> = ({
             const file = files[i];
             const formData = new FormData();
             formData.append('file', file);
-            // Defaulting to "images" folder at root of project assets
-            // Backend handles this default if relPath is empty
 
             try {
                 const res = await fetch(`${apiBaseUrl}/projects/${projectId}/assets`, {
@@ -75,14 +76,12 @@ export const AssetManagerModal: React.FC<AssetManagerModalProps> = ({
         }
 
         if (successCount > 0) {
-            showToast(`Uploaded ${successCount}/${total} files`, "success");
+            showToast(`${t('ui.common.success')}: ${successCount}/${total}`, "success");
             fetchAssets();
         } else {
-            showToast("Upload failed", "error");
+            showToast(t('ui.common.error'), "error");
         }
     };
-
-
 
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
@@ -100,8 +99,6 @@ export const AssetManagerModal: React.FC<AssetManagerModalProps> = ({
         handleUpload(e.dataTransfer.files);
     };
 
-    // Helper to flatten the tree into a list of images for the Grid View
-    // We strictly look into "images" folder if it exists, or just all images.
     const getAllImages = (nodes: AssetFile[]): AssetFile[] => {
         let images: AssetFile[] = [];
         for (const node of nodes) {
@@ -117,16 +114,12 @@ export const AssetManagerModal: React.FC<AssetManagerModalProps> = ({
         return images;
     };
 
-    // Construct preview URL
     const getPreviewUrl = (path: string) => {
-        // Use the new project asset endpoint
-        // path might be "images/foo.png"
         return `${apiBaseUrl}/projects/${projectId}/raw-assets/${path}`;
     };
 
     const flatImages = getAllImages(assets);
 
-    // Confirmation Modal State
     const [confirmDelete, setConfirmDelete] = useState<{ isOpen: boolean; path: string | null }>({ isOpen: false, path: null });
 
     const handleDeleteClick = (path: string) => {
@@ -139,19 +132,18 @@ export const AssetManagerModal: React.FC<AssetManagerModalProps> = ({
         setConfirmDelete({ isOpen: false, path: null });
 
         try {
-            // Encode path for URL
             const safePath = path.split('/').map(encodeURIComponent).join('/');
             const res = await fetch(`${apiBaseUrl}/projects/${projectId}/assets/${safePath}`, {
                 method: 'DELETE'
             });
             if (res.ok) {
-                showToast("Asset deleted", "success");
+                showToast(t('ui.common.success'), "success");
                 fetchAssets();
             } else {
-                showToast("Failed to delete", "error");
+                showToast(t('ui.common.error'), "error");
             }
         } catch (err) {
-            showToast("Delete error", "error");
+            showToast(t('ui.common.error'), "error");
         }
     };
 
@@ -173,14 +165,31 @@ export const AssetManagerModal: React.FC<AssetManagerModalProps> = ({
                     <div>
                         <h3 className="font-bold text-lg flex items-center gap-2">
                             <ImageIcon className="text-primary" />
-                            Project Assets
+                            {t('ui.assetManager.title')}
                         </h3>
                         <p className="text-xs opacity-50 font-mono">{projectName}</p>
                     </div>
                     <div className="flex items-center gap-2">
+                        <div className="join">
+                            <button
+                                className={clsx("join-item btn btn-sm btn-square", viewMode === 'grid' && "btn-active")}
+                                onClick={() => setViewMode('grid')}
+                                title={t('ui.assetManager.grid')}
+                            >
+                                <Grid size={16} />
+                            </button>
+                            <button
+                                className={clsx("join-item btn btn-sm btn-square", viewMode === 'list' && "btn-active")}
+                                onClick={() => setViewMode('list')}
+                                title={t('ui.assetManager.list')}
+                            >
+                                <List size={16} />
+                            </button>
+                        </div>
+                        <div className="w-px h-6 bg-base-300 mx-1" />
                         <label className="btn btn-primary btn-sm gap-2">
                             <Upload size={16} />
-                            Upload Images
+                            {t('ui.assetManager.upload')}
                             <input
                                 type="file"
                                 multiple
@@ -207,61 +216,107 @@ export const AssetManagerModal: React.FC<AssetManagerModalProps> = ({
                     ) : flatImages.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center opacity-40 border-2 border-dashed border-base-300 rounded-lg">
                             <Upload size={48} className="mb-4" />
-                            <p className="font-bold">No assets found</p>
-                            <p className="text-sm">Drag and drop images here to upload</p>
+                            <p className="font-bold">{t('ui.assetManager.empty')}</p>
+                            <p className="text-sm">{t('ui.assetManager.dropHint')}</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                            {flatImages.map(img => (
-                                <div
-                                    key={img.path}
-                                    className="group relative bg-base-100 rounded-lg shadow-sm border border-base-200 hover:shadow-md transition-all overflow-hidden aspect-square flex flex-col cursor-pointer"
-                                    onClick={() => onSelect?.(img.path)}
-                                >
-                                    {/* Image Preview */}
-                                    <div className="flex-1 relative bg-neutral/5 pattern-checkerboard pattern-opacity-50">
-                                        <img
-                                            src={getPreviewUrl(img.path)}
-                                            alt={img.name}
-                                            className="absolute inset-0 w-full h-full object-contain p-2"
-                                            loading="lazy"
-                                            onError={(e) => {
-                                                (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iY3VycmVudENvbG9yIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgY2xhc3M9Imx1Y2lkZSBsdWNpZGUtaW1hZ2Utb2ZmIj48bGluZSB4MT0iMiIgeTE9IjIiIHgyPSIyMiIgeTI9IjIyIiAvPjxwYXRoIGQ9Ik0xMC40MSAxMC40MWEyIDIgMCAxIDEgMiAyIiAvPjxwYXRoIGQ9Ik0xMy41IDEzLjVMMTYgMTkiIC8+PHBhdGggZD0iTTIxIDE1bC0zLjA4LTMuMDhjLS4xLS4xLS4yNS0uMTUtLjMzLS4wOGwtMS41NyAxLjU3IiAvPjxwYXRoIGQ9Ik0xNy41IDE0TDkgMTkiIC8+PHBhdGggZD0iTTEyIDVIMTVhMiAyIDAgMCAxIDIgMnYyIiAvPjxwYXRoIGQ9Ik0xNCA4aC0yLjQzIiAvPjxwYXRoIGQ9Ik00IDEyYTIgMiAwIDAgMSA4LTEuMjgiIC8+PHBhdGggZD0iTTUgMTVsNC00IiAvPjwvc3ZnPg=='; // Fallback
-                                            }}
-                                        />
-                                    </div>
+                        viewMode === 'grid' ? (
+                            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                {flatImages.map(img => (
+                                    <div
+                                        key={img.path}
+                                        className="group relative bg-base-100 rounded-lg shadow-sm border border-base-200 hover:shadow-md transition-all overflow-hidden aspect-square flex flex-col cursor-pointer"
+                                        onClick={() => onSelect?.(img.path)}
+                                    >
+                                        {/* Image Preview */}
+                                        <div className="flex-1 relative bg-neutral/5 pattern-checkerboard pattern-opacity-50">
+                                            <img
+                                                src={getPreviewUrl(img.path)}
+                                                alt={img.name}
+                                                className="absolute inset-0 w-full h-full object-contain p-2"
+                                                loading="lazy"
+                                                onError={(e) => {
+                                                    (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iY3VycmVudENvbG9yIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgY2xhc3M9Imx1Y2lkZSBsdWNpZGUtaW1hZ2Utb2ZmIj48bGluZSB4MT0iMiIgeTE9IjIiIHgyPSIyMiIgeTI9IjIyIiAvPjxwYXRoIGQ9Ik0xMC40MSAxMC40MWEyIDIgMCAxIDEgMiAyIiAvPjxwYXRoIGQ9Ik0xMy41IDEzLjVMMTYgMTkiIC8+PHBhdGggZD0iTTIxIDE1bC0zLjA4LTMuMDhjLS4xLS4xLS4yNS0uMTUtLjMzLS4wOGwtMS41NyAxLjU3IiAvPjxwYXRoIGQ9Ik0xNy41IDE0TDkgMTkiIC8+PHBhdGggZD0iTTEyIDVIMTVhMiAyIDAgMCAxIDIgMnYyIiAvPjxwYXRoIGQ9Ik0xNCA4aC0yLjQzIiAvPjxwYXRoIGQ9Ik00IDEyYTIgMiAwIDAgMSA4LTEuMjgiIC8+PHBhdGggZD0iTTUgMTVsNC00IiAvPjwvc3ZnPg=='; // Fallback
+                                                }}
+                                            />
+                                        </div>
 
-                                    {/* Footer */}
-                                    <div className="p-2 border-t border-base-200 bg-base-100 text-[10px] font-mono truncate relative">
-                                        {img.name}
-                                    </div>
+                                        {/* Footer */}
+                                        <div className="p-2 border-t border-base-200 bg-base-100 text-[10px] font-mono truncate relative">
+                                            {img.name}
+                                        </div>
 
-                                    {/* Overlay Actions */}
-                                    <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                                        <button
-                                            className="btn btn-xs btn-error btn-square shadow-sm"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDeleteClick(img.path);
-                                            }}
-                                        >
-                                            <Trash2 size={12} />
-                                        </button>
+                                        {/* Overlay Actions */}
+                                        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                            <button
+                                                className="btn btn-xs btn-error btn-square shadow-sm"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDeleteClick(img.path);
+                                                }}
+                                                title={t('ui.assetManager.delete')}
+                                            >
+                                                <Trash2 size={12} />
+                                            </button>
+                                        </div>
+                                        {/* Select indicator if in selection mode */}
+                                        {onSelect && (
+                                            <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 pointer-events-none" />
+                                        )}
                                     </div>
-                                    {/* Select indicator if in selection mode */}
-                                    {onSelect && (
-                                        <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 pointer-events-none" />
-                                    )}
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto bg-base-100 rounded-lg border border-base-200">
+                                <table className="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th></th>
+                                            <th>{t('ui.assetManager.name')}</th>
+                                            <th>{t('ui.assetManager.path')}</th>
+                                            <th className="text-right">{t('ui.assetManager.actions')}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {flatImages.map(img => (
+                                            <tr key={img.path} className="hover cursor-pointer group" onClick={() => onSelect?.(img.path)}>
+                                                <td className="w-12">
+                                                    <div className="avatar">
+                                                        <div className="mask mask-squircle w-8 h-8 bg-base-200">
+                                                            <img
+                                                                src={getPreviewUrl(img.path)}
+                                                                alt={img.name}
+                                                                loading="lazy"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="font-medium text-xs">{img.name}</td>
+                                                <td className="font-mono text-[10px] opacity-60">{img.path}</td>
+                                                <td className="text-right">
+                                                    <button
+                                                        className="btn btn-ghost btn-xs text-error opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDeleteClick(img.path);
+                                                        }}
+                                                    >
+                                                        {t('ui.assetManager.delete')}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )
                     )}
                 </div>
 
                 {/* Footer Drag Hint */}
                 {isDragging && (
                     <div className="absolute inset-0 bg-primary/10 backdrop-blur-sm flex items-center justify-center rounded-xl border-2 border-primary border-dashed z-50">
-                        <div className="text-2xl font-bold text-primary animate-bounce">Drop to Upload</div>
+                        <div className="text-2xl font-bold text-primary animate-bounce">{t('ui.assetManager.dropHint')}</div>
                     </div>
                 )}
 
@@ -269,11 +324,11 @@ export const AssetManagerModal: React.FC<AssetManagerModalProps> = ({
                 {confirmDelete.isOpen && (
                     <div className="modal modal-open">
                         <div className="modal-box">
-                            <h3 className="font-bold text-lg text-error">Delete Asset</h3>
-                            <p className="py-4">Are you sure you want to delete <span className="font-mono font-bold">{confirmDelete.path}</span>?</p>
+                            <h3 className="font-bold text-lg text-error">{t('ui.assetManager.deleteConfirm')}</h3>
+                            <p className="py-4">{t('ui.assetManager.deleteMessage')} <span className="font-mono font-bold">{confirmDelete.path}</span>?</p>
                             <div className="modal-action">
-                                <button className="btn" onClick={() => setConfirmDelete({ isOpen: false, path: null })}>Cancel</button>
-                                <button className="btn btn-error" onClick={handleConfirmDelete}>Delete</button>
+                                <button className="btn" onClick={() => setConfirmDelete({ isOpen: false, path: null })}>{t('ui.assetManager.cancel')}</button>
+                                <button className="btn btn-error" onClick={handleConfirmDelete}>{t('ui.assetManager.delete')}</button>
                             </div>
                         </div>
                     </div>

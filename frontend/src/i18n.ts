@@ -82,6 +82,37 @@ const resources = {
                     "success": "Operation successful",
                     "menu": "Menu",
                     "appTitle": "Platform"
+                },
+                "assetManager": {
+                    "title": "Project Assets",
+                    "upload": "Upload Images",
+                    "grid": "Grid View",
+                    "list": "List View",
+                    "empty": "No assets found",
+                    "dropHint": "Drag and drop images here to upload",
+                    "deleteConfirm": "Delete Asset",
+                    "deleteMessage": "Are you sure you want to delete",
+                    "name": "Name",
+                    "size": "Size",
+                    "type": "Type",
+                    "actions": "Actions",
+                    "path": "Path",
+                    "select": "Select",
+                    "cancel": "Cancel",
+                    "delete": "Delete"
+                },
+                "node": {
+                    "parameters": "Parameters",
+                    "settings": "Settings",
+                    "input": "Input",
+                    "output": "Output",
+                    "execute": "Execute Step",
+                    "delete": "Delete This Node",
+                    "info": "Node Information",
+                    "desc": "Description",
+                    "id": "Node ID",
+                    "typeLabel": "Type",
+                    "noParams": "No parameters to configure for this node."
                 }
             }
         }
@@ -165,6 +196,37 @@ const resources = {
                     "success": "操作成功",
                     "menu": "功能選單",
                     "appTitle": "自動化平台"
+                },
+                "assetManager": {
+                    "title": "專案素材",
+                    "upload": "上傳圖片",
+                    "grid": "網格檢視",
+                    "list": "列表檢視",
+                    "empty": "找不到素材",
+                    "dropHint": "將圖片拖放到此處上傳",
+                    "deleteConfirm": "刪除素材",
+                    "deleteMessage": "確定要刪除",
+                    "name": "名稱",
+                    "size": "大小",
+                    "type": "類型",
+                    "actions": "操作",
+                    "path": "路徑",
+                    "select": "選擇",
+                    "cancel": "取消",
+                    "delete": "刪除"
+                },
+                "node": {
+                    "parameters": "參數設定",
+                    "settings": "詳細設定",
+                    "input": "輸入數據",
+                    "output": "輸出結果",
+                    "execute": "執行步驟",
+                    "delete": "刪除此節點",
+                    "info": "節點資訊",
+                    "desc": "描述",
+                    "id": "節點 ID",
+                    "typeLabel": "類型",
+                    "noParams": "此節點無需設定參數。"
                 }
             }
         }
