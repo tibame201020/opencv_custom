@@ -1,7 +1,7 @@
 import { memo, useState, useRef } from 'react';
 import { Handle, Position, type NodeProps, type Node, useHandleConnections, useStore } from '@xyflow/react';
 import {
-    Check, Loader2, AlertCircle, Play, Eye, EyeOff, Trash2, MoreHorizontal, Plus, AlertTriangle, Zap
+    Check, Loader2, Play, Eye, EyeOff, Trash2, MoreHorizontal, Plus, AlertTriangle, Zap
 } from 'lucide-react';
 import clsx from 'clsx';
 import { getNodeDef } from '../../workflow/nodeRegistry';
@@ -84,8 +84,8 @@ const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, 
                     isConnected ? "border-gray-400 bg-gray-50" : "border-gray-400 hover:border-primary"
                 )}
             >
-                 {/* Inner dot for unconnected state */}
-                 {!isConnected && <div className="w-1.5 h-1.5 bg-gray-400 rounded-full" />}
+                {/* Inner dot for unconnected state */}
+                {!isConnected && <div className="w-1.5 h-1.5 bg-gray-400 rounded-full" />}
 
                 <Handle
                     type="source"
@@ -171,8 +171,8 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
 
                 {/* Icon Section (Left) */}
                 <div className={clsx(
-                    "flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center mr-3 transition-colors",
-                     "bg-gray-50 text-gray-600 border border-gray-100"
+                    "flex-shrink-0 relative w-12 h-12 rounded-xl flex items-center justify-center mr-3 transition-colors",
+                    "bg-gray-50 text-gray-600 border border-gray-100"
                 )}>
                     {data.imagePreview ? (
                         <img
@@ -185,46 +185,46 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                     ) : (
                         IconComp ? <IconComp size={22} strokeWidth={1.5} /> : <div className="text-[9px] font-bold">Node</div>
                     )}
+
+                    {/* Status Badge Overlays (Bottom-Right of Icon) */}
+                    {isSuccess && !isRunning && (
+                        <div className="absolute -bottom-1.5 -right-1.5 w-5 h-5 bg-[#4fcc5d] rounded-full border-2 border-white flex items-center justify-center shadow-sm z-20">
+                            <Check size={10} strokeWidth={4} className="text-white" />
+                        </div>
+                    )}
+                    {isError && !isRunning && (
+                        <div className="absolute -bottom-1.5 -right-1.5 w-5 h-5 bg-[#ff6d5b] rounded-full border-2 border-white flex items-center justify-center shadow-sm z-20">
+                            <span className="text-white text-[10px] font-black leading-none mt-[1px]">!</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Text Section (Right/Middle) */}
                 <div className="flex-1 flex flex-col min-w-0 justify-center h-full py-1">
-                     <span className={clsx(
+                    <span className={clsx(
                         "text-[14px] font-bold truncate leading-tight mb-1",
                         selected ? "text-primary" : "text-gray-900"
                     )}>
                         {(data.label as string) || def?.label || 'Node'}
                     </span>
                     <span className="text-[11px] text-gray-400 truncate font-medium">
-                         {(data.subtitle as string) || def?.description || nodeType}
+                        {(data.subtitle as string) || def?.description || nodeType}
                     </span>
                 </div>
 
-                {/* Status/Warning Indicator (Top-Right inside card) */}
+                {/* Warning Indicator (Top-Right inside card) */}
                 <div className="absolute top-2 right-2 flex gap-1">
                     {isWarning && !isRunning && !isError && (
                         <div className="text-yellow-500" title="Configuration Warning">
                             <AlertTriangle size={14} fill="currentColor" className="text-white stroke-yellow-500" />
                         </div>
                     )}
-                    {isError && (
-                         <div className="text-red-500" title="Error">
-                            <AlertCircle size={14} fill="currentColor" className="text-white stroke-red-500" />
-                        </div>
-                    )}
                 </div>
 
-                {/* Running Spinner overlay on icon or status */}
+                {/* Running Spinner overlay on top right */}
                 {isRunning && (
                     <div className="absolute top-2 right-2 text-primary animate-spin">
                         <Loader2 size={14} />
-                    </div>
-                )}
-
-                {/* Success Check */}
-                {isSuccess && !isRunning && (
-                    <div className="absolute top-2 right-2 text-green-500">
-                         <Check size={14} strokeWidth={4} />
                     </div>
                 )}
 
@@ -232,7 +232,7 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                 {/* Input Handle (Left Edge) */}
                 {!isTrigger && (
                     <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white border border-gray-400 rounded-full z-20 shadow-sm flex items-center justify-center">
-                         <div className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
+                        <div className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
                         <Handle
                             type="target"
                             position={Position.Left}

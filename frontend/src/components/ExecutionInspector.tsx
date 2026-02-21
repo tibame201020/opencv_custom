@@ -185,43 +185,50 @@ export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
                                         const def = getNodeDef(step.nodeType || 'click');
                                         const IconComp = def?.icon;
                                         const isSelected = selectedStep?.nodeId === step.nodeId;
+                                        const isSuccess = step.status === 'success';
+                                        const isError = step.status === 'error';
 
                                         return (
                                             <div
                                                 key={`${step.nodeId}-${index}`}
                                                 className={clsx(
-                                                    "group flex items-center gap-3 px-3 py-2 border-b border-gray-100 cursor-pointer transition-all",
-                                                    isSelected ? "bg-white border-l-[3px] border-l-primary shadow-sm z-10" : "border-l-[3px] border-l-transparent hover:bg-gray-100/50 text-gray-600"
+                                                    "group flex flex-col px-4 py-3 border-b border-gray-100 cursor-pointer transition-all",
+                                                    isSelected ? "bg-white border-l-[4px] border-l-primary shadow-sm z-10" : "border-l-[4px] border-l-transparent hover:bg-white text-gray-600"
                                                 )}
                                                 onClick={() => onSelectNode(step.nodeId)}
                                             >
-                                                {/* Status Icon */}
-                                                <div className={clsx(
-                                                    "w-5 h-5 rounded-full flex items-center justify-center shrink-0 border",
-                                                    step.status === 'success' ? "bg-green-100 border-green-200 text-green-600" :
-                                                        step.status === 'error' ? "bg-red-100 border-red-200 text-red-600" : "bg-blue-100 border-blue-200 text-blue-600"
-                                                )}>
-                                                    {step.status === 'success' ? <Check size={12} strokeWidth={3} /> :
-                                                        step.status === 'error' ? <X size={12} strokeWidth={3} /> :
-                                                            <div className="w-2 h-2 rounded-full bg-current animate-pulse" />}
+                                                <div className="flex items-center gap-3">
+                                                    {/* Status Icon */}
+                                                    <div className={clsx(
+                                                        "w-6 h-6 rounded-md flex items-center justify-center shrink-0 border",
+                                                        isSuccess ? "bg-[#4fcc5d]/10 border-[#4fcc5d]/20 text-[#4fcc5d]" :
+                                                            isError ? "bg-[#ff6d5b]/10 border-[#ff6d5b]/20 text-[#ff6d5b]" : "bg-blue-100 border-blue-200 text-blue-600"
+                                                    )}>
+                                                        {isSuccess ? <Check size={14} strokeWidth={3} /> :
+                                                            isError ? <X size={14} strokeWidth={3} /> :
+                                                                <div className="w-2 h-2 rounded-full bg-current animate-pulse" />}
+                                                    </div>
+
+                                                    {/* Info Node Name */}
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className={clsx("text-sm font-semibold truncate", isSelected ? "text-gray-900" : "text-gray-700")}>
+                                                            {step.nodeName || step.nodeId}
+                                                        </div>
+                                                    </div>
                                                 </div>
 
-                                                {/* Info */}
-                                                <div className="flex-1 min-w-0">
-                                                    <div className={clsx("text-[11px] font-semibold truncate", isSelected ? "text-gray-900" : "text-gray-700")}>
-                                                        {step.nodeName || step.nodeId}
+                                                {/* Details Row */}
+                                                <div className="flex items-center justify-between mt-2 pl-9">
+                                                    <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium tracking-tight">
+                                                        {IconComp && <IconComp size={12} className="opacity-70" />}
+                                                        <span className="truncate max-w-[100px]">{def?.label || 'Node'}</span>
                                                     </div>
-                                                    <div className="flex items-center justify-between mt-0.5">
-                                                        <div className="flex items-center gap-1 text-[10px] text-gray-400">
-                                                            {IconComp && <IconComp size={10} className="opacity-70" />}
-                                                            <span className="truncate max-w-[80px]">{def?.label || 'Node'}</span>
-                                                        </div>
-                                                        {step.duration !== undefined && (
-                                                            <span className="text-[9px] text-gray-300 font-mono">
-                                                                {step.duration}ms
-                                                            </span>
-                                                        )}
-                                                    </div>
+                                                    {step.duration !== undefined && (
+                                                        <span className={clsx("text-xs font-mono tracking-tight", isSuccess ? "text-[#4fcc5d]" : isError ? "text-[#ff6d5b]" : "text-gray-400")}>
+                                                            {isSuccess ? 'Success ' : isError ? 'Error ' : 'Running '}
+                                                            <span className="opacity-80">in {step.duration}ms</span>
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                         );

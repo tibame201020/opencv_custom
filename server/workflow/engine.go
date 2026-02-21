@@ -634,8 +634,10 @@ func createBuiltinExecutor(node *WorkflowNode, bridge *PythonBridge, logger func
 				// Generate N items
 				count := 0
 				switch v := val.(type) {
-				case int: count = v
-				case float64: count = int(v)
+				case int:
+					count = v
+				case float64:
+					count = int(v)
 				}
 				for i := 0; i < count; i++ {
 					items = append(items, map[string]interface{}{"index": i})
@@ -769,7 +771,13 @@ func createBridgeExecutor(nodeType string, rawConfig map[string]interface{}, bri
 
 		var resultItems ExecutionData
 
-		for _, item := range arg.Input {
+		// Platform/Action nodes must execute at least once even with empty input.
+		// If no input items, create one empty item to ensure the bridge call fires.
+		inputList := arg.Input
+		if len(inputList) == 0 {
+			inputList = ExecutionData{{JSON: make(map[string]interface{})}}
+		}
+		for _, item := range inputList {
 			if ctx.Err() != nil {
 				break
 			}

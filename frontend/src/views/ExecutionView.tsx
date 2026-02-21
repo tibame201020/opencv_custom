@@ -177,8 +177,9 @@ export const ExecutionView: React.FC = () => {
             const params = activeTab.params ? JSON.stringify(activeTab.params) : "{}";
 
             const isWorkflow = scriptId.startsWith('workflow:');
+            const deviceId = activeTab.params?.deviceId || '';
             const runUrl = isWorkflow
-                ? `${API_Base}/workflows/${scriptId.split(':')[1]}/run`
+                ? `${API_Base}/workflows/${scriptId.split(':')[1]}/run?deviceId=${encodeURIComponent(deviceId)}`
                 : `${API_Base}/run`;
 
             const res = await fetch(runUrl, {

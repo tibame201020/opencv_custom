@@ -27,7 +27,7 @@ import '@xyflow/react/dist/style.css';
 import { useAppStore, type WorkflowTab } from '../store';
 import {
     Trash2, ChevronDown, X, Plus,
-    Braces, ToggleLeft, Play, Maximize,
+    Braces, ToggleLeft, Play,
     Loader2, Database, Type,
     ZoomIn, ZoomOut, Search, Table, FileJson, FolderOpen
 } from 'lucide-react';
@@ -56,10 +56,10 @@ const DEFAULT_EDGE_OPTIONS = {
 };
 
 /* ============================================================
- *  n8n-Style Hover Edge with Midpoint Toolbar
+ *  n8n-Style Hover Edge with Midpoint Toolbar & Smart execution data
  * ============================================================ */
 const HoverEdge: React.FC<EdgeProps> = (props) => {
-    const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, markerEnd, selected, label } = props;
+    const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, markerEnd, selected, label, data } = props;
     const [hovered, setHovered] = useState(false);
 
     const isForward = targetX > sourceX + 50;
@@ -72,9 +72,24 @@ const HoverEdge: React.FC<EdgeProps> = (props) => {
             sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, borderRadius: 20
         });
 
-    // Check if label indicates true/false branch to color text accordingly
+    // Execution data from edge.data
+    const isExecuted = data?.executed;
+    const isSuccess = data?.isSuccess;
+    // `label` can still override if it's explicitly 'true'/'false' for branches, else use data count
     const isTrue = label === 'true';
     const isFalse = label === 'false';
+    const dataCount = data?.dataCount;
+
+    // Determine Edge Color
+    let edgeColor = style?.stroke || '#cfcfcf'; // Default n8n edge grey
+    if (hovered || selected) edgeColor = '#4fcc5d'; // n8n hover green
+    else if (isExecuted) {
+        if (isSuccess === false) edgeColor = '#ff6d5b'; // n8n error red
+        else edgeColor = '#4fcc5d'; // n8n success green
+    }
+
+    // Determine stroke width
+    let edgeWidth = (hovered || selected) ? 3 : 2;
 
     return (
         <>
@@ -93,26 +108,28 @@ const HoverEdge: React.FC<EdgeProps> = (props) => {
                 markerEnd={markerEnd}
                 style={{
                     ...style,
-                    strokeWidth: (hovered || selected) ? 3 : 2,
-                    stroke: (hovered || selected) ? '#22c55e' : (style?.stroke || '#cbd5e1'),
-                    transition: 'stroke 0.15s, stroke-width 0.15s',
+                    strokeWidth: edgeWidth,
+                    stroke: edgeColor,
+                    transition: 'stroke 0.3s ease, stroke-width 0.15s ease',
                 }}
             />
 
             <EdgeLabelRenderer>
-                {label && label !== 'success' && (
+                {/* Fixed text label (true/false) OR data count pill */}
+                {Boolean(label || (isExecuted && dataCount !== undefined)) && label !== 'success' && (
                     <div
                         className={clsx(
-                            "absolute px-2 py-0.5 rounded-full bg-white border shadow-sm pointer-events-none z-10 text-[10px] font-bold tracking-tight",
-                            isTrue ? "text-green-600 border-green-200 bg-green-50" :
-                                isFalse ? "text-red-600 border-red-200 bg-red-50" :
-                                    "text-gray-500 border-gray-200"
+                            "absolute px-2 py-0.5 rounded-full bg-white border shadow-sm pointer-events-none z-10 text-[10px] font-bold tracking-tight transition-all duration-300",
+                            isTrue ? "text-[#4fcc5d] border-[#4fcc5d]/30 bg-[#4fcc5d]/5" :
+                                isFalse ? "text-[#ff6d5b] border-[#ff6d5b]/30 bg-[#ff6d5b]/5" :
+                                    isExecuted ? "text-gray-500 border-gray-200" :
+                                        "text-gray-400 border-gray-200"
                         )}
                         style={{
                             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY - 15}px)`,
                         }}
                     >
-                        {label}
+                        {typeof label === 'string' ? label : (label !== undefined && label !== null ? String(label) : `${dataCount} item${dataCount === 1 ? '' : 's'}`)}
                     </div>
                 )}
 
@@ -141,7 +158,7 @@ const HoverEdge: React.FC<EdgeProps> = (props) => {
                     </button>
                     <div className="w-px h-3 bg-gray-200" />
                     <button
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-gray-500 hover:bg-red-50 hover:text-red-500 transition-colors"
+                        className="w-6 h-6 rounded-full flex items-center justify-center text-gray-500 hover:bg-red-50 hover:text-[#ff6d5b] transition-colors"
                         title="Delete connection"
                         onClick={(e) => {
                             e.stopPropagation();
@@ -1672,6 +1689,51 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
     const vars = getVars();
     const varEntries = Object.entries(vars);
 
+    // Compute edge execution data
+    const edgesWithData = useMemo(() => {
+        if (!executionState || executionState.length === 0) return edges;
+
+        return edges.map(edge => {
+            // Find execution step for the source node
+            const sourceSteps = executionState.filter((s: any) => s.nodeId === edge.source);
+            if (sourceSteps.length === 0) return edge;
+
+            const lastStep = sourceSteps[sourceSteps.length - 1];
+            const outputMap = lastStep.output || {};
+            // Determine which signal this edge carries
+            const signalRaw = edge.sourceHandle || edge.label || 'success';
+            const signal = String(signalRaw);
+
+            const isExecuted = lastStep.status === 'success' || lastStep.status === 'error';
+            const edgeData = outputMap[signal];
+
+            let isSuccess = lastStep.status === 'success';
+            // If the node errored, and this edge is the default/success path, it shouldn't glow green.
+
+            let dataCount = 0;
+            if (edgeData && Array.isArray(edgeData)) {
+                dataCount = edgeData.length;
+                // If it's a conditional node and this branch wasn't taken, dataCount would be 0
+                // We might want to clear isExecuted if dataCount is 0 for conditional branches to avoid them glowing green when skipped.
+                if (dataCount === 0 && (signal === 'true' || signal === 'false' || signal.match(/^\d+$/))) {
+                    return edge; // Branch not taken
+                }
+            } else if (edgeData) {
+                dataCount = 1;
+            }
+
+            return {
+                ...edge,
+                data: {
+                    ...edge.data,
+                    executed: isExecuted,
+                    isSuccess,
+                    dataCount
+                }
+            };
+        });
+    }, [edges, executionState]);
+
     return (
         <div className="flex-1 flex h-full bg-base-100 overflow-hidden">
             <div className="flex-1 flex relative">
@@ -1679,7 +1741,7 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                 <div className="flex-1 relative">
                     <ReactFlow
                         nodes={nodes}
-                        edges={edges}
+                        edges={edgesWithData}
                         onNodesChange={onNodesChange}
                         onEdgesChange={onEdgesChange}
                         onConnect={onConnect}
@@ -1707,24 +1769,22 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                     >
                         <Background gap={20} size={1} color="#d4d4d8" variant={BackgroundVariant.Dots} style={{ backgroundColor: '#f5f5f5' }} />
 
-                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-4">
+                        <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-3">
                             {onRun && (
                                 <button
                                     className={clsx(
-                                        "btn h-10 min-h-0 text-white border-none shadow-lg rounded-md px-6 gap-2 animate-in fade-in slide-in-from-bottom duration-300 group transition-all",
-                                        isExecuting ? "bg-[#ff6d5a]/70 cursor-not-allowed" : "bg-[#ff6d5a] hover:bg-[#ff6d5a]/90"
+                                        "btn h-10 min-h-0 text-white border-none shadow-lg rounded-md px-6 gap-2 animate-in fade-in slide-in-from-top duration-300 group transition-all",
+                                        isExecuting ? "bg-[#ff6d5b]/70 cursor-not-allowed" : "bg-[#ff6d5b] hover:bg-[#ff6d5b]/90"
                                     )}
                                     disabled={isExecuting}
                                     onClick={onRun}
                                 >
                                     {isExecuting ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} fill="currentColor" className="group-hover:scale-110 transition-transform" />}
-                                    <span className="font-bold text-sm tracking-tight">{isExecuting ? 'Executing...' : 'Execute workflow'}</span>
+                                    <span className="font-bold text-sm tracking-tight">{isExecuting ? 'Executing...' : 'Execute Workflow'}</span>
                                 </button>
                             )}
-                        </div>
 
-                        {/* n8n Style Right Toolbar (Add/Vars) */}
-                        <div className="absolute top-20 right-4 z-10 flex flex-col gap-3">
+                            {/* n8n Style Right Toolbar (Add/Vars) */}
                             <div className="flex flex-col bg-white shadow-lg rounded-xl border border-gray-100 p-1.5 space-y-1">
                                 <button
                                     className="p-2.5 hover:bg-gray-100 text-gray-700 transition-colors rounded-lg tooltip tooltip-left flex items-center justify-center"
@@ -1754,12 +1814,13 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                         </div>
 
                         {/* Zoom Controls (Bottom Left) */}
-                        <div className="absolute bottom-4 left-4 z-10 flex gap-2">
-                            <div className="flex items-center bg-white shadow-md rounded-md border border-gray-200 p-0.5">
-                                <button className="p-1.5 hover:bg-gray-100 text-gray-600 rounded-md transition-colors" onClick={() => fitView()} title="Fit View"><Maximize size={14} /></button>
-                                <div className="w-px h-3 bg-gray-200 mx-0.5" />
-                                <button className="p-1.5 hover:bg-gray-100 text-gray-600 rounded-md transition-colors" onClick={() => zoomOut()}><ZoomOut size={14} /></button>
-                                <button className="p-1.5 hover:bg-gray-100 text-gray-600 rounded-md transition-colors" onClick={() => zoomIn()}><ZoomIn size={14} /></button>
+                        <div className="absolute bottom-6 left-6 z-10 flex gap-2">
+                            <div className="flex items-center bg-white shadow-lg rounded-lg border border-gray-200 p-0.5">
+                                <button className="p-2 hover:bg-gray-100 text-gray-600 rounded-md transition-colors" onClick={() => zoomIn()} title="Zoom In"><ZoomIn size={16} /></button>
+                                <div className="w-px h-4 bg-gray-200 mx-0.5" />
+                                <button className="p-2 hover:bg-gray-100 text-gray-600 rounded-md transition-colors" onClick={() => zoomOut()} title="Zoom Out"><ZoomOut size={16} /></button>
+                                <div className="w-px h-4 bg-gray-200 mx-0.5" />
+                                <button className="p-2 hover:bg-gray-100 text-gray-600 rounded-md transition-colors font-mono text-xs font-bold" onClick={() => fitView()} title="Fit View">Fit</button>
                             </div>
                         </div>
 

@@ -5,6 +5,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed — 2026-02-21 (Execution & UI Fixes)
+- **Workflow Engine (Backend)**: Fixed a bug in `createBridgeExecutor` where platform nodes with empty upstream inputs would silently skip execution. They now correctly execute at least once.
+- **Frontend / Workflow Editor**: Fixed missing `deviceId` query parameter when triggering workflow execution from the frontend UI (`/api/workflows/:id/run`).
+
 ### Added — 2026-02-21 (Node Image Preview)
 - **Frontend / Workflow Canvas**: Nodes with `asset` parameters now display a live image thumbnail inside the node box, replacing the default icon.
 - **Frontend / Properties Panel**: Asset picker shows actual image preview instead of generic icon after selection.

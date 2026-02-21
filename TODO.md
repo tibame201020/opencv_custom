@@ -138,6 +138,13 @@
 | 4.2 | Node Discovery 500 Error | ✅ | ⬜ | API 解析修復 |
 
 
+## 5. Workflow E2E Validation (Next Steps)
+
+| # | 功能 | 實作狀態 | User 確認 | 備註 |
+|---|------|---------|-----------|------|
+| 5.1 | API 建立之 Workflow 節點 UI 同步 | 🔄 | ⬜ | 後端 `GetWorkflow` 需要轉換成 React Flow `content` 格式讓前端正確渲染 |
+| 5.2 | 模擬器 Browser Template 匹配 | 🔄 | ⬜ | `find_image` 找不到 Chrome 圖示，需安裝 Chrome 或調整目標 Browser |
+
 ## 6. Project Management
 
 | # | 功能 | 實作狀態 | User 確認 | 備註 |

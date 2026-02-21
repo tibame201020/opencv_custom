@@ -362,7 +362,6 @@ export const WorkflowEditorView: React.FC = () => {
     }, [handleSave]);
 
     const activeTab = workflowTabs.find(t => t.id === activeWorkflowTabId);
-    const activeProject = activeTab ? projects.find(p => p.id === activeTab.projectId) : null;
 
     // Filter projects by search
     const filteredProjects = searchTerm.trim()
@@ -551,34 +550,36 @@ export const WorkflowEditorView: React.FC = () => {
                     <div className="flex-1 flex flex-col h-full overflow-hidden">
                         {/* Header Toolbar */}
                         <div className="relative flex items-center justify-between px-4 h-14 bg-base-100 border-b border-base-300 shrink-0 z-10">
-                            <div className="flex items-center gap-4">
+                            {/* Left: Breadcrumbs & Back */}
+                            <div className="flex items-center gap-3">
                                 <button
-                                    className="btn btn-sm btn-ghost gap-2 text-base-content/60"
+                                    className="btn btn-sm btn-ghost btn-square text-base-content/60"
                                     onClick={() => {
                                         setWorkflowSelectedId(null);
                                         setActiveWorkflowTab('');
                                     }}
+                                    title="Back to Workflows"
                                 >
-                                    <ChevronLeft size={16} /> Workflows
+                                    <ChevronLeft size={18} />
                                 </button>
-                                <div className="h-6 w-px bg-base-300" />
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-bold text-lg leading-none">{activeTab.name}</span>
+
+                                <div className="flex items-center text-sm font-medium text-base-content/70">
+                                    <span className="cursor-pointer hover:text-primary transition-colors">Personal</span>
+                                    <span className="mx-2 opacity-50">/</span>
+                                    <div className="flex items-center gap-2 text-base-content font-bold">
+                                        <span>{activeTab.name}</span>
                                         {activeTab.isDirty && <span className="w-2 h-2 rounded-full bg-warning" title="Unsaved changes" />}
-                                    </div>
-                                    <div className="text-[10px] opacity-40 font-bold uppercase tracking-wider leading-none mt-1">
-                                        {activeProject?.name || 'Project'}
                                     </div>
                                 </div>
                             </div>
 
                             {/* Center Toggle (n8n style) */}
-                            <div className="absolute left-1/2 -translate-x-1/2 flex bg-base-200 rounded-lg p-1">
-                                <button className="px-3 py-1 text-xs font-bold bg-white shadow-sm rounded-md text-primary transition-all">Editor</button>
-                                <button className="px-3 py-1 text-xs font-bold text-base-content/50 hover:text-base-content/80 transition-all">Executions</button>
+                            <div className="absolute left-1/2 -translate-x-1/2 flex items-center bg-gray-100/50 rounded-lg p-1 border border-gray-200/50">
+                                <button className="px-5 py-1.5 text-xs font-bold bg-white shadow-sm rounded-md text-primary transition-all">Editor</button>
+                                <button className="px-5 py-1.5 text-xs font-bold text-gray-500 hover:text-gray-800 transition-all">Executions</button>
                             </div>
 
+                            {/* Right Actions */}
                             <div className="flex items-center gap-2">
                                 {/* Device Selector */}
                                 <div className="flex items-center gap-1 bg-base-200 rounded-lg px-2 h-8">
