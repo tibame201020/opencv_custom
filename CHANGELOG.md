@@ -5,6 +5,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- **Docs**: Added `doc/go_python_integration.md` documenting the Go-Python bridge architecture and protocol.
+- **Tests**: Added headless integration tests for Go-Python communication (`server/workflow/bridge_integration_test.go`).
+- **Tests**: Added React-Go-Python verification tests (`server/backend/integration_test.go`).
+
 ### Fixed — 2026-02-21 (Execution & UI Fixes)
 - **Workflow Engine (Backend)**: Fixed a bug in `createBridgeExecutor` where platform nodes with empty upstream inputs would silently skip execution. They now correctly execute at least once.
 - **Frontend / Workflow Editor**: Fixed missing `deviceId` query parameter when triggering workflow execution from the frontend UI (`/api/workflows/:id/run`).
