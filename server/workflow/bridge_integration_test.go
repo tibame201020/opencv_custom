@@ -45,30 +45,24 @@ func TestBridgeIntegration(t *testing.T) {
 	root := getRepoRoot(t)
 	corePath := filepath.Join(root, "core")
 	toolsPath := filepath.Join(root, "tools")
-	artifactsDir := filepath.Join(root, "artifacts")
 	adbStubPath := filepath.Join(toolsPath, "adb_stub")
-	adbLogPath := filepath.Join(artifactsDir, "adb_calls.jsonl")
 
-	// Ensure artifacts dir exists
-	os.MkdirAll(artifactsDir, 0755)
-
-	// Truncate adb log
-	os.WriteFile(adbLogPath, []byte{}, 0644)
+	// Use TempDir for log isolation
+	tempDir := t.TempDir()
+	adbLogPath := filepath.Join(tempDir, "adb_calls.jsonl")
 
 	// Verify adb_stub exists
 	if _, err := os.Stat(adbStubPath); os.IsNotExist(err) {
 		t.Fatalf("adb_stub not found at %s", adbStubPath)
 	}
 
-	// Make adb_stub executable (just in case)
+	// Make adb_stub executable
 	os.Chmod(adbStubPath, 0755)
 
-	// Set Environment Variables for the test process
-	// Note: exec.Command inherits os.Environ() by default if Cmd.Env is nil.
-	// Since NewPythonBridge uses exec.CommandContext without setting Env,
-	// we can set env vars in the current process.
+	// Set Environment Variables
 	t.Setenv("ADB_BIN", adbStubPath)
 	t.Setenv("PYTHONPATH", corePath)
+	t.Setenv("ADB_STUB_LOG", adbLogPath)
 
 	// Detect python
 	pythonCmd := "python3"
@@ -85,7 +79,7 @@ func TestBridgeIntegration(t *testing.T) {
 		ctx,
 		pythonCmd,
 		corePath,
-		"entry.py", // entryScript is just for checking mode in NewPythonBridge, effectively unused for bridge script path logic
+		"workflow_bridge.py",
 		"android",
 		"test_device_id",
 	)
@@ -96,7 +90,6 @@ func TestBridgeIntegration(t *testing.T) {
 
 	// 2. Test click_image (Success Case)
 	fmt.Println("Testing click_image...")
-	// We use a fixture template that exists
 	templatePath := filepath.Join(corePath, "test", "fixtures", "template.png")
 
 	resp, err := bridge.Call("click_image", map[string]interface{}{
@@ -120,14 +113,13 @@ func TestBridgeIntegration(t *testing.T) {
 		t.Errorf("Expected clicked=true, got %v", val)
 	}
 
-	// 3. Verify ADB Calls
+	// 3. Verify ADB Calls Order
 	verifyAdbCalls(t, adbLogPath)
 
 	// 4. Test Error Case (Invalid Action)
 	fmt.Println("Testing invalid action...")
 	errResp, err := bridge.Call("invalid_action_xyz", nil)
 	if err != nil {
-		// Bridge.Call might return error if pipe breaks, but here we expect the bridge to stay alive and return error signal
 		t.Fatalf("Call failed: %v", err)
 	}
 	if errResp.Signal != "error" {
@@ -154,15 +146,13 @@ func verifyAdbCalls(t *testing.T, logPath string) {
 		t.Fatal("No ADB calls logged")
 	}
 
-	// We expect at least:
-	// 1. screencap (exec-out screencap -p)
-	// 2. tap (shell input tap x y)
+	screencapIdx := -1
+	tapIdx := -1
 
-	foundScreencap := false
-	foundTap := false
-
-	for _, line := range lines {
-		if line == "" { continue }
+	for i, line := range lines {
+		if line == "" {
+			continue
+		}
 		var call AdbCall
 		if err := json.Unmarshal([]byte(line), &call); err != nil {
 			t.Logf("Invalid JSON in log: %s", line)
@@ -170,18 +160,30 @@ func verifyAdbCalls(t *testing.T, logPath string) {
 		}
 
 		argsStr := strings.Join(call.Args, " ")
+		// Check for screencap
 		if strings.Contains(argsStr, "screencap") {
-			foundScreencap = true
+			if screencapIdx == -1 {
+				screencapIdx = i
+			}
 		}
-		if strings.Contains(argsStr, "input tap") {
-			foundTap = true
+		// Check for input tap
+		if strings.Contains(argsStr, "input") && strings.Contains(argsStr, "tap") {
+			tapIdx = i
 		}
 	}
 
-	if !foundScreencap {
+	if screencapIdx == -1 {
 		t.Error("Did not find 'screencap' in ADB calls")
 	}
-	if !foundTap {
+	if tapIdx == -1 {
 		t.Error("Did not find 'input tap' in ADB calls")
+	}
+
+	if screencapIdx > -1 && tapIdx > -1 {
+		if screencapIdx >= tapIdx {
+			t.Errorf("Order violation: screencap (idx=%d) came after or same as input tap (idx=%d)", screencapIdx, tapIdx)
+		} else {
+			t.Logf("Verified order: screencap (idx=%d) -> input tap (idx=%d)", screencapIdx, tapIdx)
+		}
 	}
 }

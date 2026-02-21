@@ -77,4 +77,5 @@ core/script/custom
 # test reports
 allure-results
 frontend/allure-results
-actionlogsartifacts/
+actionlogs/
+artifacts/

@@ -59,27 +59,24 @@ func TestRunWorkflowIntegration(t *testing.T) {
 	// 1. Setup Environment
 	corePath := filepath.Join(root, "core")
 	toolsPath := filepath.Join(root, "tools")
-	artifactsDir := filepath.Join(root, "artifacts")
 	adbStubPath := filepath.Join(toolsPath, "adb_stub")
-	adbLogPath := filepath.Join(artifactsDir, "adb_calls.jsonl")
 
-	os.MkdirAll(artifactsDir, 0755)
-	os.WriteFile(adbLogPath, []byte{}, 0644)
+	// Use TempDir for log isolation
+	tempDir := t.TempDir()
+	adbLogPath := filepath.Join(tempDir, "adb_calls.jsonl")
+
 	os.Chmod(adbStubPath, 0755)
 
 	t.Setenv("ADB_BIN", adbStubPath)
 	t.Setenv("PYTHONPATH", corePath)
+	t.Setenv("ADB_STUB_LOG", adbLogPath)
 
 	// 2. Init DB
-	dbPath := filepath.Join(os.TempDir(), fmt.Sprintf("test_workflow_%d.db", time.Now().UnixNano()))
+	dbPath := filepath.Join(tempDir, fmt.Sprintf("test_workflow_%d.db", time.Now().UnixNano()))
 	if err := db.Init(dbPath); err != nil {
 		t.Fatalf("Failed to init db: %v", err)
 	}
-	defer os.Remove(dbPath)
-	// Migrate DB schema? db.Init usually does auto-migrate if implemented.
-	// Let's assume schema is created by Init or we need to run migrations.
-	// Looking at db.go might be needed if Init doesn't create tables.
-	// Assuming it does based on app.go usage.
+	// No need to remove dbPath manually, t.TempDir cleans up automatically
 
 	// Verify ADB Stub works manually
 	cmd := exec.Command(adbStubPath, "devices")
@@ -116,7 +113,7 @@ func TestRunWorkflowIntegration(t *testing.T) {
 			"start": {
 				ID:   "start",
 				Name: "Start",
-				Type: "start", // hypothetical start node, or just trigger
+				Type: "start",
 				X:    100,
 				Y:    100,
 			},
@@ -138,7 +135,7 @@ func TestRunWorkflowIntegration(t *testing.T) {
 				ID:         "edge_1",
 				FromNodeID: "start",
 				ToNodeID:   "click_1",
-				Signal:     "success", // or empty if default
+				Signal:     "success",
 			},
 		},
 		StartNodeID: "start",
@@ -182,6 +179,7 @@ func TestRunWorkflowIntegration(t *testing.T) {
 	defer ws.Close()
 
 	done := make(chan struct{})
+	nodeSuccessChan := make(chan bool, 1)
 
 	go func() {
 		defer close(done)
@@ -190,10 +188,29 @@ func TestRunWorkflowIntegration(t *testing.T) {
 			if err != nil {
 				return
 			}
-			t.Logf("[WS] %s", message)
+			msgStr := string(message)
+
+			// Check for node success
+			if strings.Contains(msgStr, "\"type\":\"execution_step\"") {
+				var stepMsg struct {
+					Type string `json:"type"`
+					Data struct {
+						NodeType string `json:"nodeType"`
+						Status   string `json:"status"`
+					} `json:"data"`
+				}
+				if err := json.Unmarshal(message, &stepMsg); err == nil {
+					// Need to check the outer type too because unmarshal might succeed partially
+					if stepMsg.Type == "execution_step" && stepMsg.Data.NodeType == "click_image" && stepMsg.Data.Status == "success" {
+						select {
+						case nodeSuccessChan <- true:
+						default:
+						}
+					}
+				}
+			}
 
 			// Check for completion
-			msgStr := string(message)
 			if strings.Contains(msgStr, "Process exited") {
 				return
 			}
@@ -203,38 +220,60 @@ func TestRunWorkflowIntegration(t *testing.T) {
 	// 9. Wait for done or timeout
 	select {
 	case <-done:
-		// Check logs
+		// Check if we received success signal
+		select {
+		case <-nodeSuccessChan:
+			// Success
+		default:
+			t.Fatal("Workflow finished but click_image node did not report success")
+		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("Timeout waiting for workflow logs")
 	}
 
-	// 10. Verify ADB Calls
-	content, err := os.ReadFile(adbLogPath)
+	// 10. Verify ADB Calls Order
+	verifyAdbCalls(t, adbLogPath)
+}
+
+func verifyAdbCalls(t *testing.T, logPath string) {
+	content, err := os.ReadFile(logPath)
 	if err != nil {
 		t.Fatalf("Failed to read ADB log: %v", err)
 	}
 	t.Logf("ADB Log Content:\n%s", string(content))
 
 	lines := strings.Split(string(content), "\n")
-	foundScreencap := false
-	foundTap := false
+	screencapIdx := -1
+	tapIdx := -1
 
-	for _, line := range lines {
-		if line == "" { continue }
+	for i, line := range lines {
+		if line == "" {
+			continue
+		}
 		// Simple string check is enough if we look for the components
 		if strings.Contains(line, "screencap") {
-			foundScreencap = true
+			if screencapIdx == -1 {
+				screencapIdx = i
+			}
 		}
 		// JSON array: ["input", "tap", ...]
 		if strings.Contains(line, "input") && strings.Contains(line, "tap") {
-			foundTap = true
+			tapIdx = i
 		}
 	}
 
-	if !foundScreencap {
+	if screencapIdx == -1 {
 		t.Error("Did not find 'screencap' in ADB calls")
 	}
-	if !foundTap {
+	if tapIdx == -1 {
 		t.Error("Did not find 'input tap' in ADB calls")
+	}
+
+	if screencapIdx > -1 && tapIdx > -1 {
+		if screencapIdx >= tapIdx {
+			t.Errorf("Order violation: screencap (idx=%d) came after or same as input tap (idx=%d)", screencapIdx, tapIdx)
+		} else {
+			t.Logf("Verified order: screencap (idx=%d) -> input tap (idx=%d)", screencapIdx, tapIdx)
+		}
 	}
 }
