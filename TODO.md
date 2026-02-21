@@ -142,9 +142,11 @@
 
 | # | 功能 | 實作狀態 | User 確認 | 備註 |
 |---|------|---------|-----------|------|
-| 6.1 | Project Asset API (Backend) | ✅ | ⬜ | Upload/List/Delete/Serve |
-| 6.2 | Asset Manager UI (Frontend) | 🔄 | ⬜ | **預覽無法顯示 (Windows Path Issue)** |
-| 6.3 | Node Asset Selector | ✅ | ⬜ | `click_image` integration |
+| 6.1 | Project Asset API (Backend) | ✅ | ⬜ | Path Security & Folder CRUD |
+| 6.2 | Asset Manager UI (Frontend) | ✅ | ⬜ | Folder nav & drag-drop |
+| 6.3 | Node Asset Selector | ✅ | ✅ | Asset Picker UI integration |
+| 6.4 | Project Asset API Boundary Tests| ✅ | ⬜ | Unit tests for filepath security |
+| 6.5 | Node Image Preview (Canvas + Panel) | ✅ | ⬜ | 即時縮圖預覽 & 子資料夾修正 |
 
 ---
 

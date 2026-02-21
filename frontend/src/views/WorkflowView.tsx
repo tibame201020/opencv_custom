@@ -29,7 +29,7 @@ import {
     Trash2, ChevronDown, X, Plus,
     Braces, ToggleLeft, Play, Maximize,
     Loader2, Database, Type,
-    ZoomIn, ZoomOut, Search, Table, FileJson
+    ZoomIn, ZoomOut, Search, Table, FileJson, FolderOpen
 } from 'lucide-react';
 import clsx from 'clsx';
 import { v4 as uuidv4 } from 'uuid';
@@ -617,9 +617,16 @@ interface ParamFieldProps {
 const ParamField: React.FC<ParamFieldProps> = ({
     param, value, onChange, expressionMode, onToggleExpression, nodes, executionState, projectId
 }) => {
-    const { projects } = useAppStore();
+    const { projects, apiBaseUrl } = useAppStore();
     const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
     const projectName = useMemo(() => projects.find(p => p.id === projectId)?.name || 'Project', [projects, projectId]);
+
+    const getAssetUrl = useCallback((path: string) => {
+        if (!path) return '';
+        if (path.startsWith('http') || path.startsWith('data:')) return path;
+        const encodedPath = path.split('/').map(p => encodeURIComponent(p)).join('/');
+        return `${apiBaseUrl}/projects/${projectId}/raw-assets/${encodedPath}`;
+    }, [apiBaseUrl, projectId]);
 
     if (expressionMode) {
         return (
@@ -748,25 +755,42 @@ const ParamField: React.FC<ParamFieldProps> = ({
             return (
                 <div className="form-control w-full mb-4">
                     <CommonLabel />
-                    <div className="flex gap-1">
-                        <input
-                            type="text"
-                            className="input input-sm input-bordered flex-1 font-mono"
-                            value={value ?? ''}
-                            onChange={(e) => onChange(param.key, e.target.value)}
-                            placeholder="images/button.png"
-                        />
-                        {projectId && (
-                            <button
-                                className="btn btn-sm btn-square"
-                                onClick={() => setIsAssetModalOpen(true)}
-                                title="Select Asset"
-                            >
-                                <Search size={14} />
-                            </button>
-                        )}
-                    </div>
-                    {param.description && <div className="text-[9px] opacity-30 mt-0.5 pl-1">{param.description}</div>}
+
+                    {projectId ? (
+                        <div
+                            className="w-full border-2 border-dashed border-base-300 hover:border-primary/50 rounded-xl p-3 cursor-pointer transition-colors bg-base-200/30 flex flex-col items-center justify-center gap-2 group"
+                            onClick={() => setIsAssetModalOpen(true)}
+                        >
+                            {value ? (
+                                <>
+                                    <div className="w-10 h-10 rounded-lg bg-base-200/50 flex items-center justify-center text-primary group-hover:scale-110 transition-transform overflow-hidden shadow-sm border border-base-300">
+                                        <img src={getAssetUrl(value)} alt="Preview" className="w-full h-full object-cover" loading="lazy" draggable={false} />
+                                    </div>
+                                    <div className="text-xs font-mono font-medium text-base-content/80 truncate w-full text-center px-2 mt-1" title={value}>
+                                        {value.split('/').pop() || value}
+                                    </div>
+                                    <div className="text-[10px] text-base-content/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        Click to change asset
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="w-10 h-10 rounded-full bg-base-200 flex items-center justify-center text-base-content/40 group-hover:text-primary group-hover:bg-primary/10 transition-colors">
+                                        <FolderOpen size={18} />
+                                    </div>
+                                    <div className="text-xs font-bold text-base-content/60 group-hover:text-primary transition-colors">
+                                        Select Project Asset
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="text-xs text-error p-2 bg-error/10 rounded-lg font-medium">
+                            Project ID missing. Cannot select assets.
+                        </div>
+                    )}
+
+                    {param.description && <div className="text-[10px] opacity-40 mt-1.5 pl-1 leading-snug">{param.description}</div>}
 
                     {projectId && (
                         <AssetManagerModal
@@ -775,10 +799,6 @@ const ParamField: React.FC<ParamFieldProps> = ({
                             projectId={projectId}
                             projectName={projectName}
                             onSelect={(path) => {
-                                // Default path is relative to project root?
-                                // AssetManager returns relative path like "images/foo.png" or just "foo.png" inside images?
-                                // Our backend lists relative to project root.
-                                // If lists "images/foo.png", we set that.
                                 onChange(param.key, path);
                                 setIsAssetModalOpen(false);
                             }}
@@ -955,8 +975,16 @@ interface WorkflowViewProps {
 }
 
 function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, executionState = EMPTY_ARRAY }: WorkflowViewProps) {
-    const { theme } = useAppStore();
+    const { theme, apiBaseUrl } = useAppStore();
     const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+
+    const getAssetUrl = useCallback((path: string) => {
+        if (!path) return '';
+        if (path.startsWith('http') || path.startsWith('data:')) return path;
+        const encodedPath = path.split('/').map(p => encodeURIComponent(p)).join('/');
+        return `${apiBaseUrl}/projects/${tab.projectId}/raw-assets/${encodedPath}`;
+    }, [apiBaseUrl, tab.projectId]);
+
     const { screenToFlowPosition, zoomIn, zoomOut, fitView } = useReactFlow();
     const [expressionModes, setExpressionModes] = useState<Record<string, boolean>>({});
     const [showRightPanel, setShowRightPanel] = useState(false);
@@ -1025,6 +1053,16 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                 status = lastStep.status;
             }
 
+            let imagePreview = '';
+            if (def?.params) {
+                for (const param of def.params) {
+                    if (param.type === 'asset' && n.config?.[param.key]) {
+                        imagePreview = getAssetUrl(n.config[param.key]);
+                        break;
+                    }
+                }
+            }
+
             return {
                 id: n.id,
                 type: n.type || 'click',
@@ -1037,6 +1075,7 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                     style: n.style,
                     status,
                     disabled: n.disabled || false,
+                    imagePreview,
                 },
             };
         });
@@ -1385,11 +1424,24 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
             const newConfig = { ...(n.data as any).config, [key]: value };
             const entries = Object.entries(newConfig).filter(([, v]) => v !== undefined && v !== '').slice(0, 2);
             const subtitle = entries.map(([k, v]) => `${k}: ${v}`).join(', ');
-            return { ...n, data: { ...n.data as any, config: newConfig, subtitle } };
+
+            // Recompute imagePreview from asset params
+            let imagePreview = '';
+            const def = getNodeDef(n.type || (n.data as any).nodeType || '');
+            if (def?.params) {
+                for (const param of def.params) {
+                    if (param.type === 'asset' && newConfig[param.key]) {
+                        imagePreview = getAssetUrl(newConfig[param.key]);
+                        break;
+                    }
+                }
+            }
+
+            return { ...n, data: { ...n.data as any, config: newConfig, subtitle, imagePreview } };
         };
         setNodes(nds => nds.map(updateNode));
         setSelectedNode(prev => prev ? updateNode(prev) : null);
-    }, [selectedNode, setNodes]);
+    }, [selectedNode, setNodes, getAssetUrl]);
 
     const handleRenameNode = useCallback((newName: string) => {
         if (!selectedNode) return;

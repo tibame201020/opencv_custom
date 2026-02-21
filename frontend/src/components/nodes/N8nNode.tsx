@@ -160,12 +160,25 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                     isDisabled && "opacity-60 grayscale"
                 )}
             >
-                {/* Icon */}
+                {/* Icon or Image Preview */}
                 <div className={clsx(
-                    "transition-transform duration-200 group-hover:scale-110",
-                    `text-${(def?.color as string) || 'gray'}`
+                    "transition-transform duration-200 flex items-center justify-center",
+                    data.imagePreview ? "w-full h-full p-1" : "group-hover:scale-110",
+                    !data.imagePreview && `text-${(def?.color as string) || 'gray'}`
                 )}>
-                    {IconComp ? <IconComp size={32} strokeWidth={1.5} /> : <div className="text-[10px] font-bold">Node</div>}
+                    {data.imagePreview ? (
+                        <div className="w-full h-full rounded-md overflow-hidden bg-base-200 flex items-center justify-center pointer-events-none">
+                            <img
+                                src={data.imagePreview as string}
+                                alt="Node Preview"
+                                className="w-full h-full object-contain"
+                                loading="lazy"
+                                draggable={false}
+                            />
+                        </div>
+                    ) : (
+                        IconComp ? <IconComp size={32} strokeWidth={1.5} /> : <div className="text-[10px] font-bold">Node</div>
+                    )}
                 </div>
 
                 {/* Status Indicator (Top-Right Badge) */}
@@ -235,8 +248,9 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                 )}>
                     {(data.label as string) || def?.label || 'Node'}
                 </span>
+
                 {(data.subtitle || def?.description) && (
-                    <span className="text-[10px] text-gray-400 max-w-full truncate">
+                    <span className="text-[10px] text-gray-400 max-w-full truncate mt-0.5">
                         {(data.subtitle as string) || def?.description}
                     </span>
                 )}

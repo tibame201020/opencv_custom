@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added — 2026-02-21 (Node Image Preview)
+- **Frontend / Workflow Canvas**: Nodes with `asset` parameters now display a live image thumbnail inside the node box, replacing the default icon.
+- **Frontend / Properties Panel**: Asset picker shows actual image preview instead of generic icon after selection.
+- **Frontend / Asset Manager**: Subfolder navigation now works correctly in Node Asset Selection mode (single-select).
+
+### Fixed — 2026-02-21
+- **Frontend / Workflow Canvas**: Image preview now updates immediately on the canvas when changing an asset parameter (no longer requires save & reload).
+- **Frontend / Asset Manager**: Clicking a folder in selection mode navigates into it instead of incorrectly selecting the folder path.
+
+### Added — 2026-02-21 (Asset Manager Enhancements)
+- **Backend / Assets**: Standardized `projectRoot/images` path handling across all asset API operations (list, upload, delete, get, move, copy, rename, mkdir).
+- **Backend / Assets**: Strengthened path traversal security checks for CRUD handlers and implemented comprehensive unit tests.
+- **Frontend / Asset Manager**: Implemented Folder CRUD UI integration (select, delete, rename folders).
+- **Frontend / Asset Manager**: Added Drag-and-Drop functionality allowing assets to be moved into subfolders.
+
 ### Changed — 2026-02-13 (V2 UI Overhaul)
 - **Frontend / Workflow Editor**: Refactored `GenericNode` to 64x64px square shape with rounded corners (n8n V2 style).
 - **Frontend / Workflow Editor**: Moved node labels and descriptions outside and below the node container with transparent backgrounds.
@@ -73,7 +88,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added — 2026-02-16 (Project Asset Management)
 - **Backend / Project**: Implemented Project Asset API (`/projects/:id/assets`) for Upload, List, Delete, and Serve.
-- **Frontend / Project**: Added `Asset Manager` modal (Work in Progress - Preview issue unresolved).
+- **Frontend / Project**: Added `Asset Manager` modal (Fixed preview and upload issues caused by Wails WebView2 FormData stripping bug).
 - **Frontend / Workflow Editor**: Integrated `Asset Selector` for `click_image` nodes.
 
 ### Fixed — 2026-02-11
