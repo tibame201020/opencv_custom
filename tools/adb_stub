@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+import sys
+import json
+import os
+from pathlib import Path
+
+def main():
+    # Calculate repo root based on script location: tools/adb_stub -> ../..
+    script_path = Path(__file__).resolve()
+    repo_root = script_path.parent.parent
+
+    # Ensure artifacts directory exists
+    artifacts_dir = repo_root / "artifacts"
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+
+    log_file = artifacts_dir / "adb_calls.jsonl"
+
+    args = sys.argv[1:]
+
+    # Log the call
+    entry = {"args": args, "cwd": os.getcwd()}
+    with open(log_file, "a") as f:
+        f.write(json.dumps(entry) + "\n")
+
+    # Check for screencap sequence: exec-out -> screencap -> -p
+    try:
+        # Find indices
+        idx_exec = args.index('exec-out')
+        idx_screen = args.index('screencap')
+        idx_p = args.index('-p')
+
+        # Verify order
+        if idx_exec < idx_screen < idx_p:
+            # Match! Return fixture
+            fixture_path = repo_root / "core/test/fixtures/frame.png"
+            if fixture_path.exists():
+                with open(fixture_path, "rb") as img:
+                    sys.stdout.buffer.write(img.read())
+                sys.exit(0)
+            else:
+                sys.stderr.write(f"Stub Error: Fixture not found at {fixture_path}\n")
+                sys.exit(1)
+
+    except ValueError:
+        # One of the keywords missing, not a screencap command
+        pass
+
+    # Default exit code 0 for other commands
+    sys.exit(0)
+
+if __name__ == "__main__":
+    main()
