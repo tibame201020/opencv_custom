@@ -30,7 +30,7 @@ try:
     from service.platform.adb.adb import Adb
     from service.platform.adb.adb_platform import AdbPlatform
     from service.platform.robot.robot_platform import RobotPlatform
-except ImportError as e:
+except (ImportError, KeyError, OSError) as e:
     # Fallback for when dependencies aren't fully set up in this environment
     pass
 

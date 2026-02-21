@@ -18,6 +18,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - **Frontend / Workflow Canvas**: Image preview now updates immediately on the canvas when changing an asset parameter (no longer requires save & reload).
 - **Frontend / Asset Manager**: Clicking a folder in selection mode navigates into it instead of incorrectly selecting the folder path.
 
+### Added — 2026-02-21 (Workflow Runtime Validation)
+- **Tests**: Added `core/test/test_workflow_e2e.py` for headless workflow runtime regression testing.
+- **Tests**: Added `core/test/test_opencv_robustness.py` for validating image matching robustness.
+- **Tools**: Added `tools/adb_stub` to mock ADB behavior for testing without devices.
+- **Docs**: Added `doc/workflow_runtime_audit.md` documenting runtime architecture and risks.
+- **Core**: Updated `core/service/platform/adb/adb.py` to support `ADB_BIN` injection for testing.
+
 ### Added — 2026-02-21 (Asset Manager Enhancements)
 - **Backend / Assets**: Standardized `projectRoot/images` path handling across all asset API operations (list, upload, delete, get, move, copy, rename, mkdir).
 - **Backend / Assets**: Strengthened path traversal security checks for CRUD handlers and implemented comprehensive unit tests.

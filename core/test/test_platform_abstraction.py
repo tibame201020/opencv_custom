@@ -12,7 +12,10 @@ if str(project_root) not in sys.path:
 
 from service.platform.platform_service import PlatformService
 from service.platform.adb.adb_platform import AdbPlatform
-from service.platform.robot.robot_platform import RobotPlatform
+try:
+    from service.platform.robot.robot_platform import RobotPlatform
+except (ImportError, KeyError, OSError):
+    RobotPlatform = None
 from service.core.opencv.open_cv_service import OpenCvService
 from service.core.opencv.dto import MatchPattern, OcrRegion
 from service.platform.adb.adb_key_code import AdbKeyCode
@@ -128,6 +131,7 @@ class TestAdbPlatform:
             assert res is not None
             mock_adb.get_snapshot.assert_called_once()
 
+@pytest.mark.skipif(RobotPlatform is None, reason="RobotPlatform requires GUI environment")
 class TestRobotPlatform:
     @patch('pyautogui.click')
     def test_robot_click(self, mock_click, mock_opencv):

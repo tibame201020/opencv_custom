@@ -155,9 +155,19 @@
 | 6.4 | Project Asset API Boundary Tests| ✅ | ⬜ | Unit tests for filepath security |
 | 6.5 | Node Image Preview (Canvas + Panel) | ✅ | ⬜ | 即時縮圖預覽 & 子資料夾修正 |
 
+## 7. Workflow Runtime Validation (Headless)
+
+| # | 功能 | 實作狀態 | User 確認 | 備註 |
+|---|------|---------|-----------|------|
+| 7.1 | ADB_BIN Injection | ✅ | ⬜ | 支援環境變數注入 |
+| 7.2 | ADB Stub | ✅ | ⬜ | 模擬 screencap/tap |
+| 7.3 | Workflow E2E Regression Test | ✅ | ⬜ | 驗證 Bridge -> Platform -> ADB 閉環 |
+| 7.4 | OpenCV Robustness Test | ✅ | ⬜ | 驗證匹配演算法穩定性 |
+| 7.5 | Runtime Architecture Doc | ✅ | ⬜ | `doc/workflow_runtime_audit.md` |
+
 ---
 
-## 5. 待開發 / 規劃中
+## 8. 待開發 / 規劃中
 
 | # | 功能 | 實作狀態 | User 確認 | 備註 |
 |---|------|---------|-----------|------|

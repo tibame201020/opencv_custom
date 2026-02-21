@@ -20,9 +20,31 @@ class Adb:
 
     def _get_adb_bin(self) -> str:
         """取得 ADB 執行檔路徑"""
+        import os
+        env_bin = os.environ.get("ADB_BIN")
+        if env_bin:
+            return env_bin
+
         from .adb_command import AdbCommand
         # 借用 AdbCommand 的路徑解析邏輯，但去掉尾端空格
         return AdbCommand.DEVICE_LIST._get_adb_platform().strip()
+
+    def _replace_adb_bin(self, command: str) -> str:
+        """替換命令中的 ADB 路徑為 _get_adb_bin() 的結果"""
+        adb_bin = self._get_adb_bin()
+        command = command.strip()
+
+        # 1. 如果是 "adb " 開頭
+        if command.startswith("adb "):
+            return command.replace("adb ", f"{adb_bin} ", 1)
+
+        # 2. 如果是 AdbCommand 產生的預設路徑開頭
+        from .adb_command import AdbCommand
+        default_bin = AdbCommand.DEVICE_LIST._get_adb_platform().strip()
+        if command.startswith(default_bin):
+            return command.replace(default_bin, adb_bin, 1)
+
+        return command
 
     def exec(self, command: str) -> str:
         """
@@ -36,9 +58,8 @@ class Adb:
         """
         adb_bin = self._get_adb_bin()
         
-        # 1. 統一將 "adb " 換成完整的 adb_bin 路徑
-        if command.strip().startswith("adb "):
-            command = command.strip().replace("adb ", f"{adb_bin} ", 1)
+        # 1. 統一將 ADB 路徑替換為當前設定
+        command = self._replace_adb_bin(command)
         
         # 2. 如果有指定 device_id 且命令中還沒有 -s，則注入 -s
         if self.device_id and adb_bin in command and " -s " not in command:
@@ -72,6 +93,8 @@ class Adb:
         """
         try:
             command = AdbCommand.SCREEN_CAP.get_command_with_device(device_id)
+            command = self._replace_adb_bin(command)
+
             result = subprocess.run(
                 command,
                 shell=True,
