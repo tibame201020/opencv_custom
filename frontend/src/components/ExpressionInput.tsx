@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Braces, Search } from 'lucide-react';
+import clsx from 'clsx';
 
 interface ExpressionInputProps {
     value: string;
@@ -107,32 +108,62 @@ export const ExpressionInput: React.FC<ExpressionInputProps> = ({ value, onChang
                         <div className="text-[9px] font-bold uppercase tracking-widest opacity-40 px-2 py-1 mt-2">Nodes</div>
                         {nodes.map(node => {
                             const result = nodeResults.get(node.id);
+                            const nodeLabel = (node.data as any).label || node.id;
+
+                            // Flatten all outputs for easy picking
+                            let outputKeys: string[] = [];
+                            let previewValues: Record<string, string> = {};
+
+                            if (result && typeof result === 'object') {
+                                Object.entries(result).forEach(([, items]: [string, any]) => {
+                                    if (Array.isArray(items) && items.length > 0) {
+                                        const firstItem = items[0].json || items[0];
+                                        if (typeof firstItem === 'object' && firstItem !== null) {
+                                            Object.keys(firstItem).forEach(key => {
+                                                outputKeys.push(key);
+                                                const val = firstItem[key];
+                                                previewValues[key] = typeof val === 'object' ? 'Object' : String(val);
+                                            });
+                                        }
+                                    }
+                                });
+                            }
+
+                            // Deduplicate keys
+                            outputKeys = Array.from(new Set(outputKeys));
+
                             return (
-                                <div key={node.id} className="collapse collapse-arrow rounded-none">
+                                <div key={node.id} className="collapse collapse-arrow rounded-none border-b border-base-200">
                                     <input type="checkbox" className="min-h-0 py-0" /> 
-                                    <div className="collapse-title min-h-0 py-1 px-2 text-xs flex items-center gap-2 hover:bg-base-200" style={{ minHeight: '24px' }}>
-                                        <span className="truncate flex-1">{(node.data as any).label}</span>
+                                    <div className="collapse-title min-h-0 py-2 px-3 text-xs flex items-center gap-2 hover:bg-base-200" style={{ minHeight: '32px' }}>
+                                        <div className={clsx("w-2 h-2 rounded-full shrink-0", result ? "bg-success" : "bg-base-300")} />
+                                        <span className="truncate flex-1 font-bold">{nodeLabel}</span>
                                     </div>
                                     <div className="collapse-content px-0 pb-0">
-                                        <div className="pl-2 space-y-0.5 border-l-2 border-base-200 ml-2 my-1">
-                                            {result && typeof result === 'object' ? (
-                                                Object.keys(result).map(key => (
+                                        <div className="pl-4 pr-1 py-1 space-y-0.5 bg-base-50">
+                                            {outputKeys.length > 0 ? (
+                                                outputKeys.map(key => (
                                                     <button 
                                                         key={key}
-                                                        className="w-full text-left px-2 py-0.5 text-[10px] hover:bg-primary/10 rounded font-mono truncate"
-                                                        onClick={() => insertVariable(`$node["${(node.data as any).label}"].json.${key}`)}
+                                                        className="w-full text-left px-2 py-1.5 hover:bg-white hover:shadow-sm rounded transition-all group"
+                                                        onClick={() => insertVariable(`$node["${nodeLabel}"].json.${key}`)}
                                                     >
-                                                        {key}
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <span className="text-[10px] font-mono text-primary font-bold">{key}</span>
+                                                            <span className="text-[9px] text-base-content/40 truncate italic max-w-[100px]">
+                                                                {previewValues[key]}
+                                                            </span>
+                                                        </div>
                                                     </button>
                                                 ))
                                             ) : (
-                                                <div className="px-2 py-1 text-[9px] opacity-40 italic">No output data</div>
+                                                <div className="px-3 py-2 text-[9px] opacity-40 italic">No output items found</div>
                                             )}
                                              <button 
-                                                className="w-full text-left px-2 py-0.5 text-[10px] hover:bg-primary/10 rounded font-mono truncate opacity-50"
-                                                onClick={() => insertVariable(`$node["${(node.data as any).label}"].json`)}
+                                                className="w-full text-left px-2 py-1.5 hover:bg-white hover:shadow-sm rounded transition-all opacity-40 hover:opacity-100 flex items-center justify-between"
+                                                onClick={() => insertVariable(`$node["${nodeLabel}"].json`)}
                                             >
-                                                (Whole JSON)
+                                                <span className="text-[10px] font-mono">(Whole JSON)</span>
                                             </button>
                                         </div>
                                     </div>

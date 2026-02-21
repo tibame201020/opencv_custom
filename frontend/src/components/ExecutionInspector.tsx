@@ -2,8 +2,7 @@ import React, { useState, useMemo } from 'react';
 import {
     X, Check, Database,
     RotateCcw,
-    Search, Maximize2, Minimize2,
-    ArrowRight
+    Search, Maximize2, Minimize2
 } from 'lucide-react';
 import clsx from 'clsx';
 import { getNodeDef } from '../workflow/nodeRegistry';
@@ -236,22 +235,31 @@ export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
                         {selectedStep ? (
                             <>
                                 {/* Toolbar */}
-                                <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 bg-white shrink-0">
-                                    <div className="flex items-center gap-2">
+                                <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 bg-white shrink-0 h-12">
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex flex-col">
+                                            <span className="text-xs font-bold text-gray-900 leading-none">
+                                                {selectedStep.nodeName || selectedStep.nodeId}
+                                            </span>
+                                            <span className="text-[10px] text-gray-400 font-medium mt-1">
+                                                {selectedStep.status === 'success' ? `Success in ${selectedStep.duration}ms` : 'Failed'}
+                                            </span>
+                                        </div>
+
                                         {/* Tabs */}
-                                        <div className="flex bg-gray-100 p-0.5 rounded-lg">
+                                        <div className="flex bg-gray-100 p-0.5 rounded-lg ml-2">
                                             <button
                                                 className={clsx(
-                                                    "px-3 py-1 text-[11px] font-bold rounded-md transition-all flex items-center gap-1.5",
+                                                    "px-4 py-1 text-[11px] font-bold rounded-md transition-all",
                                                     activeTab === 'input' ? "bg-white text-primary shadow-sm" : "text-gray-500 hover:text-gray-700"
                                                 )}
                                                 onClick={() => setActiveTab('input')}
                                             >
-                                                Input <ArrowRight size={10} className="opacity-50" />
+                                                Input
                                             </button>
                                             <button
                                                 className={clsx(
-                                                    "px-3 py-1 text-[11px] font-bold rounded-md transition-all",
+                                                    "px-4 py-1 text-[11px] font-bold rounded-md transition-all",
                                                     activeTab === 'output' ? "bg-white text-primary shadow-sm" : "text-gray-500 hover:text-gray-700"
                                                 )}
                                                 onClick={() => setActiveTab('output')}
@@ -261,18 +269,18 @@ export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-2">
-                                        <div className="text-[10px] text-gray-400 font-mono">
+                                    <div className="flex items-center gap-3">
+                                        <div className="text-[10px] text-gray-400 font-mono bg-gray-50 px-2 py-1 rounded">
                                             {selectedStep.nodeId}
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Content */}
-                                <div className="flex-1 relative">
+                                <div className="flex-1 relative overflow-hidden">
                                     <DataPreview
                                         data={displayData}
-                                        title={activeTab === 'input' ? 'Input Data' : 'Output Data'}
+                                        // We pass no title as the inspector header already shows info
                                     />
                                 </div>
                             </>

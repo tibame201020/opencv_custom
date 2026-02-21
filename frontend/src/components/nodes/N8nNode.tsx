@@ -146,17 +146,16 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
 
     return (
         <div
-            className="group relative flex flex-col font-sans"
-            style={{ width: '240px' }}
+            className="group relative flex flex-col items-center font-sans"
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
-            {/* 1. Node Card */}
+            {/* 1. Node Icon Container (Square) */}
             <div
                 className={clsx(
-                    "relative flex flex-row items-center w-full h-[80px] bg-white transition-all duration-200 z-10 px-3 py-2",
-                    "rounded-[10px] border-[1.5px]",
-                    selected ? "border-primary ring-1 ring-primary shadow-lg" : "border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300",
+                    "relative flex items-center justify-center w-16 h-16 bg-white transition-all duration-200 z-10",
+                    "rounded-[20px] border-[1.5px]",
+                    selected ? "border-primary ring-2 ring-primary/20 shadow-md" : "border-gray-200 shadow-sm group-hover:shadow-md group-hover:border-gray-300",
                     isRunning && "border-primary shadow-[0_0_0_3px_rgba(255,109,90,0.15)]",
                     isError && "border-red-500 bg-red-50/10",
                     isDisabled && "opacity-60 grayscale bg-gray-50"
@@ -164,69 +163,52 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
             >
                 {/* Trigger Icon Overlay (Lightning Bolt) - if applicable */}
                 {isTrigger && (
-                    <div className="absolute -top-2 left-4 z-20 bg-white border border-gray-200 rounded-full p-0.5 shadow-sm text-yellow-500">
+                    <div className="absolute -top-1 -left-1 z-20 bg-white border border-gray-100 rounded-full p-0.5 shadow-sm text-yellow-500">
                         <Zap size={10} fill="currentColor" />
                     </div>
                 )}
 
-                {/* Icon Section (Left) */}
+                {/* Main Icon */}
                 <div className={clsx(
-                    "flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center mr-3 transition-colors",
-                     "bg-gray-50 text-gray-600 border border-gray-100"
+                    "w-10 h-10 flex items-center justify-center transition-colors overflow-hidden rounded-lg",
+                    `text-${def?.color || 'gray-600'}`
                 )}>
                     {data.imagePreview ? (
                         <img
                             src={data.imagePreview as string}
                             alt="Node Preview"
-                            className="w-full h-full object-contain rounded-lg"
+                            className="w-full h-full object-contain"
                             loading="lazy"
                             draggable={false}
                         />
                     ) : (
-                        IconComp ? <IconComp size={22} strokeWidth={1.5} /> : <div className="text-[9px] font-bold">Node</div>
+                        IconComp ? <IconComp size={32} strokeWidth={1.5} /> : <div className="text-[9px] font-bold">Node</div>
                     )}
                 </div>
 
-                {/* Text Section (Right/Middle) */}
-                <div className="flex-1 flex flex-col min-w-0 justify-center h-full py-1">
-                     <span className={clsx(
-                        "text-[14px] font-bold truncate leading-tight mb-1",
-                        selected ? "text-primary" : "text-gray-900"
-                    )}>
-                        {(data.label as string) || def?.label || 'Node'}
-                    </span>
-                    <span className="text-[11px] text-gray-400 truncate font-medium">
-                         {(data.subtitle as string) || def?.description || nodeType}
-                    </span>
-                </div>
-
-                {/* Status/Warning Indicator (Top-Right inside card) */}
-                <div className="absolute top-2 right-2 flex gap-1">
-                    {isWarning && !isRunning && !isError && (
-                        <div className="text-yellow-500" title="Configuration Warning">
-                            <AlertTriangle size={14} fill="currentColor" className="text-white stroke-yellow-500" />
+                {/* Status Badge (Top-Right overlapping) */}
+                <div className="absolute -top-1.5 -right-1.5 z-20">
+                    {isSuccess && !isRunning && (
+                        <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center text-white shadow-sm ring-2 ring-white">
+                            <Check size={12} strokeWidth={4} />
                         </div>
                     )}
                     {isError && (
-                         <div className="text-red-500" title="Error">
-                            <AlertCircle size={14} fill="currentColor" className="text-white stroke-red-500" />
+                         <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white shadow-sm ring-2 ring-white">
+                            <AlertCircle size={12} strokeWidth={3} />
+                        </div>
+                    )}
+                    {isRunning && (
+                        <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center text-white shadow-sm ring-2 ring-white animate-spin">
+                            <Loader2 size={12} />
+                        </div>
+                    )}
+                    {isWarning && !isRunning && !isError && (
+                         <div className="w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center text-white shadow-sm ring-2 ring-white">
+                            <AlertTriangle size={12} fill="currentColor" className="stroke-white" />
                         </div>
                     )}
                 </div>
-
-                {/* Running Spinner overlay on icon or status */}
-                {isRunning && (
-                    <div className="absolute top-2 right-2 text-primary animate-spin">
-                        <Loader2 size={14} />
-                    </div>
-                )}
-
-                {/* Success Check */}
-                {isSuccess && !isRunning && (
-                    <div className="absolute top-2 right-2 text-green-500">
-                         <Check size={14} strokeWidth={4} />
-                    </div>
-                )}
 
 
                 {/* Input Handle (Left Edge) */}
@@ -274,9 +256,22 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                 })()}
             </div>
 
+            {/* 2. External Labels (Below Node) */}
+            <div className="mt-2 flex flex-col items-center max-w-[120px] text-center pointer-events-none">
+                <span className={clsx(
+                    "text-[13px] font-bold leading-tight line-clamp-2",
+                    selected ? "text-primary" : "text-gray-900"
+                )}>
+                    {(data.label as string) || def?.label || 'Node'}
+                </span>
+                <span className="text-[11px] text-gray-400 font-medium truncate w-full mt-0.5">
+                     {(data.subtitle as string) || def?.description || nodeType}
+                </span>
+            </div>
+
             {/* 3. Floating Toolbar (Above Node) */}
             <div className={clsx(
-                "absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1 rounded-full bg-white shadow-xl border border-gray-100 z-50 transition-all duration-200",
+                "absolute -top-12 left-1/2 -translate-x-1/2 flex items-center gap-2 z-50 transition-all duration-200",
                 (hovered || selected) ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-95 pointer-events-none"
             )}>
                 <button
