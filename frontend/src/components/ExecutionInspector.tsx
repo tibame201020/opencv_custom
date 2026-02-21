@@ -25,7 +25,7 @@ export interface ExecutionStep {
 
 interface ExecutionInspectorProps {
     isOpen: boolean;
-    onClose: () => void;
+    setIsOpen: (isOpen: boolean) => void;
     executionState: ExecutionStep[];
     selectedNodeId?: string | null;
     onSelectNode: (nodeId: string) => void;
@@ -35,7 +35,7 @@ interface ExecutionInspectorProps {
 }
 
 export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
-    isOpen, onClose, executionState, selectedNodeId, onSelectNode, onClear, edges
+    isOpen, setIsOpen, executionState, selectedNodeId, onSelectNode, onClear, edges
 }) => {
     const [activeTab, setActiveTab] = useState<'input' | 'output'>('output');
     const [searchTerm, setSearchTerm] = useState('');
@@ -114,7 +114,7 @@ export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
             {/* Header Bar */}
             <div
                 className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200 shrink-0 h-10 cursor-pointer hover:bg-gray-100 transition-colors"
-                onClick={() => !isOpen && onClose()}
+                onClick={() => setIsOpen(!isOpen)}
             >
                 <div className="flex items-center gap-3">
                     <div className={clsx("w-2.5 h-2.5 rounded-full", executionState.some(s => s.status === 'running') ? "bg-orange-500 animate-pulse" : "bg-green-500")} />
@@ -147,7 +147,7 @@ export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
                     )}
                     <button
                         className="p-1.5 hover:bg-gray-200 rounded text-gray-500 transition-colors"
-                        onClick={(e) => { e.stopPropagation(); onClose(); }}
+                        onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
                     >
                         {isOpen ? <X size={16} /> : <span className="text-xs font-bold text-primary">Show</span>}
                     </button>
@@ -158,9 +158,9 @@ export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
             {isOpen && (
                 <div className="flex-1 flex overflow-hidden">
                     {/* LEFT PANE: Execution List */}
-                    <div className="w-[280px] flex flex-col border-r border-gray-200 bg-gray-50/30 shrink-0">
+                    <div className="w-[250px] flex flex-col border-r border-gray-200 bg-gray-50 shrink-0">
                         {/* Search Bar */}
-                        <div className="p-2 border-b border-gray-100">
+                        <div className="p-2 border-b border-gray-200">
                             <div className="relative">
                                 <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input
@@ -190,16 +190,16 @@ export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
                                             <div
                                                 key={`${step.nodeId}-${index}`}
                                                 className={clsx(
-                                                    "group flex items-center gap-3 px-3 py-2.5 border-b border-gray-50 cursor-pointer transition-all",
-                                                    isSelected ? "bg-white border-l-[3px] border-l-primary shadow-sm" : "border-l-[3px] border-l-transparent hover:bg-gray-100 text-gray-600"
+                                                    "group flex items-center gap-3 px-3 py-2 border-b border-gray-100 cursor-pointer transition-all",
+                                                    isSelected ? "bg-white border-l-[3px] border-l-primary shadow-sm z-10" : "border-l-[3px] border-l-transparent hover:bg-gray-100/50 text-gray-600"
                                                 )}
                                                 onClick={() => onSelectNode(step.nodeId)}
                                             >
                                                 {/* Status Icon */}
                                                 <div className={clsx(
-                                                    "w-6 h-6 rounded-md flex items-center justify-center shrink-0 border",
-                                                    step.status === 'success' ? "bg-green-50 border-green-100 text-green-600" :
-                                                    step.status === 'error' ? "bg-red-50 border-red-100 text-red-600" : "bg-blue-50 border-blue-100 text-blue-600"
+                                                    "w-5 h-5 rounded-full flex items-center justify-center shrink-0 border",
+                                                    step.status === 'success' ? "bg-green-100 border-green-200 text-green-600" :
+                                                    step.status === 'error' ? "bg-red-100 border-red-200 text-red-600" : "bg-blue-100 border-blue-200 text-blue-600"
                                                 )}>
                                                     {step.status === 'success' ? <Check size={12} strokeWidth={3} /> :
                                                      step.status === 'error' ? <X size={12} strokeWidth={3} /> :
@@ -208,17 +208,17 @@ export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
 
                                                 {/* Info */}
                                                 <div className="flex-1 min-w-0">
-                                                    <div className={clsx("text-xs font-bold truncate", isSelected ? "text-gray-900" : "text-gray-700")}>
+                                                    <div className={clsx("text-[11px] font-semibold truncate", isSelected ? "text-gray-900" : "text-gray-700")}>
                                                         {step.nodeName || step.nodeId}
                                                     </div>
-                                                    <div className="flex items-center gap-2 mt-0.5">
-                                                        <div className="flex items-center gap-0.5 text-[10px] text-gray-400 bg-gray-100/50 px-1 rounded">
+                                                    <div className="flex items-center justify-between mt-0.5">
+                                                        <div className="flex items-center gap-1 text-[10px] text-gray-400">
                                                             {IconComp && <IconComp size={10} className="opacity-70" />}
-                                                            <span>{def?.label || 'Node'}</span>
+                                                            <span className="truncate max-w-[80px]">{def?.label || 'Node'}</span>
                                                         </div>
                                                         {step.duration !== undefined && (
-                                                            <span className="text-[9px] text-gray-400 flex items-center gap-0.5">
-                                                                <Clock size={8} /> {step.duration}ms
+                                                            <span className="text-[9px] text-gray-300 font-mono">
+                                                                {step.duration}ms
                                                             </span>
                                                         )}
                                                     </div>

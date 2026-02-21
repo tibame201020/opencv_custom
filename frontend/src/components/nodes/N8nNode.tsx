@@ -1,7 +1,7 @@
 import { memo, useState, useRef } from 'react';
 import { Handle, Position, type NodeProps, type Node, useHandleConnections, useStore } from '@xyflow/react';
 import {
-    Check, Loader2, AlertCircle, Play, Eye, EyeOff, Trash2, MoreHorizontal, Plus
+    Check, Loader2, AlertCircle, Play, Eye, EyeOff, Trash2, MoreHorizontal, Plus, AlertTriangle, Zap
 } from 'lucide-react';
 import clsx from 'clsx';
 import { getNodeDef } from '../../workflow/nodeRegistry';
@@ -51,17 +51,12 @@ const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, 
             });
 
             // We need to dispatch to the handle element itself
-            // The handle component might be a wrapper, ensuring we hit the actual handle div
             const handleEl = handleRef.current.querySelector('.react-flow__handle') || handleRef.current;
             handleEl.dispatchEvent(event);
         }
     };
 
     const onStubMouseUp = (e: React.MouseEvent) => {
-        // Manual Click Detection
-        // If the mouse was released quickly and hasn't moved much, treat it as a click.
-        // This is necessary because we preventDefault on mousedown (killing native click),
-        // and because a drag might have legally started (React Flow "drag") but was intended as a click.
         const duration = Date.now() - clickStartRef.current;
         const dist = Math.sqrt(
             Math.pow(e.clientX - mouseStartRef.current.x, 2) +
@@ -84,8 +79,14 @@ const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, 
             {/* The Handle Dot (Interactable & Visual) */}
             <div
                 ref={handleRef}
-                className="relative w-3.5 h-3.5 rounded-full bg-white border-2 border-gray-300 hover:border-primary hover:scale-110 transition-all shadow-sm cursor-crosshair"
+                className={clsx(
+                    "relative w-3.5 h-3.5 rounded-full bg-white border hover:scale-110 transition-all shadow-sm cursor-crosshair flex items-center justify-center",
+                    isConnected ? "border-gray-400 bg-gray-50" : "border-gray-400 hover:border-primary"
+                )}
             >
+                 {/* Inner dot for unconnected state */}
+                 {!isConnected && <div className="w-1.5 h-1.5 bg-gray-400 rounded-full" />}
+
                 <Handle
                     type="source"
                     position={Position.Right}
@@ -97,7 +98,7 @@ const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, 
             {/* Unconnected STUB (Line + Plus) - Persistent when not connected AND not dragging from it */}
             {!isConnected && !isConnecting && (
                 <div
-                    className="absolute left-[8px] flex items-center pointer-events-none group-hover/stub:pointer-events-auto nodrag"
+                    className="absolute left-[6px] flex items-center pointer-events-none group-hover/stub:pointer-events-auto nodrag opacity-0 group-hover/stub:opacity-100 transition-opacity duration-200 pl-1"
                     onMouseDown={onStubMouseDown}
                     onMouseUp={onStubMouseUp}
                 >
@@ -106,19 +107,19 @@ const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, 
 
                     {/* Plus Button */}
                     <div
-                        className="w-4 h-4 bg-white border border-gray-300 rounded-[2px] flex items-center justify-center text-gray-500 shadow-sm cursor-pointer hover:border-primary hover:text-primary hover:scale-110 transition-all pointer-events-auto"
+                        className="w-5 h-5 bg-white border border-gray-300 rounded-full flex items-center justify-center text-gray-500 shadow-sm cursor-pointer hover:border-primary hover:text-primary hover:scale-110 transition-all pointer-events-auto"
                     >
-                        <Plus size={10} strokeWidth={3} />
+                        <Plus size={12} strokeWidth={3} />
                     </div>
                 </div>
             )}
 
-            {/* Label (Outside Handle to keep it non-draggable/clean) */}
+            {/* Label (Outside Handle) */}
             {source.label && total > 1 && (
                 <div className={clsx(
-                    "absolute right-full mr-5 pointer-events-none whitespace-nowrap text-[10px] font-medium px-1 py-0.5 rounded transition-opacity z-20",
+                    "absolute right-full mr-5 pointer-events-none whitespace-nowrap text-[10px] font-medium px-1.5 py-0.5 rounded transition-opacity z-20",
                     (type === 'if_condition' || type === 'switch')
-                        ? "text-gray-400 bg-white/80 backdrop-blur-sm border border-gray-100 shadow-sm"
+                        ? "text-gray-500 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm"
                         : "bg-gray-800 text-white shadow-md opacity-0 group-hover/stub:opacity-100"
                 )}>
                     {source.label}
@@ -139,80 +140,113 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
     const isSuccess = data.status === 'success';
     const isError = data.status === 'error';
     const isDisabled = !!data.disabled;
+    const isWarning = !!data.warning; // Explicit warning prop
 
-    const isTrigger = def?.group === 'Trigger' || type === 'manual_trigger';
+    const isTrigger = def?.group === 'Trigger' || type === 'manual_trigger' || def?.type === 'start'; // Hypothetical start node check
 
     return (
         <div
-            className="group relative flex flex-col items-center"
-            style={{ width: '120px' }} // Outer container width slightly larger for label
+            className="group relative flex flex-col font-sans"
+            style={{ width: '240px' }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
-            {/* 1. Node Box (The Interactable Area) */}
+            {/* 1. Node Card */}
             <div
                 className={clsx(
-                    "relative flex items-center justify-center w-24 h-24 bg-white transition-all duration-200 z-10",
-                    isTrigger ? "rounded-l-[36px] rounded-r-lg" : "rounded-lg",
-                    selected ? "border-2 border-primary ring-2 ring-primary/20 shadow-md" : "border-[0.5px] border-gray-300 shadow-sm hover:shadow-md hover:border-gray-400",
-                    isRunning && "border-primary",
-                    isError && "border-error",
-                    isDisabled && "opacity-60 grayscale"
+                    "relative flex flex-row items-center w-full h-[80px] bg-white transition-all duration-200 z-10 px-3 py-2",
+                    "rounded-[10px] border-[1.5px]",
+                    selected ? "border-primary ring-1 ring-primary shadow-lg" : "border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300",
+                    isRunning && "border-primary shadow-[0_0_0_3px_rgba(255,109,90,0.15)]",
+                    isError && "border-red-500 bg-red-50/10",
+                    isDisabled && "opacity-60 grayscale bg-gray-50"
                 )}
             >
-                {/* Icon or Image Preview */}
-                <div className={clsx(
-                    "transition-transform duration-200 flex items-center justify-center",
-                    data.imagePreview ? "w-full h-full p-1" : "group-hover:scale-110",
-                    !data.imagePreview && `text-${(def?.color as string) || 'gray'}`
-                )}>
-                    {data.imagePreview ? (
-                        <div className="w-full h-full rounded-md overflow-hidden bg-base-200 flex items-center justify-center pointer-events-none">
-                            <img
-                                src={data.imagePreview as string}
-                                alt="Node Preview"
-                                className="w-full h-full object-contain"
-                                loading="lazy"
-                                draggable={false}
-                            />
-                        </div>
-                    ) : (
-                        IconComp ? <IconComp size={32} strokeWidth={1.5} /> : <div className="text-[10px] font-bold">Node</div>
-                    )}
-                </div>
-
-                {/* Status Indicator (Top-Right Badge) */}
-                {(isRunning || isSuccess || isError) && (
-                    <div className={clsx(
-                        "absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center shadow-sm z-20 border-2 border-white",
-                        isSuccess && "bg-success text-white",
-                        isRunning && "bg-primary text-white",
-                        isError && "bg-error text-white"
-                    )}>
-                        {isSuccess && <Check size={10} strokeWidth={4} />}
-                        {isRunning && <Loader2 size={10} className="animate-spin" />}
-                        {isError && <AlertCircle size={10} strokeWidth={4} />}
+                {/* Trigger Icon Overlay (Lightning Bolt) - if applicable */}
+                {isTrigger && (
+                    <div className="absolute -top-2 left-4 z-20 bg-white border border-gray-200 rounded-full p-0.5 shadow-sm text-yellow-500">
+                        <Zap size={10} fill="currentColor" />
                     </div>
                 )}
 
-                {/* Input Handle (Left) - Receive Only (isConnectableStart={false}) */}
+                {/* Icon Section (Left) */}
+                <div className={clsx(
+                    "flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center mr-3 transition-colors",
+                     "bg-gray-50 text-gray-600 border border-gray-100"
+                )}>
+                    {data.imagePreview ? (
+                        <img
+                            src={data.imagePreview as string}
+                            alt="Node Preview"
+                            className="w-full h-full object-contain rounded-lg"
+                            loading="lazy"
+                            draggable={false}
+                        />
+                    ) : (
+                        IconComp ? <IconComp size={22} strokeWidth={1.5} /> : <div className="text-[9px] font-bold">Node</div>
+                    )}
+                </div>
+
+                {/* Text Section (Right/Middle) */}
+                <div className="flex-1 flex flex-col min-w-0 justify-center h-full py-1">
+                     <span className={clsx(
+                        "text-[14px] font-bold truncate leading-tight mb-1",
+                        selected ? "text-primary" : "text-gray-900"
+                    )}>
+                        {(data.label as string) || def?.label || 'Node'}
+                    </span>
+                    <span className="text-[11px] text-gray-400 truncate font-medium">
+                         {(data.subtitle as string) || def?.description || nodeType}
+                    </span>
+                </div>
+
+                {/* Status/Warning Indicator (Top-Right inside card) */}
+                <div className="absolute top-2 right-2 flex gap-1">
+                    {isWarning && !isRunning && !isError && (
+                        <div className="text-yellow-500" title="Configuration Warning">
+                            <AlertTriangle size={14} fill="currentColor" className="text-white stroke-yellow-500" />
+                        </div>
+                    )}
+                    {isError && (
+                         <div className="text-red-500" title="Error">
+                            <AlertCircle size={14} fill="currentColor" className="text-white stroke-red-500" />
+                        </div>
+                    )}
+                </div>
+
+                {/* Running Spinner overlay on icon or status */}
+                {isRunning && (
+                    <div className="absolute top-2 right-2 text-primary animate-spin">
+                        <Loader2 size={14} />
+                    </div>
+                )}
+
+                {/* Success Check */}
+                {isSuccess && !isRunning && (
+                    <div className="absolute top-2 right-2 text-green-500">
+                         <Check size={14} strokeWidth={4} />
+                    </div>
+                )}
+
+
+                {/* Input Handle (Left Edge) */}
                 {!isTrigger && (
-                    <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white border-2 border-gray-300 rounded-full z-20">
+                    <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white border border-gray-400 rounded-full z-20 shadow-sm flex items-center justify-center">
+                         <div className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
                         <Handle
                             type="target"
                             position={Position.Left}
-                            isConnectableStart={false} // Disable dragging FROM input
+                            isConnectableStart={false}
                             className="!opacity-0 !w-full !h-full !border-0"
                         />
                     </div>
                 )}
 
-                {/* Dynamic Output Handles (Right) */}
+                {/* Output Handles (Right Edge) */}
                 {(() => {
                     const config = def?.handleConfig;
                     let sources = config?.sources || [{ id: 'success', label: 'Success' }];
 
-                    // Special handling for Switch: Add handles for cases
                     if (type === 'switch') {
                         const caseStr = (data as any).config?.cases;
                         try {
@@ -240,25 +274,9 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                 })()}
             </div>
 
-            {/* 2. External Label */}
-            <div className="mt-2 flex flex-col items-center max-w-full">
-                <span className={clsx(
-                    "text-sm font-medium text-center truncate w-full px-1",
-                    selected ? "text-primary" : "text-gray-700"
-                )}>
-                    {(data.label as string) || def?.label || 'Node'}
-                </span>
-
-                {(data.subtitle || def?.description) && (
-                    <span className="text-[10px] text-gray-400 max-w-full truncate mt-0.5">
-                        {(data.subtitle as string) || def?.description}
-                    </span>
-                )}
-            </div>
-
             {/* 3. Floating Toolbar (Above Node) */}
             <div className={clsx(
-                "absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1 rounded-full bg-white shadow-lg border border-gray-100 z-30 transition-all duration-200",
+                "absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1 rounded-full bg-white shadow-xl border border-gray-100 z-50 transition-all duration-200",
                 (hovered || selected) ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-95 pointer-events-none"
             )}>
                 <button

@@ -41,6 +41,7 @@ import {
 import { ExpressionInput } from '../components/ExpressionInput';
 import { WorkflowSidebar } from '../components/WorkflowSidebar';
 import { N8nNode } from '../components/nodes/N8nNode';
+import { StickyNoteNode } from '../components/nodes/StickyNoteNode';
 import { ExecutionInspector } from '../components/ExecutionInspector';
 import { AssetManagerModal } from '../components/AssetManagerModal'; // Import
 import Editor from '@monaco-editor/react';
@@ -71,6 +72,11 @@ const HoverEdge: React.FC<EdgeProps> = (props) => {
             sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, borderRadius: 20
         });
 
+    // Check if label indicates true/false branch to color text accordingly
+    const isTrue = label === 'true';
+    const isFalse = label === 'false';
+    const isCount = label && label.includes('item');
+
     return (
         <>
             <path
@@ -97,7 +103,12 @@ const HoverEdge: React.FC<EdgeProps> = (props) => {
             <EdgeLabelRenderer>
                 {label && label !== 'success' && (
                     <div
-                        className="absolute px-2 py-0.5 rounded-full bg-white border border-gray-200 text-[10px] font-medium text-gray-500 shadow-sm pointer-events-none z-10"
+                        className={clsx(
+                            "absolute px-2 py-0.5 rounded-full bg-white border shadow-sm pointer-events-none z-10 text-[10px] font-bold tracking-tight",
+                            isTrue ? "text-green-600 border-green-200 bg-green-50" :
+                                isFalse ? "text-red-600 border-red-200 bg-red-50" :
+                                    "text-gray-500 border-gray-200"
+                        )}
                         style={{
                             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY - 15}px)`,
                         }}
@@ -152,9 +163,13 @@ const edgeTypes = {
     hover: HoverEdge,
 };
 
-const nodeTypes: Record<string, any> = {};
+const nodeTypes: Record<string, any> = {
+    sticky_note: StickyNoteNode,
+};
 NODE_DEFINITIONS.forEach(def => {
-    nodeTypes[def.type] = N8nNode;
+    if (def.type !== 'sticky_note') {
+        nodeTypes[def.type] = N8nNode;
+    }
 });
 
 const EMPTY_ARRAY: any[] = [];
@@ -1092,13 +1107,30 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
         return edgeArr.map((e: any) => {
             const { stroke, strokeWidth } = e.style || {};
 
-            const sourceSignal = completedNodes.get(e.fromNodeId || e.source);
+            const sourceNodeId = e.fromNodeId || e.source;
             const edgeSignal = e.signal || 'success';
 
-            const isTraversed = sourceSignal && (
-                sourceSignal === edgeSignal ||
-                (edgeSignal === 'success' && sourceSignal === 'success')
-            );
+            // Find execution step for source node
+            const sourceStep = executionState.slice().reverse().find(s => s.nodeId === sourceNodeId);
+
+            // Check traversal based on output signals in the step
+            let isTraversed = false;
+            let itemCount = 0;
+
+            if (sourceStep && sourceStep.output) {
+                // If edge signal is specific (e.g., 'true', 'false', 'loop'), check if it exists in output
+                // If edge signal is 'success' (default), check if 'success' exists OR if it's the only output?
+                // n8n usually maps 'main' output to 'success'.
+
+                if (sourceStep.output[edgeSignal]) {
+                    isTraversed = true;
+                    itemCount = sourceStep.output[edgeSignal].length;
+                } else if (edgeSignal === 'success' && sourceStep.output['main']) {
+                     // specific case for main?
+                     isTraversed = true;
+                     itemCount = sourceStep.output['main'].length;
+                }
+            }
 
             let edgeColor = stroke || '#9ca3af'; // Gray-400
             let animated = isExecuting;
@@ -1106,9 +1138,17 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
 
             if (isTraversed) {
                 if (e.signal === 'false') edgeColor = '#ef4444'; // Red for false
-                else edgeColor = '#22c55e'; // Green for true/success
+                else if (e.signal === 'true') edgeColor = '#22c55e'; // Green for true
+                else edgeColor = '#22c55e'; // Default success green
+
                 animated = false;
-                if (label === 'success') label = '1 item'; // Mock count
+
+                // Set Label
+                if (e.signal === 'true' || e.signal === 'false') {
+                    label = e.signal;
+                } else {
+                    label = `${itemCount} item${itemCount !== 1 ? 's' : ''}`;
+                }
             } else if (isExecuting) {
                 edgeColor = '#ff6d5a';
             }
@@ -1668,18 +1708,18 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                     >
                         <Background gap={20} size={1} color="#d4d4d8" variant={BackgroundVariant.Dots} style={{ backgroundColor: '#f5f5f5' }} />
 
-                        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-4">
+                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-4">
                             {onRun && (
                                 <button
                                     className={clsx(
-                                        "btn btn-lg text-white border-none shadow-xl rounded-full px-8 gap-3 animate-in fade-in slide-in-from-bottom duration-300 group transition-all",
-                                        isExecuting ? "bg-primary/50 cursor-not-allowed" : "bg-primary hover:bg-primary-focus"
+                                        "btn h-10 min-h-0 text-white border-none shadow-lg rounded-md px-6 gap-2 animate-in fade-in slide-in-from-bottom duration-300 group transition-all",
+                                        isExecuting ? "bg-[#ff6d5a]/70 cursor-not-allowed" : "bg-[#ff6d5a] hover:bg-[#ff6d5a]/90"
                                     )}
                                     disabled={isExecuting}
                                     onClick={onRun}
                                 >
-                                    {isExecuting ? <Loader2 size={20} className="animate-spin" /> : <Play size={20} fill="currentColor" className="group-hover:scale-110 transition-transform" />}
-                                    <span className="font-bold tracking-tight">{isExecuting ? 'Executing...' : 'Execute workflow'}</span>
+                                    {isExecuting ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} fill="currentColor" className="group-hover:scale-110 transition-transform" />}
+                                    <span className="font-bold text-sm tracking-tight">{isExecuting ? 'Executing...' : 'Execute workflow'}</span>
                                 </button>
                             )}
                         </div>
@@ -1715,12 +1755,12 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                         </div>
 
                         {/* Zoom Controls (Bottom Left) */}
-                        <div className="absolute bottom-16 left-8 z-10 flex gap-2">
-                            <div className="flex items-center bg-white shadow-lg rounded-xl border border-gray-100 p-1">
-                                <button className="p-2 hover:bg-gray-100 text-gray-500 rounded-lg" onClick={() => fitView()} title="Fit View"><Maximize size={18} /></button>
-                                <div className="w-px h-4 bg-gray-200 mx-1" />
-                                <button className="p-2 hover:bg-gray-100 text-gray-500 rounded-lg" onClick={() => zoomOut()}><ZoomOut size={18} /></button>
-                                <button className="p-2 hover:bg-gray-100 text-gray-500 rounded-lg" onClick={() => zoomIn()}><ZoomIn size={18} /></button>
+                        <div className="absolute bottom-4 left-4 z-10 flex gap-2">
+                            <div className="flex items-center bg-white shadow-md rounded-md border border-gray-200 p-0.5">
+                                <button className="p-1.5 hover:bg-gray-100 text-gray-600 rounded-md transition-colors" onClick={() => fitView()} title="Fit View"><Maximize size={14} /></button>
+                                <div className="w-px h-3 bg-gray-200 mx-0.5" />
+                                <button className="p-1.5 hover:bg-gray-100 text-gray-600 rounded-md transition-colors" onClick={() => zoomOut()}><ZoomOut size={14} /></button>
+                                <button className="p-1.5 hover:bg-gray-100 text-gray-600 rounded-md transition-colors" onClick={() => zoomIn()}><ZoomIn size={14} /></button>
                             </div>
                         </div>
 
@@ -1792,7 +1832,7 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                     {/* Execution Inspector */}
                     <ExecutionInspector
                         isOpen={isInspectorOpen}
-                        onClose={() => setIsInspectorOpen(false)}
+                        setIsOpen={setIsInspectorOpen}
                         executionState={executionState}
                         selectedNodeId={selectedNode?.id}
                         onSelectNode={(id) => {
