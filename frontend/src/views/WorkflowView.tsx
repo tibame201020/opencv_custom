@@ -1703,18 +1703,18 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                     >
                         <Background gap={20} size={1} color="#d4d4d8" variant={BackgroundVariant.Dots} style={{ backgroundColor: '#f5f5f5' }} />
 
-                        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-4">
+                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-4">
                             {onRun && (
                                 <button
                                     className={clsx(
-                                        "btn btn-lg text-white border-none shadow-xl rounded-full px-8 gap-3 animate-in fade-in slide-in-from-bottom duration-300 group transition-all",
-                                        isExecuting ? "bg-primary/50 cursor-not-allowed" : "bg-primary hover:bg-primary-focus"
+                                        "btn h-10 min-h-0 text-white border-none shadow-lg rounded-md px-6 gap-2 animate-in fade-in slide-in-from-bottom duration-300 group transition-all",
+                                        isExecuting ? "bg-[#ff6d5a]/70 cursor-not-allowed" : "bg-[#ff6d5a] hover:bg-[#ff6d5a]/90"
                                     )}
                                     disabled={isExecuting}
                                     onClick={onRun}
                                 >
-                                    {isExecuting ? <Loader2 size={20} className="animate-spin" /> : <Play size={20} fill="currentColor" className="group-hover:scale-110 transition-transform" />}
-                                    <span className="font-bold tracking-tight">{isExecuting ? 'Executing...' : 'Execute workflow'}</span>
+                                    {isExecuting ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} fill="currentColor" className="group-hover:scale-110 transition-transform" />}
+                                    <span className="font-bold text-sm tracking-tight">{isExecuting ? 'Executing...' : 'Execute workflow'}</span>
                                 </button>
                             )}
                         </div>
@@ -1751,11 +1751,11 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
 
                         {/* Zoom Controls (Bottom Left) */}
                         <div className="absolute bottom-4 left-4 z-10 flex gap-2">
-                            <div className="flex items-center bg-white shadow-lg rounded-full border border-gray-100 p-1">
-                                <button className="p-2 hover:bg-gray-100 text-gray-500 rounded-full transition-colors" onClick={() => fitView()} title="Fit View"><Maximize size={16} /></button>
-                                <div className="w-px h-4 bg-gray-200 mx-1" />
-                                <button className="p-2 hover:bg-gray-100 text-gray-500 rounded-full transition-colors" onClick={() => zoomOut()}><ZoomOut size={16} /></button>
-                                <button className="p-2 hover:bg-gray-100 text-gray-500 rounded-full transition-colors" onClick={() => zoomIn()}><ZoomIn size={16} /></button>
+                            <div className="flex items-center bg-white shadow-md rounded-md border border-gray-200 p-0.5">
+                                <button className="p-1.5 hover:bg-gray-100 text-gray-600 rounded-md transition-colors" onClick={() => fitView()} title="Fit View"><Maximize size={14} /></button>
+                                <div className="w-px h-3 bg-gray-200 mx-0.5" />
+                                <button className="p-1.5 hover:bg-gray-100 text-gray-600 rounded-md transition-colors" onClick={() => zoomOut()}><ZoomOut size={14} /></button>
+                                <button className="p-1.5 hover:bg-gray-100 text-gray-600 rounded-md transition-colors" onClick={() => zoomIn()}><ZoomIn size={14} /></button>
                             </div>
                         </div>
 

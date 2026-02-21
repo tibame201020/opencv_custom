@@ -51,17 +51,12 @@ const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, 
             });
 
             // We need to dispatch to the handle element itself
-            // The handle component might be a wrapper, ensuring we hit the actual handle div
             const handleEl = handleRef.current.querySelector('.react-flow__handle') || handleRef.current;
             handleEl.dispatchEvent(event);
         }
     };
 
     const onStubMouseUp = (e: React.MouseEvent) => {
-        // Manual Click Detection
-        // If the mouse was released quickly and hasn't moved much, treat it as a click.
-        // This is necessary because we preventDefault on mousedown (killing native click),
-        // and because a drag might have legally started (React Flow "drag") but was intended as a click.
         const duration = Date.now() - clickStartRef.current;
         const dist = Math.sqrt(
             Math.pow(e.clientX - mouseStartRef.current.x, 2) +
@@ -84,8 +79,14 @@ const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, 
             {/* The Handle Dot (Interactable & Visual) */}
             <div
                 ref={handleRef}
-                className="relative w-3.5 h-3.5 rounded-full bg-white border-2 border-gray-300 hover:border-primary hover:scale-110 transition-all shadow-sm cursor-crosshair"
+                className={clsx(
+                    "relative w-3 h-3 rounded-full bg-white border border-gray-300 hover:border-primary hover:scale-110 transition-all shadow-sm cursor-crosshair flex items-center justify-center",
+                    isConnected && "bg-gray-400 border-gray-400"
+                )}
             >
+                 {/* Inner dot for unconnected state */}
+                 {!isConnected && <div className="w-1 h-1 bg-gray-400 rounded-full" />}
+
                 <Handle
                     type="source"
                     position={Position.Right}
@@ -97,12 +98,12 @@ const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, 
             {/* Unconnected STUB (Line + Plus) - Persistent when not connected AND not dragging from it */}
             {!isConnected && !isConnecting && (
                 <div
-                    className="absolute left-[8px] flex items-center pointer-events-none group-hover/stub:pointer-events-auto nodrag opacity-0 group-hover/stub:opacity-100 transition-opacity duration-200"
+                    className="absolute left-[6px] flex items-center pointer-events-none group-hover/stub:pointer-events-auto nodrag opacity-0 group-hover/stub:opacity-100 transition-opacity duration-200 pl-1"
                     onMouseDown={onStubMouseDown}
                     onMouseUp={onStubMouseUp}
                 >
                     {/* Connecting Line */}
-                    <div className="w-4 h-[2px] bg-gray-300" />
+                    <div className="w-3 h-[2px] bg-gray-300" />
 
                     {/* Plus Button */}
                     <div
@@ -142,49 +143,65 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
 
     const isTrigger = def?.group === 'Trigger' || type === 'manual_trigger';
 
+    // Dimensions: Triggers are often smaller/icon-based, but actions are cards.
+    // For n8n look, standard actions are rectangular cards.
+    // Let's implement the standard Card view.
+
     return (
         <div
-            className="group relative flex flex-col items-center"
-            style={{ width: '120px' }} // Outer container width slightly larger for label
+            className="group relative flex flex-col"
+            // Ensure width is sufficient for card layout
+            style={{ width: '200px' }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
-            {/* 1. Node Box (The Interactable Area) */}
+            {/* 1. Node Card (The Interactable Area) */}
             <div
                 className={clsx(
-                    "relative flex items-center justify-center w-[100px] h-[100px] bg-white transition-all duration-200 z-10",
-                    isTrigger ? "rounded-l-[50px] rounded-r-[12px]" : "rounded-[12px]",
-                    selected ? "border-2 border-primary ring-2 ring-primary/20 shadow-md" : "border border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300",
-                    isRunning && "border-primary shadow-[0_0_0_4px_rgba(255,109,90,0.1)]",
+                    "relative flex flex-row items-center w-full h-[72px] bg-white transition-all duration-200 z-10 px-3 py-2",
+                    "rounded-[8px] border", // Slightly smaller radius for cards
+                    selected ? "border-primary ring-1 ring-primary shadow-md" : "border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300",
+                    isRunning && "border-primary shadow-[0_0_0_2px_rgba(255,109,90,0.1)]",
                     isError && "border-error",
                     isDisabled && "opacity-60 grayscale"
                 )}
             >
-                {/* Icon or Image Preview */}
+                {/* Icon Section (Left) */}
                 <div className={clsx(
-                    "transition-transform duration-200 flex items-center justify-center",
-                    data.imagePreview ? "w-full h-full p-1" : "group-hover:scale-110",
-                    !data.imagePreview && `text-${(def?.color as string) || 'gray'}`
+                    "flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center mr-3 transition-colors",
+                     // Use subtle background color derived from node type/color if possible, or gray-50
+                     "bg-gray-50 text-gray-600"
                 )}>
                     {data.imagePreview ? (
-                        <div className="w-full h-full rounded-md overflow-hidden bg-base-200 flex items-center justify-center pointer-events-none">
-                            <img
-                                src={data.imagePreview as string}
-                                alt="Node Preview"
-                                className="w-full h-full object-contain"
-                                loading="lazy"
-                                draggable={false}
-                            />
-                        </div>
+                        <img
+                            src={data.imagePreview as string}
+                            alt="Node Preview"
+                            className="w-full h-full object-contain rounded-lg"
+                            loading="lazy"
+                            draggable={false}
+                        />
                     ) : (
-                        IconComp ? <IconComp size={32} strokeWidth={1.5} /> : <div className="text-[10px] font-bold">Node</div>
+                        IconComp ? <IconComp size={20} strokeWidth={1.5} /> : <div className="text-[8px] font-bold">Node</div>
                     )}
                 </div>
 
-                {/* Status Indicator (Top-Right Badge) */}
+                {/* Text Section (Right/Middle) */}
+                <div className="flex-1 flex flex-col min-w-0 justify-center">
+                     <span className={clsx(
+                        "text-[13px] font-semibold truncate leading-tight",
+                        selected ? "text-primary" : "text-gray-800"
+                    )}>
+                        {(data.label as string) || def?.label || 'Node'}
+                    </span>
+                    <span className="text-[10px] text-gray-500 truncate mt-0.5">
+                         {(data.subtitle as string) || def?.description || nodeType}
+                    </span>
+                </div>
+
+                {/* Status Indicator (Top-Right absolute within card) */}
                 {(isRunning || isSuccess || isError) && (
                     <div className={clsx(
-                        "absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center shadow-sm z-20 border-2 border-white",
+                        "absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center shadow-sm z-20 border border-white",
                         isSuccess && "bg-success text-white",
                         isRunning && "bg-primary text-white",
                         isError && "bg-error text-white"
@@ -195,24 +212,24 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                     </div>
                 )}
 
-                {/* Input Handle (Left) - Receive Only (isConnectableStart={false}) */}
+                {/* Input Handle (Left Edge) */}
                 {!isTrigger && (
-                    <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white border-2 border-gray-300 rounded-full z-20 shadow-sm">
+                    <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-white border border-gray-300 rounded-full z-20 shadow-sm flex items-center justify-center">
+                         <div className="w-1 h-1 bg-gray-400 rounded-full" />
                         <Handle
                             type="target"
                             position={Position.Left}
-                            isConnectableStart={false} // Disable dragging FROM input
+                            isConnectableStart={false}
                             className="!opacity-0 !w-full !h-full !border-0"
                         />
                     </div>
                 )}
 
-                {/* Dynamic Output Handles (Right) */}
+                {/* Output Handles (Right Edge) */}
                 {(() => {
                     const config = def?.handleConfig;
                     let sources = config?.sources || [{ id: 'success', label: 'Success' }];
 
-                    // Special handling for Switch: Add handles for cases
                     if (type === 'switch') {
                         const caseStr = (data as any).config?.cases;
                         try {
@@ -240,40 +257,24 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                 })()}
             </div>
 
-            {/* 2. External Label */}
-            <div className="mt-2 flex flex-col items-center max-w-full">
-                <span className={clsx(
-                    "text-sm font-medium text-center truncate w-full px-1",
-                    selected ? "text-primary" : "text-gray-700"
-                )}>
-                    {(data.label as string) || def?.label || 'Node'}
-                </span>
-
-                {(data.subtitle || def?.description) && (
-                    <span className="text-[10px] text-gray-400 max-w-full truncate mt-0.5">
-                        {(data.subtitle as string) || def?.description}
-                    </span>
-                )}
-            </div>
-
-            {/* 3. Floating Toolbar (Above Node) */}
+            {/* 3. Floating Toolbar (Above Node) - Keep existing logic */}
             <div className={clsx(
-                "absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1 rounded-full bg-white shadow-lg border border-gray-100 z-30 transition-all duration-200",
+                "absolute -top-9 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1 rounded-full bg-white shadow-lg border border-gray-100 z-30 transition-all duration-200",
                 (hovered || selected) ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-95 pointer-events-none"
             )}>
                 <button
-                    className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-primary transition-colors"
+                    className="p-1 rounded-full hover:bg-gray-100 text-gray-500 hover:text-primary transition-colors"
                     title="Execute Step"
                     onClick={(e) => {
                         e.stopPropagation();
                         window.dispatchEvent(new CustomEvent('workflow-node-execute', { detail: { nodeId: id } }));
                     }}
                 >
-                    <Play size={14} fill="currentColor" />
+                    <Play size={12} fill="currentColor" />
                 </button>
                 <button
                     className={clsx(
-                        "p-1.5 rounded-full hover:bg-gray-100 transition-colors",
+                        "p-1 rounded-full hover:bg-gray-100 transition-colors",
                         isDisabled ? "text-red-500 hover:text-red-600" : "text-gray-500 hover:text-primary"
                     )}
                     title={isDisabled ? "Enable Step" : "Disable Step"}
@@ -282,21 +283,21 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                         window.dispatchEvent(new CustomEvent('workflow-node-toggle', { detail: { nodeId: id, disabled: !isDisabled } }));
                     }}
                 >
-                    {isDisabled ? <EyeOff size={14} /> : <Eye size={14} />}
+                    {isDisabled ? <EyeOff size={12} /> : <Eye size={12} />}
                 </button>
                 <button
-                    className="p-1.5 rounded-full hover:bg-red-50 text-gray-500 hover:text-red-500 transition-colors"
+                    className="p-1 rounded-full hover:bg-red-50 text-gray-500 hover:text-red-500 transition-colors"
                     title="Delete Step"
                     onClick={(e) => {
                         e.stopPropagation();
                         window.dispatchEvent(new CustomEvent('workflow-node-delete', { detail: { nodeId: id } }));
                     }}
                 >
-                    <Trash2 size={14} />
+                    <Trash2 size={12} />
                 </button>
                 <div className="w-px h-3 bg-gray-200 mx-0.5" />
                 <button
-                    className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-primary transition-colors"
+                    className="p-1 rounded-full hover:bg-gray-100 text-gray-500 hover:text-primary transition-colors"
                     title="More Actions"
                     onClick={(e) => {
                         e.stopPropagation();
@@ -306,7 +307,7 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                         }));
                     }}
                 >
-                    <MoreHorizontal size={14} />
+                    <MoreHorizontal size={12} />
                 </button>
             </div>
         </div>
