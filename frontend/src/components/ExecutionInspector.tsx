@@ -25,7 +25,7 @@ export interface ExecutionStep {
 
 interface ExecutionInspectorProps {
     isOpen: boolean;
-    onClose: () => void;
+    setIsOpen: (isOpen: boolean) => void;
     executionState: ExecutionStep[];
     selectedNodeId?: string | null;
     onSelectNode: (nodeId: string) => void;
@@ -35,7 +35,7 @@ interface ExecutionInspectorProps {
 }
 
 export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
-    isOpen, onClose, executionState, selectedNodeId, onSelectNode, onClear, edges
+    isOpen, setIsOpen, executionState, selectedNodeId, onSelectNode, onClear, edges
 }) => {
     const [activeTab, setActiveTab] = useState<'input' | 'output'>('output');
     const [searchTerm, setSearchTerm] = useState('');
@@ -114,7 +114,7 @@ export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
             {/* Header Bar */}
             <div
                 className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200 shrink-0 h-10 cursor-pointer hover:bg-gray-100 transition-colors"
-                onClick={() => !isOpen && onClose()}
+                onClick={() => setIsOpen(!isOpen)}
             >
                 <div className="flex items-center gap-3">
                     <div className={clsx("w-2.5 h-2.5 rounded-full", executionState.some(s => s.status === 'running') ? "bg-orange-500 animate-pulse" : "bg-green-500")} />
@@ -147,7 +147,7 @@ export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
                     )}
                     <button
                         className="p-1.5 hover:bg-gray-200 rounded text-gray-500 transition-colors"
-                        onClick={(e) => { e.stopPropagation(); onClose(); }}
+                        onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
                     >
                         {isOpen ? <X size={16} /> : <span className="text-xs font-bold text-primary">Show</span>}
                     </button>

@@ -1,7 +1,7 @@
 import { memo, useState, useRef } from 'react';
 import { Handle, Position, type NodeProps, type Node, useHandleConnections, useStore } from '@xyflow/react';
 import {
-    Check, Loader2, AlertCircle, Play, Eye, EyeOff, Trash2, MoreHorizontal, Plus
+    Check, Loader2, AlertCircle, Play, Eye, EyeOff, Trash2, MoreHorizontal, Plus, AlertTriangle, Zap
 } from 'lucide-react';
 import clsx from 'clsx';
 import { getNodeDef } from '../../workflow/nodeRegistry';
@@ -80,12 +80,12 @@ const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, 
             <div
                 ref={handleRef}
                 className={clsx(
-                    "relative w-3 h-3 rounded-full bg-white border border-gray-300 hover:border-primary hover:scale-110 transition-all shadow-sm cursor-crosshair flex items-center justify-center",
-                    isConnected && "bg-gray-400 border-gray-400"
+                    "relative w-3.5 h-3.5 rounded-full bg-white border hover:scale-110 transition-all shadow-sm cursor-crosshair flex items-center justify-center",
+                    isConnected ? "border-gray-400 bg-gray-50" : "border-gray-400 hover:border-primary"
                 )}
             >
                  {/* Inner dot for unconnected state */}
-                 {!isConnected && <div className="w-1 h-1 bg-gray-400 rounded-full" />}
+                 {!isConnected && <div className="w-1.5 h-1.5 bg-gray-400 rounded-full" />}
 
                 <Handle
                     type="source"
@@ -103,7 +103,7 @@ const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, 
                     onMouseUp={onStubMouseUp}
                 >
                     {/* Connecting Line */}
-                    <div className="w-3 h-[2px] bg-gray-300" />
+                    <div className="w-4 h-[2px] bg-gray-300" />
 
                     {/* Plus Button */}
                     <div
@@ -114,12 +114,12 @@ const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, 
                 </div>
             )}
 
-            {/* Label (Outside Handle to keep it non-draggable/clean) */}
+            {/* Label (Outside Handle) */}
             {source.label && total > 1 && (
                 <div className={clsx(
-                    "absolute right-full mr-5 pointer-events-none whitespace-nowrap text-[10px] font-medium px-1 py-0.5 rounded transition-opacity z-20",
+                    "absolute right-full mr-5 pointer-events-none whitespace-nowrap text-[10px] font-medium px-1.5 py-0.5 rounded transition-opacity z-20",
                     (type === 'if_condition' || type === 'switch')
-                        ? "text-gray-400 bg-white/80 backdrop-blur-sm border border-gray-100 shadow-sm"
+                        ? "text-gray-500 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm"
                         : "bg-gray-800 text-white shadow-md opacity-0 group-hover/stub:opacity-100"
                 )}>
                     {source.label}
@@ -140,37 +140,39 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
     const isSuccess = data.status === 'success';
     const isError = data.status === 'error';
     const isDisabled = !!data.disabled;
+    const isWarning = !!data.warning; // Explicit warning prop
 
-    const isTrigger = def?.group === 'Trigger' || type === 'manual_trigger';
-
-    // Dimensions: Triggers are often smaller/icon-based, but actions are cards.
-    // For n8n look, standard actions are rectangular cards.
-    // Let's implement the standard Card view.
+    const isTrigger = def?.group === 'Trigger' || type === 'manual_trigger' || def?.type === 'start'; // Hypothetical start node check
 
     return (
         <div
-            className="group relative flex flex-col"
-            // Ensure width is sufficient for card layout
-            style={{ width: '200px' }}
+            className="group relative flex flex-col font-sans"
+            style={{ width: '240px' }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
-            {/* 1. Node Card (The Interactable Area) */}
+            {/* 1. Node Card */}
             <div
                 className={clsx(
-                    "relative flex flex-row items-center w-full h-[72px] bg-white transition-all duration-200 z-10 px-3 py-2",
-                    "rounded-[8px] border", // Slightly smaller radius for cards
-                    selected ? "border-primary ring-1 ring-primary shadow-md" : "border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300",
-                    isRunning && "border-primary shadow-[0_0_0_2px_rgba(255,109,90,0.1)]",
-                    isError && "border-error",
-                    isDisabled && "opacity-60 grayscale"
+                    "relative flex flex-row items-center w-full h-[80px] bg-white transition-all duration-200 z-10 px-3 py-2",
+                    "rounded-[10px] border-[1.5px]",
+                    selected ? "border-primary ring-1 ring-primary shadow-lg" : "border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300",
+                    isRunning && "border-primary shadow-[0_0_0_3px_rgba(255,109,90,0.15)]",
+                    isError && "border-red-500 bg-red-50/10",
+                    isDisabled && "opacity-60 grayscale bg-gray-50"
                 )}
             >
+                {/* Trigger Icon Overlay (Lightning Bolt) - if applicable */}
+                {isTrigger && (
+                    <div className="absolute -top-2 left-4 z-20 bg-white border border-gray-200 rounded-full p-0.5 shadow-sm text-yellow-500">
+                        <Zap size={10} fill="currentColor" />
+                    </div>
+                )}
+
                 {/* Icon Section (Left) */}
                 <div className={clsx(
-                    "flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center mr-3 transition-colors",
-                     // Use subtle background color derived from node type/color if possible, or gray-50
-                     "bg-gray-50 text-gray-600"
+                    "flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center mr-3 transition-colors",
+                     "bg-gray-50 text-gray-600 border border-gray-100"
                 )}>
                     {data.imagePreview ? (
                         <img
@@ -181,41 +183,56 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                             draggable={false}
                         />
                     ) : (
-                        IconComp ? <IconComp size={20} strokeWidth={1.5} /> : <div className="text-[8px] font-bold">Node</div>
+                        IconComp ? <IconComp size={22} strokeWidth={1.5} /> : <div className="text-[9px] font-bold">Node</div>
                     )}
                 </div>
 
                 {/* Text Section (Right/Middle) */}
-                <div className="flex-1 flex flex-col min-w-0 justify-center">
+                <div className="flex-1 flex flex-col min-w-0 justify-center h-full py-1">
                      <span className={clsx(
-                        "text-[13px] font-semibold truncate leading-tight",
-                        selected ? "text-primary" : "text-gray-800"
+                        "text-[14px] font-bold truncate leading-tight mb-1",
+                        selected ? "text-primary" : "text-gray-900"
                     )}>
                         {(data.label as string) || def?.label || 'Node'}
                     </span>
-                    <span className="text-[10px] text-gray-500 truncate mt-0.5">
+                    <span className="text-[11px] text-gray-400 truncate font-medium">
                          {(data.subtitle as string) || def?.description || nodeType}
                     </span>
                 </div>
 
-                {/* Status Indicator (Top-Right absolute within card) */}
-                {(isRunning || isSuccess || isError) && (
-                    <div className={clsx(
-                        "absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center shadow-sm z-20 border border-white",
-                        isSuccess && "bg-success text-white",
-                        isRunning && "bg-primary text-white",
-                        isError && "bg-error text-white"
-                    )}>
-                        {isSuccess && <Check size={10} strokeWidth={4} />}
-                        {isRunning && <Loader2 size={10} className="animate-spin" />}
-                        {isError && <AlertCircle size={10} strokeWidth={4} />}
+                {/* Status/Warning Indicator (Top-Right inside card) */}
+                <div className="absolute top-2 right-2 flex gap-1">
+                    {isWarning && !isRunning && !isError && (
+                        <div className="text-yellow-500" title="Configuration Warning">
+                            <AlertTriangle size={14} fill="currentColor" className="text-white stroke-yellow-500" />
+                        </div>
+                    )}
+                    {isError && (
+                         <div className="text-red-500" title="Error">
+                            <AlertCircle size={14} fill="currentColor" className="text-white stroke-red-500" />
+                        </div>
+                    )}
+                </div>
+
+                {/* Running Spinner overlay on icon or status */}
+                {isRunning && (
+                    <div className="absolute top-2 right-2 text-primary animate-spin">
+                        <Loader2 size={14} />
                     </div>
                 )}
 
+                {/* Success Check */}
+                {isSuccess && !isRunning && (
+                    <div className="absolute top-2 right-2 text-green-500">
+                         <Check size={14} strokeWidth={4} />
+                    </div>
+                )}
+
+
                 {/* Input Handle (Left Edge) */}
                 {!isTrigger && (
-                    <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-white border border-gray-300 rounded-full z-20 shadow-sm flex items-center justify-center">
-                         <div className="w-1 h-1 bg-gray-400 rounded-full" />
+                    <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white border border-gray-400 rounded-full z-20 shadow-sm flex items-center justify-center">
+                         <div className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
                         <Handle
                             type="target"
                             position={Position.Left}
@@ -257,24 +274,24 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                 })()}
             </div>
 
-            {/* 3. Floating Toolbar (Above Node) - Keep existing logic */}
+            {/* 3. Floating Toolbar (Above Node) */}
             <div className={clsx(
-                "absolute -top-9 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1 rounded-full bg-white shadow-lg border border-gray-100 z-30 transition-all duration-200",
+                "absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1 rounded-full bg-white shadow-xl border border-gray-100 z-50 transition-all duration-200",
                 (hovered || selected) ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-95 pointer-events-none"
             )}>
                 <button
-                    className="p-1 rounded-full hover:bg-gray-100 text-gray-500 hover:text-primary transition-colors"
+                    className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-primary transition-colors"
                     title="Execute Step"
                     onClick={(e) => {
                         e.stopPropagation();
                         window.dispatchEvent(new CustomEvent('workflow-node-execute', { detail: { nodeId: id } }));
                     }}
                 >
-                    <Play size={12} fill="currentColor" />
+                    <Play size={14} fill="currentColor" />
                 </button>
                 <button
                     className={clsx(
-                        "p-1 rounded-full hover:bg-gray-100 transition-colors",
+                        "p-1.5 rounded-full hover:bg-gray-100 transition-colors",
                         isDisabled ? "text-red-500 hover:text-red-600" : "text-gray-500 hover:text-primary"
                     )}
                     title={isDisabled ? "Enable Step" : "Disable Step"}
@@ -283,21 +300,21 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                         window.dispatchEvent(new CustomEvent('workflow-node-toggle', { detail: { nodeId: id, disabled: !isDisabled } }));
                     }}
                 >
-                    {isDisabled ? <EyeOff size={12} /> : <Eye size={12} />}
+                    {isDisabled ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
                 <button
-                    className="p-1 rounded-full hover:bg-red-50 text-gray-500 hover:text-red-500 transition-colors"
+                    className="p-1.5 rounded-full hover:bg-red-50 text-gray-500 hover:text-red-500 transition-colors"
                     title="Delete Step"
                     onClick={(e) => {
                         e.stopPropagation();
                         window.dispatchEvent(new CustomEvent('workflow-node-delete', { detail: { nodeId: id } }));
                     }}
                 >
-                    <Trash2 size={12} />
+                    <Trash2 size={14} />
                 </button>
                 <div className="w-px h-3 bg-gray-200 mx-0.5" />
                 <button
-                    className="p-1 rounded-full hover:bg-gray-100 text-gray-500 hover:text-primary transition-colors"
+                    className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-primary transition-colors"
                     title="More Actions"
                     onClick={(e) => {
                         e.stopPropagation();
@@ -307,7 +324,7 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                         }));
                     }}
                 >
-                    <MoreHorizontal size={12} />
+                    <MoreHorizontal size={14} />
                 </button>
             </div>
         </div>

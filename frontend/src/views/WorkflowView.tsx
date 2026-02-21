@@ -41,6 +41,7 @@ import {
 import { ExpressionInput } from '../components/ExpressionInput';
 import { WorkflowSidebar } from '../components/WorkflowSidebar';
 import { N8nNode } from '../components/nodes/N8nNode';
+import { StickyNoteNode } from '../components/nodes/StickyNoteNode';
 import { ExecutionInspector } from '../components/ExecutionInspector';
 import { AssetManagerModal } from '../components/AssetManagerModal'; // Import
 import Editor from '@monaco-editor/react';
@@ -162,9 +163,13 @@ const edgeTypes = {
     hover: HoverEdge,
 };
 
-const nodeTypes: Record<string, any> = {};
+const nodeTypes: Record<string, any> = {
+    sticky_note: StickyNoteNode,
+};
 NODE_DEFINITIONS.forEach(def => {
-    nodeTypes[def.type] = N8nNode;
+    if (def.type !== 'sticky_note') {
+        nodeTypes[def.type] = N8nNode;
+    }
 });
 
 const EMPTY_ARRAY: any[] = [];
@@ -1827,7 +1832,7 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                     {/* Execution Inspector */}
                     <ExecutionInspector
                         isOpen={isInspectorOpen}
-                        onClose={() => setIsInspectorOpen(false)}
+                        setIsOpen={setIsInspectorOpen}
                         executionState={executionState}
                         selectedNodeId={selectedNode?.id}
                         onSelectNode={(id) => {

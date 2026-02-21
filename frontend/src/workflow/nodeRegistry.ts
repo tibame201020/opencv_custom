@@ -7,7 +7,7 @@
 import {
     MousePointerClick, Move, Type, Keyboard, Camera, Clock,
     Search, ImagePlus, Timer, Eye, ScanText, Grid3X3,
-    GitBranch, Repeat, Layers, FileText, Braces, Code
+    GitBranch, Repeat, Layers, FileText, Braces, Code, StickyNote
 } from 'lucide-react';
 import type { FC } from 'react';
 
@@ -53,7 +53,7 @@ export interface OutputSchema {
  *  Node Definition
  * ============================================================ */
 
-export type NodeCategory = 'platform' | 'vision' | 'flow';
+export type NodeCategory = 'platform' | 'vision' | 'flow' | 'visual';
 
 export interface NodeDefinition {
     type: string;              // unique ID, e.g. 'click', 'find_image'
@@ -79,12 +79,14 @@ export const CATEGORY_LABELS: Record<NodeCategory, string> = {
     platform: 'Platform',
     vision: 'Vision / OpenCV',
     flow: 'Flow Control',
+    visual: 'Visual / Notes',
 };
 
 export const CATEGORY_COLORS: Record<NodeCategory, string> = {
     platform: 'text-primary',
     vision: 'text-secondary',
     flow: 'text-accent',
+    visual: 'text-warning',
 };
 
 /* ============================================================
@@ -530,6 +532,17 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
         ],
         outputs: [],
     },
+    {
+        type: 'sticky_note',
+        label: 'Sticky Note',
+        description: 'Add a visual note to the canvas',
+        category: 'visual',
+        group: 'Visual',
+        color: 'warning',
+        icon: StickyNote,
+        params: [],
+        outputs: [],
+    },
 ];
 
 /* ============================================================
@@ -547,6 +560,7 @@ export function getNodesByCategory(): Record<NodeCategory, NodeDefinition[]> {
         platform: [],
         vision: [],
         flow: [],
+        visual: [],
     };
     NODE_DEFINITIONS.forEach(n => {
         grouped[n.category].push(n);

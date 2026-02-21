@@ -163,7 +163,9 @@ export const WorkflowEditorView: React.FC = () => {
             const res = await fetch(`${apiBaseUrl}/workflows/${id}`);
             if (res.ok) {
                 const data = await res.json();
-                openWorkflowTab(id, projectId, data.name, JSON.stringify(data, null, 2));
+                // We must pass the content string, which contains the graph data (nodes/edges)
+                // data.content is already a JSON string from the backend
+                openWorkflowTab(id, projectId, data.name, data.content || '{}');
             } else {
                 const errText = await res.text();
                 console.error(`[Workflow] Failed to load ${id}: ${res.status} ${errText}`);
@@ -548,7 +550,7 @@ export const WorkflowEditorView: React.FC = () => {
                 activeTab && (
                     <div className="flex-1 flex flex-col h-full overflow-hidden">
                         {/* Header Toolbar */}
-                        <div className="flex items-center justify-between px-4 h-14 bg-base-100 border-b border-base-300 shrink-0 z-10">
+                        <div className="relative flex items-center justify-between px-4 h-14 bg-base-100 border-b border-base-300 shrink-0 z-10">
                             <div className="flex items-center gap-4">
                                 <button
                                     className="btn btn-sm btn-ghost gap-2 text-base-content/60"
@@ -569,6 +571,12 @@ export const WorkflowEditorView: React.FC = () => {
                                         {activeProject?.name || 'Project'}
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* Center Toggle (n8n style) */}
+                            <div className="absolute left-1/2 -translate-x-1/2 flex bg-base-200 rounded-lg p-1">
+                                <button className="px-3 py-1 text-xs font-bold bg-white shadow-sm rounded-md text-primary transition-all">Editor</button>
+                                <button className="px-3 py-1 text-xs font-bold text-base-content/50 hover:text-base-content/80 transition-all">Executions</button>
                             </div>
 
                             <div className="flex items-center gap-2">
@@ -594,14 +602,6 @@ export const WorkflowEditorView: React.FC = () => {
                                 >
                                     <Save size={16} />
                                     {isSaving ? 'Saving...' : 'Save'}
-                                </button>
-                                <button
-                                    className="btn btn-sm btn-success text-white gap-2 shadow-sm"
-                                    onClick={handleRun}
-                                    disabled={isRunning}
-                                >
-                                    {isRunning ? <span className="loading loading-spinner loading-xs" /> : <Play size={16} />}
-                                    {isRunning ? 'Running' : 'Execute'}
                                 </button>
                             </div>
                         </div>
