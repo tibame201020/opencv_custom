@@ -97,7 +97,7 @@ const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, 
             {/* Unconnected STUB (Line + Plus) - Persistent when not connected AND not dragging from it */}
             {!isConnected && !isConnecting && (
                 <div
-                    className="absolute left-[8px] flex items-center pointer-events-none group-hover/stub:pointer-events-auto nodrag"
+                    className="absolute left-[8px] flex items-center pointer-events-none group-hover/stub:pointer-events-auto nodrag opacity-0 group-hover/stub:opacity-100 transition-opacity duration-200"
                     onMouseDown={onStubMouseDown}
                     onMouseUp={onStubMouseUp}
                 >
@@ -106,9 +106,9 @@ const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, 
 
                     {/* Plus Button */}
                     <div
-                        className="w-4 h-4 bg-white border border-gray-300 rounded-[2px] flex items-center justify-center text-gray-500 shadow-sm cursor-pointer hover:border-primary hover:text-primary hover:scale-110 transition-all pointer-events-auto"
+                        className="w-5 h-5 bg-white border border-gray-300 rounded-full flex items-center justify-center text-gray-500 shadow-sm cursor-pointer hover:border-primary hover:text-primary hover:scale-110 transition-all pointer-events-auto"
                     >
-                        <Plus size={10} strokeWidth={3} />
+                        <Plus size={12} strokeWidth={3} />
                     </div>
                 </div>
             )}
@@ -152,10 +152,10 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
             {/* 1. Node Box (The Interactable Area) */}
             <div
                 className={clsx(
-                    "relative flex items-center justify-center w-24 h-24 bg-white transition-all duration-200 z-10",
-                    isTrigger ? "rounded-l-[36px] rounded-r-lg" : "rounded-lg",
-                    selected ? "border-2 border-primary ring-2 ring-primary/20 shadow-md" : "border-[0.5px] border-gray-300 shadow-sm hover:shadow-md hover:border-gray-400",
-                    isRunning && "border-primary",
+                    "relative flex items-center justify-center w-[100px] h-[100px] bg-white transition-all duration-200 z-10",
+                    isTrigger ? "rounded-l-[50px] rounded-r-[12px]" : "rounded-[12px]",
+                    selected ? "border-2 border-primary ring-2 ring-primary/20 shadow-md" : "border border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300",
+                    isRunning && "border-primary shadow-[0_0_0_4px_rgba(255,109,90,0.1)]",
                     isError && "border-error",
                     isDisabled && "opacity-60 grayscale"
                 )}
@@ -197,7 +197,7 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
 
                 {/* Input Handle (Left) - Receive Only (isConnectableStart={false}) */}
                 {!isTrigger && (
-                    <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white border-2 border-gray-300 rounded-full z-20">
+                    <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white border-2 border-gray-300 rounded-full z-20 shadow-sm">
                         <Handle
                             type="target"
                             position={Position.Left}
