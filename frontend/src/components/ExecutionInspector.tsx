@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import {
-    X, Check, Clock, Database,
+    X, Check, Database,
     RotateCcw,
     Search, Maximize2, Minimize2,
     ArrowRight
@@ -53,7 +53,7 @@ export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
     // Find selected step object
     const selectedStep = useMemo(() =>
         executionState.slice().reverse().find(s => s.nodeId === selectedNodeId) || executionState[executionState.length - 1],
-    [executionState, selectedNodeId]);
+        [executionState, selectedNodeId]);
 
     // Resolve Data
     const displayData = useMemo(() => {
@@ -92,9 +92,9 @@ export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
                     } else if (out['success']) {
                         inputs = [...inputs, ...out['success']];
                     } else {
-                         // Take first
-                         const keys = Object.keys(out);
-                         if (keys.length > 0) inputs = [...inputs, ...out[keys[0]]];
+                        // Take first
+                        const keys = Object.keys(out);
+                        if (keys.length > 0) inputs = [...inputs, ...out[keys[0]]];
                     }
                 }
             }
@@ -127,7 +127,7 @@ export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1">
-                     {isOpen && (
+                    {isOpen && (
                         <>
                             <button
                                 className="p-1.5 hover:bg-gray-200 rounded text-gray-500 transition-colors"
@@ -199,11 +199,11 @@ export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
                                                 <div className={clsx(
                                                     "w-5 h-5 rounded-full flex items-center justify-center shrink-0 border",
                                                     step.status === 'success' ? "bg-green-100 border-green-200 text-green-600" :
-                                                    step.status === 'error' ? "bg-red-100 border-red-200 text-red-600" : "bg-blue-100 border-blue-200 text-blue-600"
+                                                        step.status === 'error' ? "bg-red-100 border-red-200 text-red-600" : "bg-blue-100 border-blue-200 text-blue-600"
                                                 )}>
                                                     {step.status === 'success' ? <Check size={12} strokeWidth={3} /> :
-                                                     step.status === 'error' ? <X size={12} strokeWidth={3} /> :
-                                                     <div className="w-2 h-2 rounded-full bg-current animate-pulse" />}
+                                                        step.status === 'error' ? <X size={12} strokeWidth={3} /> :
+                                                            <div className="w-2 h-2 rounded-full bg-current animate-pulse" />}
                                                 </div>
 
                                                 {/* Info */}

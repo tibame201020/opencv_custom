@@ -75,7 +75,6 @@ const HoverEdge: React.FC<EdgeProps> = (props) => {
     // Check if label indicates true/false branch to color text accordingly
     const isTrue = label === 'true';
     const isFalse = label === 'false';
-    const isCount = label && label.includes('item');
 
     return (
         <>
@@ -1126,9 +1125,9 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                     isTraversed = true;
                     itemCount = sourceStep.output[edgeSignal].length;
                 } else if (edgeSignal === 'success' && sourceStep.output['main']) {
-                     // specific case for main?
-                     isTraversed = true;
-                     itemCount = sourceStep.output['main'].length;
+                    // specific case for main?
+                    isTraversed = true;
+                    itemCount = sourceStep.output['main'].length;
                 }
             }
 

@@ -3,7 +3,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '../store';
 import {
     Smartphone, LayoutGrid, Plus, Search, ChevronLeft,
-    Save, Play, X, FileEdit, FolderOpen, FolderMinus, FolderPlus
+    Save, X, FileEdit, FolderOpen, FolderMinus, FolderPlus
 } from 'lucide-react';
 
 import { WorkflowView } from './WorkflowView';
