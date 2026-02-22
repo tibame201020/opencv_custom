@@ -353,7 +353,7 @@ func createBuiltinExecutor(node *WorkflowNode, bridge *PythonBridge, logger func
 				config := ResolveConfig(rawConfig, arg, &item)
 				msg := getConfigStr(config, "message", "")
 				level := getConfigStr(config, "type", "info")
-				logf("[Workflow][%s] %s\n", level, msg)
+				logf("[Workflow][%s] %s", level, msg)
 			}
 			return singleOutput("success", arg.Input)
 		}
@@ -388,12 +388,12 @@ func createBuiltinExecutor(node *WorkflowNode, bridge *PythonBridge, logger func
 				ms = getConfigInt(config, "duration_ms", 1000)
 			}
 
-			logf("[Workflow] Sleep %dms\n", ms)
+			logf("[Workflow] Sleep %dms", ms)
 			select {
 			case <-time.After(time.Duration(ms) * time.Millisecond):
 				return singleOutput("success", arg.Input)
 			case <-ctx.Done():
-				logf("[Workflow] Sleep cancelled\n")
+				logf("[Workflow] Sleep cancelled")
 				return singleOutput("cancelled", nil)
 			}
 		}
@@ -771,7 +771,7 @@ func createBridgeExecutor(node *WorkflowNode, rawConfig map[string]interface{}, 
 
 	return func(ctx context.Context, arg NodeArg) NodeOutput {
 		if bridge == nil {
-			logf("[Workflow] No bridge, stubbing [%s]\n", nodeName)
+			logf("[Workflow] No bridge, stubbing [%s]", nodeName)
 			return singleOutput("success", ExecutionData{{JSON: map[string]interface{}{"stub": true}}})
 		}
 
@@ -810,7 +810,7 @@ func createBridgeExecutor(node *WorkflowNode, rawConfig map[string]interface{}, 
 				paramInfo = fmt.Sprintf(" key=%v", params["key_code"])
 			}
 
-			logf("[Workflow] Executing [%s] (%s)%s\n", nodeName, nodeType, paramInfo)
+			logf("[Workflow] Executing [%s] (%s)%s", nodeName, nodeType, paramInfo)
 
 			resp, err := bridge.Call(nodeType, params)
 
@@ -820,10 +820,10 @@ func createBridgeExecutor(node *WorkflowNode, rawConfig map[string]interface{}, 
 
 			if err != nil {
 				newItem.JSON["error"] = err.Error()
-				logf("[Workflow] [%s] Error: %v\n", nodeName, err)
+				logf("[Workflow] [%s] Error: %v", nodeName, err)
 			} else if resp.Error != "" {
 				newItem.JSON["error"] = resp.Error
-				logf("[Workflow] [%s] Bridge Error: %v\n", nodeName, resp.Error)
+				logf("[Workflow] [%s] Bridge Error: %v", nodeName, resp.Error)
 			} else {
 				if resp.Output != nil {
 					// Merge output into item? Or replace?
@@ -838,16 +838,16 @@ func createBridgeExecutor(node *WorkflowNode, rawConfig map[string]interface{}, 
 							if s, ok := outMap["similarity"].(float64); ok {
 								sim = fmt.Sprintf(" (similarity: %.2f)", s)
 							}
-							logf("[Workflow] [%s] Returned: %v%s\n", nodeName, success, sim)
+							logf("[Workflow] [%s] Returned: %v%s", nodeName, success, sim)
 						} else if val, ok := outMap["text"].(string); ok {
-							logf("[Workflow] [%s] Result text: %s\n", nodeName, val)
+							logf("[Workflow] [%s] Result text: %s", nodeName, val)
 						}
 					} else {
 						newItem.JSON["result"] = resp.Output
-						logf("[Workflow] [%s] Result: %v\n", nodeName, resp.Output)
+						logf("[Workflow] [%s] Result: %v", nodeName, resp.Output)
 					}
 				} else {
-					logf("[Workflow] [%s] Done\n", nodeName)
+					logf("[Workflow] [%s] Done", nodeName)
 				}
 			}
 			resultItems = append(resultItems, newItem)
