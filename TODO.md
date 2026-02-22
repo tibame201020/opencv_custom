@@ -164,6 +164,8 @@
 | 7.3 | Workflow E2E Regression Test | ✅ | ⬜ | 驗證 Bridge -> Platform -> ADB 閉環 |
 | 7.4 | OpenCV Robustness Test | ✅ | ⬜ | 驗證匹配演算法穩定性 |
 | 7.5 | Runtime Architecture Doc | ✅ | ⬜ | `doc/workflow_runtime_audit.md` |
+| 7.6 | Go-Python Integration Tests | ✅ | ⬜ | 驗證 Bridge 生命週期 (Spawn/Init/Call/Exit) |
+| 7.7 | React-Go Verification | ✅ | ⬜ | 驗證 API -> Go -> Python 鏈路 |
 
 ---
 

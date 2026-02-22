@@ -9,11 +9,16 @@ def main():
     script_path = Path(__file__).resolve()
     repo_root = script_path.parent.parent
 
-    # Ensure artifacts directory exists
-    artifacts_dir = repo_root / "artifacts"
-    artifacts_dir.mkdir(parents=True, exist_ok=True)
-
-    log_file = artifacts_dir / "adb_calls.jsonl"
+    # Check for custom log path
+    log_path = os.environ.get("ADB_STUB_LOG")
+    if log_path:
+        log_file = Path(log_path)
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        # Default artifacts directory
+        artifacts_dir = repo_root / "artifacts"
+        artifacts_dir.mkdir(parents=True, exist_ok=True)
+        log_file = artifacts_dir / "adb_calls.jsonl"
 
     args = sys.argv[1:]
 
