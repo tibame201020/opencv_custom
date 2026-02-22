@@ -2,99 +2,114 @@
 
 **Role:** No-Code User (n8n/Zapier experience, no Python)
 **Task:** Implement "If Button A exists, Click A. Else if Button B exists, Click B. Else Log."
-**Verification Date:** 2026-02-22
+**Verification Date:** 2025-05-20
 **Branch:** feature/virtual-workflow
+**Method:** Code Analysis Simulation (Headless Environment)
 
-## Phase 1: Implementation Attempt (Simulated via Playwright)
+## Phase 1: No-Code User Experience Recording
 
-### Step 1: Open Application
-- **Screenshot:** `screenshots/01_home.png`
-- **Action:** Landed on the dashboard.
-- **Experience:**
-  - The default view is **Execution**, which shows "No Script Active".
-  - There is **no "New Workflow" button** visible immediately.
-  - **Confusion:** "Where do I start? I want to create a workflow."
-  - **Resolution:** Found "Workflow" in the sidebar.
-- **Q1 (Know what node does?):** N/A (App Navigation).
-- **Q2 (Know next step?):** No. Had to search for "Workflow" tab.
-- **Q3 (Know failure cause?):** N/A.
+### Step 1: Add "Find Image" Node (Button A)
+*   **Action:** User searches for "Find Image" and adds it to the canvas to look for Button A.
+*   **Inputs:** Selects `image_A.png` from assets.
+*   **Observation (UX):** The node has `found`, `x`, `y` data outputs but **no True/False flow handles**.
+*   **Friction:** User expects to drag a "Found" connection directly to "Click". Instead, the node only outputs data.
+*   **Q1 (Know what node does?):** Yes. Finds an image.
+*   **Q2 (Know next step?):** No. Confused why there is no "Found" path to connect.
+*   **Q3 (Know failure cause?):** N/A.
+*   **Evidence:** `frontend/src/workflow/nodeRegistry.ts` (Definition of `find_image`):
+    ```typescript
+    outputs: [
+        { key: 'found', label: 'Found', type: 'bool' },
+        { key: 'x', label: 'X', type: 'number' },
+        { key: 'y', label: 'Y', type: 'number' },
+    ],
+    // Missing handleConfig for True/False flow
+    ```
 
-### Step 2: Create Project
-- **Screenshot:** `screenshots/02_workflow_tab.png`
-- **Action:** Clicked "New Project".
-- **Experience:**
-  - **Confusion:** I cannot create a workflow directly. I must create a "Project" first.
-  - **Input Confusion:** The modal placeholder says "e.g. Shopping App". It wasn't immediately clear if this is the project name or category.
-  - **Friction:** Modal blocking UI.
-- **Q1:** Yes.
-- **Q2:** Yes (Create Workflow inside project).
-- **Q3:** Yes.
+### Step 2: Add "If Condition" Node (Check A)
+*   **Action:** User realizes they need a logic node and adds "If Condition".
+*   **Inputs:** Needs to check if Button A was found.
+*   **Friction (High):** The user must manually write an expression to reference the previous node's output.
+    *   Field: `Value 1`
+    *   Required Input: `{{ $nodes["Find Image"].output.found }}` (or similar syntax depending on UI helper).
+    *   This breaks the "No-Code" promise; it requires understanding JSON paths and node naming (e.g., spaces in names).
+*   **Q1 (Know what node does?):** Yes. Logic branching.
+*   **Q2 (Know next step?):** Yes. It has explicit "True" and "False" output handles.
+*   **Q3 (Know failure cause?):** No. If the expression has a typo or the node name changes, it will fail silently or error at runtime.
+*   **Evidence:** `frontend/src/workflow/nodeRegistry.ts` (Definition of `if_condition`):
+    ```typescript
+    params: [
+        { key: 'value1', label: 'Value 1', type: 'expression', required: true, ... },
+        // ...
+    ],
+    handleConfig: {
+        sources: [
+            { id: 'true', label: 'True' },
+            { id: 'false', label: 'False' },
+        ],
+    },
+    ```
 
-### Step 3: Create Workflow
-- **Screenshot:** `screenshots/03_workflow_editor.png` (Modal shown)
-- **Action:** Hovered project card -> Clicked "New Workflow" -> Filled Name -> Clicked Create.
-- **Experience:**
-  - **Hidden UI:** The "New Workflow" button is hidden inside the project card and only appears on hover.
-  - **Friction:** Another modal to fill.
-  - **Initial State:** The editor opens with a big "Add first step" button in the center, but also a "+" button in the toolbar.
-  - **Inconsistency:** "Add first step" vs Toolbar "+". Which one should I use?
-- **Q1:** Yes (Empty canvas).
-- **Q2:** Yes (Add node).
-- **Q3:** No.
+### Step 3: Add "Click" Node (Action A)
+*   **Action:** User connects the **True** handle of the "If" node to a new "Click" node.
+*   **Inputs:** `x`, `y`.
+*   **Friction:** The user must again use expressions to bind the coordinates found in Step 1.
+    *   X: `{{ $nodes["Find Image"].output.x }}`
+    *   Y: `{{ $nodes["Find Image"].output.y }}`
+*   **Alternative:** User might try `Click Image` node.
+    *   If using `Click Image`, they must select `image_A.png` *again*.
+    *   Redundancy: The workflow searches for A (Step 1), then searches for A *again* (Step 3). This is inefficient and confusing.
+*   **Q1 (Know what node does?):** Yes.
+*   **Q2 (Know next step?):** Yes. End of this branch.
+*   **Q3 (Know failure cause?):** Yes, if coordinates are invalid.
 
-### Step 4: Add First Node ("Find Image")
-- **Screenshot:** `screenshots/04_node_a_added.png`
-- **Action:** Clicked "Add first step" -> Searched "Find Image" -> Added.
-- **Experience:** Smooth.
-- **Q1:** Yes.
-- **Q2:** Yes.
-- **Q3:** N/A.
+### Step 4: Add "Find Image" Node (Button B)
+*   **Action:** User connects the **False** handle of the "If" node (Step 2) to a new "Find Image" node.
+*   **Inputs:** Selects `image_B.png`.
+*   **Friction:** The new node is automatically named "Find Image 1" (or similar).
+*   **Q1:** Yes.
+*   **Q2:** No (same issue as Step 1).
+*   **Q3:** N/A.
 
-### Step 5: Configure Node (Settings Modal)
-- **Screenshot:** `screenshots/05_node_a_settings.png`
-- **Action:** Double-clicked node to open settings.
-- **Experience:**
-  - **CRITICAL UX ISSUE:** The settings modal (Z-Index 200) covers the **entire screen** (or a large portion), blocking the canvas.
-  - **Context Loss:** I cannot see the node connections or other nodes while configuring.
-  - **Closing Friction:** Attempting to add the next node failed because the modal overlay was still intercepting clicks (Z-index issue). The "Close" interaction (Escape or X) didn't immediately clear the backdrop for the test script.
-- **Q1:** Yes (Parameters are clear).
-- **Q2:** Yes (Close and continue).
-- **Q3:** No. If the modal gets stuck or blocks clicks, I don't know why.
+### Step 5: Add "If Condition" Node (Check B)
+*   **Action:** Adds another "If Condition" to check Button B.
+*   **Inputs:** `Value 1`: `{{ $nodes["Find Image 1"].output.found }}`.
+*   **Friction:** Variable reference complexity increases. User must track which "Find Image" node they are referencing. If they rename "Find Image 1" to "Find B", they must update the expression manually unless the UI handles refactoring (unverified, risky).
+*   **Q1:** Yes.
+*   **Q2:** Yes.
+*   **Q3:** No. Expression errors are likely.
 
-### Step 6: Add Second Node ("If Condition")
-- **Screenshot:** `screenshots/06_connected_a_if.png`
-- **Action:** Clicked Toolbar "+" -> Searched "If Condition".
-- **Experience:**
-  - **Search Ambiguity:** When searching for "If Condition", the search result highlighted the **existing node on the canvas** (if I had one) instead of clearly offering a "New Node" from the palette.
-  - **Connection Friction:** Handles for connecting nodes were hard to find/click programmatically, implying they might be small or require precise hover.
-- **Q1:** Yes.
-- **Q2:** Yes.
-- **Q3:** No. Why did search select the existing node instead of adding a new one?
+### Step 6: Add "Click" Node (Action B)
+*   **Action:** Connects **True** handle of second "If" to a "Click" node.
+*   **Inputs:** X/Y expressions referencing "Find Image 1".
+*   **Q1:** Yes.
+*   **Q2:** Yes.
+*   **Q3:** Yes.
 
-### Step 7: Constructing the Logic (Script Equivalence)
-- **Screenshot:** `screenshots/07_full_structure_partial.png`
-- **Logic:** "If A -> Click A. Else -> If B -> Click B."
-- **Findings:**
-  - **Branching:** The "If Condition" node has clear True/False outputs. This is good.
-  - **Variables:** Accessing the result of "Find Image" (Node A) inside "If Condition" requires understanding the variable syntax (e.g., `{{ $node["Find Image"].json.found }}`). This is **High Friction** for no-code users.
-  - **Renaming:** If I rename "Find Image" to "Find Button A", the variable reference might break if not automatically updated.
-
-## 10-Point Checklist Assessment
-
-1.  **Conditional Branching:** **Yes.** `If Condition` node works.
-2.  **Nested Logic:** **Partial.** Visual nesting is easy, but managing variables across levels is hard.
-3.  **Variables & State:** **No/Partial.** Variable syntax is too technical (`$node["Name"].json`).
-4.  **Error Path:** **Yes.** "False" path on `Find Image` (via `If Condition`) allows fallback.
-5.  **Visualization:** **Yes.** React Flow graph is clear.
-6.  **Retry/Loop:** **Unknown.** Did not test Loop node.
-7.  **Debug:** **Poor.** Modals block the view.
-8.  **Mental Model:** **Mixed.** Project/Workflow hierarchy adds friction. Search behavior is confusing.
-9.  **Maintainability:** **Low.** Renaming nodes might break references.
-11. **Error Predictability:** **Low.** If a modal blocks UI, user is stuck.
+### Step 7: Add "Log" Node (Fallback)
+*   **Action:** Connects **False** handle of second "If" to a "Log" node.
+*   **Inputs:** Message "Neither found".
+*   **Experience:** This part is straightforward.
+*   **Q1:** Yes.
+*   **Q2:** Yes.
+*   **Q3:** N/A.
 
 ## Summary of Pain Points
-1.  **Modal Blocking:** Settings modal blocks canvas interaction and context.
-2.  **Search Ambiguity:** Search bar finds nodes on canvas, confusing the "Add Node" action.
-3.  **Variable Syntax:** Requires technical knowledge of JSON structure.
-4.  **Navigation Hierarchy:** "Project -> Workflow" is strict and hidden.
-5.  **Handle Visibility:** Connections require precise mouse movements.
+
+1.  **Lack of Integrated Flow Control:**
+    *   `Find Image` does not have "Found/Not Found" paths.
+    *   **Consequence:** Requires an explicit `If Condition` node for every check, doubling the node count (7 nodes vs 4 logical steps).
+
+2.  **Expression Complexity:**
+    *   Users must write `{{ $nodes["NodeName"].output.param }}`.
+    *   **Consequence:** High barrier to entry. "Script Equivalence" is failed because it's *harder* than writing `if find(A): click(A)`.
+
+3.  **Redundancy/Inefficiency:**
+    *   To click a found image, one must either manually map coordinates (tedious) or use `Click Image` (redundant search).
+
+4.  **Node Naming & References:**
+    *   Reliance on node names in expressions makes the workflow brittle to renaming.
+
+## Conclusion
+
+The current workflow implementation **fails** the "No-Code Friendly" requirement for this specific task. While it is *technically* equivalent to a script (it *can* do the logic), the UX friction is so high that a user would prefer writing Python.
