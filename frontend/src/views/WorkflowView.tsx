@@ -16,7 +16,6 @@ import {
     type OnConnectStart,
     getBezierPath,
     getSmoothStepPath,
-    BaseEdge,
     EdgeLabelRenderer,
     type EdgeProps,
     MarkerType,
@@ -58,8 +57,8 @@ const DEFAULT_EDGE_OPTIONS = {
 /* ============================================================
  *  n8n-Style Hover Edge with Midpoint Toolbar & Smart execution data
  * ============================================================ */
-const HoverEdge: React.FC<EdgeProps> = (props) => {
-    const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, markerEnd, selected, label, data } = props;
+const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
+    const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, markerEnd, selected, label, data, className } = props;
     const [hovered, setHovered] = useState(false);
 
     const isForward = targetX > sourceX + 50;
@@ -104,16 +103,17 @@ const HoverEdge: React.FC<EdgeProps> = (props) => {
                 onMouseEnter={() => setHovered(true)}
                 onMouseLeave={() => setHovered(false)}
             />
-            <BaseEdge
+            <path
                 id={id}
-                path={edgePath}
-                markerEnd={markerEnd}
+                d={edgePath}
+                className={clsx("react-flow__edge-path", className)}
                 style={{
                     ...style,
                     strokeWidth: edgeWidth,
                     stroke: edgeColor,
                     transition: 'stroke 0.3s ease, stroke-width 0.15s ease',
                 }}
+                markerEnd={markerEnd}
             />
 
             <EdgeLabelRenderer>
@@ -1700,7 +1700,11 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
         const EDGE_TRAILING_THRESHOLD = 2; // Edges fade faster than nodes
 
         return edges.map(edge => {
-            // Find execution step for the source node with global index
+            // 1. Check if TARGET node is running (to highlight incoming edge as "Active Flow")
+            const targetStep = executionState.find(s => s.nodeId === edge.target && s.status === 'running');
+            const isTargetRunning = !!targetStep;
+
+            // 2. Find execution step for the SOURCE node
             let sourceStepIdx = -1;
             for (let i = executionState.length - 1; i >= 0; i--) {
                 if ((executionState[i] as any).nodeId === edge.source) {
@@ -1708,42 +1712,60 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
                     break;
                 }
             }
-            if (sourceStepIdx === -1) return edge;
 
-            const lastStep = executionState[sourceStepIdx];
-            const outputMap = lastStep.output || {};
-            const signalRaw = edge.sourceHandle || edge.label || 'success';
-            const signal = String(signalRaw);
+            // If source hasn't run and target isn't running, this edge is dormant
+            if (sourceStepIdx === -1 && !isTargetRunning) return edge;
 
-            const isExecuted = lastStep.status === 'success' || lastStep.status === 'error';
-            const edgeData = outputMap[signal];
+            const lastStep = sourceStepIdx !== -1 ? executionState[sourceStepIdx] : null;
 
-            // Trailing logic for edges
-            const isRecent = (totalSteps - 1 - sourceStepIdx) < EDGE_TRAILING_THRESHOLD;
-            const shouldHighlight = isExecuted && isRecent;
-
-            let isSuccess = lastStep.status === 'success';
-
+            let status = 'pending';
+            let isExecuted = false;
+            let isSuccess = false;
             let dataCount = 0;
-            if (edgeData && Array.isArray(edgeData)) {
-                dataCount = edgeData.length;
-                if (dataCount === 0 && (signal === 'true' || signal === 'false' || signal.match(/^\d+$/))) {
-                    return edge; // Branch not taken
+            let shouldHighlight = false;
+
+            // If Target is Running, force this edge to be Blue/Running state
+            if (isTargetRunning) {
+                status = 'running';
+                shouldHighlight = true; // Use n8n-flow-active animation
+            } else if (lastStep) {
+                // Normal Source-based logic
+                const outputMap = lastStep.output || {};
+                const signalRaw = edge.sourceHandle || edge.label || 'success';
+                const signal = String(signalRaw);
+
+                isExecuted = lastStep.status === 'success' || lastStep.status === 'error';
+                const edgeData = outputMap[signal];
+
+                // Trailing logic for edges
+                const isRecent = (totalSteps - 1 - sourceStepIdx) < EDGE_TRAILING_THRESHOLD;
+                shouldHighlight = isExecuted && isRecent;
+
+                isSuccess = lastStep.status === 'success';
+                status = lastStep.status;
+
+                if (edgeData && Array.isArray(edgeData)) {
+                    dataCount = edgeData.length;
+                    if (dataCount === 0 && (signal === 'true' || signal === 'false' || signal.match(/^\d+$/))) {
+                        return edge; // Branch not taken
+                    }
+                } else if (edgeData) {
+                    dataCount = 1;
                 }
-            } else if (edgeData) {
-                dataCount = 1;
             }
 
             return {
                 ...edge,
                 data: {
                     ...edge.data,
-                    executed: shouldHighlight,
+                    executed: isExecuted || status === 'running',
                     isSuccess,
                     dataCount,
-                    status: lastStep.status
+                    status: status
                 },
-                animated: shouldHighlight || lastStep.status === 'running'
+                // Apply n8n-flow-active class if running or recently executed
+                className: status === 'running' || shouldHighlight ? 'n8n-flow-active' : '',
+                animated: status === 'running' || shouldHighlight
             };
         });
     }, [edges, executionState]);

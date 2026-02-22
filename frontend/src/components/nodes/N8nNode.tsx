@@ -157,6 +157,7 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                     "relative flex flex-row items-center w-full h-[80px] bg-white transition-all duration-200 z-10 px-3 py-2",
                     "rounded-[10px] border-[1.5px]",
                     selected ? "border-primary ring-1 ring-primary shadow-lg" : "border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300",
+                    isSuccess && !isRunning && "border-[#4fcc5d] bg-[#4fcc5d]/10 shadow-[0_0_10px_rgba(79,204,93,0.2)]",
                     isRunning && "border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.4)] ring-2 ring-blue-500/20 animate-[pulse_1.5s_infinite] bg-blue-50/10",
                     isError && "border-red-500 bg-red-50/10",
                     isDisabled && "opacity-60 grayscale bg-gray-50"
