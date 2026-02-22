@@ -32,6 +32,7 @@ export const WorkflowEditorView: React.FC = () => {
     const [deletingWfId, setDeletingWfId] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isRunning, setIsRunning] = useState(false);
+    const [activeRunId, setActiveRunId] = useState<string | null>(null);
     const [executionState, setExecutionState] = useState<any[]>([]);
 
     // Device Selection
@@ -264,7 +265,6 @@ export const WorkflowEditorView: React.FC = () => {
         }
     }, [activeWorkflowTabId, workflowTabs, apiBaseUrl, saveWorkflowTab]);
 
-    // Run handler
     const handleRun = useCallback(async () => {
         if (!activeWorkflowTabId) return;
         const tab = workflowTabs.find(t => t.id === activeWorkflowTabId);
@@ -296,12 +296,11 @@ export const WorkflowEditorView: React.FC = () => {
             const data = await res.json();
             if (res.ok) {
                 showToast("Workflow started", "success");
+                setActiveRunId(data.runId);
 
                 // Connect to WebSocket for logs
                 if (data.runId) {
-                    // Assuming API is proxied, so ws is relative or derived
                     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                    // Use configured API base or derive from location
                     let wsUrl = '';
                     if (apiBaseUrl.startsWith('http')) {
                         const url = new URL(apiBaseUrl);
@@ -314,20 +313,15 @@ export const WorkflowEditorView: React.FC = () => {
                     ws.onmessage = (event) => {
                         try {
                             const msg = JSON.parse(event.data);
-
-                            // Handle Execution Events
                             if (msg.type === 'execution_step') {
                                 setExecutionState(prev => [...prev, msg.data]);
                             }
-
-                            // If execution complete, stop loading
                             if (msg.type === 'status' && (msg.message?.includes('Complete') || msg.message?.includes('exited') || msg.message?.includes('cancelled'))) {
                                 setIsRunning(false);
+                                setActiveRunId(null);
                                 ws.close();
                             }
-                        } catch (e) {
-                            // Ignore raw logs for now
-                        }
+                        } catch (e) { }
                     };
                     ws.onerror = (e) => {
                         console.error("WS Error", e);
@@ -335,9 +329,8 @@ export const WorkflowEditorView: React.FC = () => {
                     };
                     ws.onclose = () => {
                         setIsRunning(false);
+                        setActiveRunId(null);
                     };
-                } else {
-                    setIsRunning(false);
                 }
             } else {
                 showToast(`Run failed: ${data.error || 'Unknown error'}`, "error");
@@ -346,8 +339,27 @@ export const WorkflowEditorView: React.FC = () => {
         } catch (err) {
             showToast("Execution error", "error");
             setIsRunning(false);
+            setActiveRunId(null);
         }
-    }, [activeWorkflowTabId, workflowTabs, apiBaseUrl, selectedDevice]);
+    }, [activeWorkflowTabId, workflowTabs, apiBaseUrl, selectedDevice, handleSave, saveWorkflowTab]);
+
+    const handleStop = useCallback(async () => {
+        if (!activeRunId) return;
+        try {
+            const res = await fetch(`${apiBaseUrl}/stop`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ runId: activeRunId }),
+            });
+            if (res.ok) {
+                showToast("Stop signal sent", "success");
+            } else {
+                showToast("Failed to stop", "error");
+            }
+        } catch (err) {
+            showToast("Stop error", "error");
+        }
+    }, [activeRunId, apiBaseUrl]);
 
     // Keyboard shortcut
     useEffect(() => {
@@ -614,6 +626,7 @@ export const WorkflowEditorView: React.FC = () => {
                                 tab={activeTab}
                                 onContentChange={(content: string) => updateWorkflowTabContent(activeTab.id, content)}
                                 onRun={handleRun}
+                                onStop={handleStop}
                                 isExecuting={isRunning}
                                 executionState={executionState}
                             />

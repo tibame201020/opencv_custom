@@ -28,6 +28,7 @@ export const DataPreview: React.FC<DataPreviewProps> = ({
         if (isEmpty) return [];
         const keySet = new Set<string>();
         data.forEach(item => {
+            if (!item) return;
             const obj = item.json || item; // Handle wrapped vs unwrapped
             if (typeof obj === 'object' && obj !== null) {
                 Object.keys(obj).forEach(k => keySet.add(k));
@@ -87,7 +88,9 @@ export const DataPreview: React.FC<DataPreviewProps> = ({
                                 </thead>
                                 <tbody>
                                     {data.map((item, i) => {
+                                        if (!item) return null;
                                         const valMap = item.json || item;
+                                        if (!valMap) return null;
                                         return (
                                             <tr key={i} className="hover:bg-base-50 group">
                                                 <td className="text-center font-mono text-base-content/30 group-hover:text-base-content/50">{i + 1}</td>

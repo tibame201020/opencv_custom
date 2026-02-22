@@ -75,6 +75,7 @@ const HoverEdge: React.FC<EdgeProps> = (props) => {
     // Execution data from edge.data
     const isExecuted = data?.executed;
     const isSuccess = data?.isSuccess;
+    const executionStatus = data?.status;
     // `label` can still override if it's explicitly 'true'/'false' for branches, else use data count
     const isTrue = label === 'true';
     const isFalse = label === 'false';
@@ -83,6 +84,7 @@ const HoverEdge: React.FC<EdgeProps> = (props) => {
     // Determine Edge Color
     let edgeColor = style?.stroke || '#cfcfcf'; // Default n8n edge grey
     if (hovered || selected) edgeColor = '#4fcc5d'; // n8n hover green
+    else if (executionStatus === 'running') edgeColor = '#3b82f6'; // Blue for running
     else if (isExecuted) {
         if (isSuccess === false) edgeColor = '#ff6d5b'; // n8n error red
         else edgeColor = '#4fcc5d'; // n8n success green
@@ -1001,11 +1003,12 @@ interface WorkflowViewProps {
     tab: WorkflowTab;
     onContentChange?: (content: string) => void;
     onRun?: () => void;
+    onStop?: () => void;
     isExecuting?: boolean;
     executionState?: any[];
 }
 
-function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, executionState = EMPTY_ARRAY }: WorkflowViewProps) {
+export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentChange, onRun, onStop, isExecuting = false, executionState = EMPTY_ARRAY }: WorkflowViewProps) => {
     const { theme, apiBaseUrl } = useAppStore();
     const [selectedNode, setSelectedNode] = useState<Node | null>(null);
 
@@ -1693,28 +1696,37 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
     const edgesWithData = useMemo(() => {
         if (!executionState || executionState.length === 0) return edges;
 
-        return edges.map(edge => {
-            // Find execution step for the source node
-            const sourceSteps = executionState.filter((s: any) => s.nodeId === edge.source);
-            if (sourceSteps.length === 0) return edge;
+        const totalSteps = executionState.length;
+        const EDGE_TRAILING_THRESHOLD = 2; // Edges fade faster than nodes
 
-            const lastStep = sourceSteps[sourceSteps.length - 1];
+        return edges.map(edge => {
+            // Find execution step for the source node with global index
+            let sourceStepIdx = -1;
+            for (let i = executionState.length - 1; i >= 0; i--) {
+                if ((executionState[i] as any).nodeId === edge.source) {
+                    sourceStepIdx = i;
+                    break;
+                }
+            }
+            if (sourceStepIdx === -1) return edge;
+
+            const lastStep = executionState[sourceStepIdx];
             const outputMap = lastStep.output || {};
-            // Determine which signal this edge carries
             const signalRaw = edge.sourceHandle || edge.label || 'success';
             const signal = String(signalRaw);
 
             const isExecuted = lastStep.status === 'success' || lastStep.status === 'error';
             const edgeData = outputMap[signal];
 
+            // Trailing logic for edges
+            const isRecent = (totalSteps - 1 - sourceStepIdx) < EDGE_TRAILING_THRESHOLD;
+            const shouldHighlight = isExecuted && isRecent;
+
             let isSuccess = lastStep.status === 'success';
-            // If the node errored, and this edge is the default/success path, it shouldn't glow green.
 
             let dataCount = 0;
             if (edgeData && Array.isArray(edgeData)) {
                 dataCount = edgeData.length;
-                // If it's a conditional node and this branch wasn't taken, dataCount would be 0
-                // We might want to clear isExecuted if dataCount is 0 for conditional branches to avoid them glowing green when skipped.
                 if (dataCount === 0 && (signal === 'true' || signal === 'false' || signal.match(/^\d+$/))) {
                     return edge; // Branch not taken
                 }
@@ -1726,13 +1738,47 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                 ...edge,
                 data: {
                     ...edge.data,
-                    executed: isExecuted,
+                    executed: shouldHighlight,
                     isSuccess,
-                    dataCount
-                }
+                    dataCount,
+                    status: lastStep.status
+                },
+                animated: shouldHighlight || lastStep.status === 'running'
             };
         });
     }, [edges, executionState]);
+
+    const nodesWithData = useMemo(() => {
+        if (!executionState || executionState.length === 0) return nodes;
+
+        const totalSteps = executionState.length;
+        const TRAILING_THRESHOLD = 3; // Only show status for last 3 steps
+
+        return nodes.map(node => {
+            // Find ALL steps for this node to determine status and its position in history
+            const nodeSteps = executionState.map((s, idx) => ({ ...s, globalIdx: idx }))
+                .filter((s: any) => s.nodeId === node.id);
+
+            if (nodeSteps.length === 0) return node;
+
+            const lastStep = nodeSteps[nodeSteps.length - 1];
+
+            // Highlight logic:
+            // 1. If it's currently running, always show.
+            // 2. If it finished, only show if it was part of the very recent "trail".
+            //    This ensures that in a loop, the previous cycle's icons disappear.
+            const isRecent = (totalSteps - 1 - lastStep.globalIdx) < TRAILING_THRESHOLD;
+            const shouldShowStatus = lastStep.status === 'running' || isRecent;
+
+            return {
+                ...node,
+                data: {
+                    ...node.data,
+                    status: shouldShowStatus ? lastStep.status : undefined
+                }
+            };
+        });
+    }, [nodes, executionState]);
 
     return (
         <div className="flex-1 flex h-full bg-base-100 overflow-hidden">
@@ -1740,7 +1786,7 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
                 {/* Canvas */}
                 <div className="flex-1 relative">
                     <ReactFlow
-                        nodes={nodes}
+                        nodes={nodesWithData}
                         edges={edgesWithData}
                         onNodesChange={onNodesChange}
                         onEdgesChange={onEdgesChange}
@@ -1771,17 +1817,28 @@ function WorkflowViewInner({ tab, onContentChange, onRun, isExecuting = false, e
 
                         <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-3">
                             {onRun && (
-                                <button
-                                    className={clsx(
-                                        "btn h-10 min-h-0 text-white border-none shadow-lg rounded-md px-6 gap-2 animate-in fade-in slide-in-from-top duration-300 group transition-all",
-                                        isExecuting ? "bg-[#ff6d5b]/70 cursor-not-allowed" : "bg-[#ff6d5b] hover:bg-[#ff6d5b]/90"
+                                <div className="flex gap-2">
+                                    {isExecuting && onStop && (
+                                        <button
+                                            className="btn h-10 min-h-0 bg-gray-100 hover:bg-gray-200 text-gray-700 border-none shadow-lg rounded-md px-4 gap-2 animate-in fade-in slide-in-from-right duration-300"
+                                            onClick={onStop}
+                                        >
+                                            <X size={16} className="text-error" />
+                                            <span className="font-bold text-sm">Stop</span>
+                                        </button>
                                     )}
-                                    disabled={isExecuting}
-                                    onClick={onRun}
-                                >
-                                    {isExecuting ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} fill="currentColor" className="group-hover:scale-110 transition-transform" />}
-                                    <span className="font-bold text-sm tracking-tight">{isExecuting ? 'Executing...' : 'Execute Workflow'}</span>
-                                </button>
+                                    <button
+                                        className={clsx(
+                                            "btn h-10 min-h-0 text-white border-none shadow-lg rounded-md px-6 gap-2 animate-in fade-in slide-in-from-top duration-300 group transition-all",
+                                            isExecuting ? "bg-[#ff6d5b]/70 cursor-not-allowed" : "bg-[#ff6d5b] hover:bg-[#ff6d5b]/90"
+                                        )}
+                                        disabled={isExecuting}
+                                        onClick={onRun}
+                                    >
+                                        {isExecuting ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} fill="currentColor" className="group-hover:scale-110 transition-transform" />}
+                                        <span className="font-bold text-sm tracking-tight">{isExecuting ? 'Executing...' : 'Execute Workflow'}</span>
+                                    </button>
+                                </div>
                             )}
 
                             {/* n8n Style Right Toolbar (Add/Vars) */}

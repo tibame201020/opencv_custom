@@ -40,6 +40,14 @@ export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
     const [activeTab, setActiveTab] = useState<'input' | 'output'>('output');
     const [searchTerm, setSearchTerm] = useState('');
     const [isExpanded, setIsExpanded] = useState(false);
+    const scrollRef = React.useRef<HTMLDivElement>(null);
+
+    // Auto-scroll to bottom on new steps
+    React.useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+    }, [executionState.length]);
 
     // Filter steps based on search
     const filteredSteps = useMemo(() => {
@@ -174,7 +182,7 @@ export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
                         </div>
 
                         {/* List */}
-                        <div className="flex-1 overflow-y-auto custom-scrollbar">
+                        <div ref={scrollRef} className="flex-1 overflow-y-auto custom-scrollbar">
                             {filteredSteps.length === 0 ? (
                                 <div className="p-8 text-center text-gray-400 text-xs">
                                     No steps found.

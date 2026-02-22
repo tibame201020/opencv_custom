@@ -1278,7 +1278,7 @@ func runWorkflow(c *gin.Context) {
 			}
 		}
 
-		logger(fmt.Sprintf("Starting workflow: %s (%s)\n", wf.Name, wf.ID))
+		logger(fmt.Sprintf("Starting workflow: %s (%s)", wf.Name, wf.ID))
 
 		// Check if any nodes need the Python bridge (platform/vision actions)
 		needsBridge := false
@@ -1298,7 +1298,7 @@ func runWorkflow(c *gin.Context) {
 		var bridge *workflow.PythonBridge
 
 		if needsBridge {
-			logger("Initializing Python Bridge...\n")
+			logger("Initializing Python Bridge...")
 			// Determine platform from workflow or default to android
 			platform := wf.Platform
 			if platform == "" {
@@ -1322,12 +1322,12 @@ func runWorkflow(c *gin.Context) {
 			)
 			if err != nil {
 				errMsg := fmt.Sprintf("Warning: Failed to start Python bridge: %v. Execution will continue with stubbed platform nodes.", err)
-				logger(errMsg + "\n")
+				logger(errMsg)
 				proc.Logs <- fmt.Sprintf(`{"type": "log", "message": "%s", "level": "warning"}`, errMsg)
 				// Do not return, continue with bridge = nil
 			} else {
 				defer bridge.Close()
-				logger("Python Bridge ready.\n")
+				logger("Python Bridge ready.")
 			}
 		}
 
@@ -1351,16 +1351,16 @@ func runWorkflow(c *gin.Context) {
 		if err != nil {
 			// Check if cancelled
 			if ctx.Err() == context.Canceled {
-				logger("\nWorkflow execution cancelled.\n")
+				logger("Workflow execution cancelled.")
 				proc.Logs <- `{"type": "status", "message": "Workflow cancelled"}`
 			} else {
-				logger(fmt.Sprintf("\nWorkflow execution failed: %v\n", err))
+				logger(fmt.Sprintf("Workflow execution failed: %v", err))
 				proc.Logs <- fmt.Sprintf(`{"type": "error", "message": "Error: %v"}`, err)
 			}
 			return
 		}
 
-		logger(fmt.Sprintf("\nExecution complete: %d steps\n", len(result.ExecutionPath)))
+		logger(fmt.Sprintf("Execution complete: %d steps", len(result.ExecutionPath)))
 		proc.Logs <- `{"type": "status", "message": "Workflow Execution Complete"}`
 	}()
 }

@@ -205,16 +205,22 @@ export const ExecutionView: React.FC = () => {
 
             ws.onmessage = (event) => {
                 try {
-                    const msg = JSON.parse(event.data);
-                    const parsed = typeof msg === 'string' ? JSON.parse(msg) : msg;
-                    const { timestamp, ...logData } = parsed;
-                    appendLog(tabId, logData);
+                    const parsed = JSON.parse(event.data);
+
+                    // Only append to logs if it has a message to display
+                    if (parsed.message !== undefined && parsed.message !== null && String(parsed.message).trim() !== '') {
+                        const { timestamp, ...logData } = parsed;
+                        appendLog(tabId, logData);
+                    }
 
                     if (parsed.type === 'status' && parsed.message === 'Process exited') {
                         updateScriptStatus(tabId, 'stopped');
                     }
                 } catch (e) {
-                    appendLog(tabId, { type: 'stdout', message: event.data });
+                    // Fallback for raw text
+                    if (event.data && String(event.data).trim() !== '') {
+                        appendLog(tabId, { type: 'stdout', message: event.data });
+                    }
                 }
             };
         } catch (err: any) {
