@@ -114,15 +114,15 @@ func TestRunWorkflowIntegration(t *testing.T) {
 		Name:        "Integration Flow",
 		Description: "Testing Go-Python Bridge",
 		Platform:    "android",
-		Nodes: map[string]*workflow.WorkflowNode{
-			"start": {
+		Nodes: []*workflow.WorkflowNode{
+			{
 				ID:   "start",
 				Name: "Start",
 				Type: "start",
 				X:    100,
 				Y:    100,
 			},
-			"click_1": {
+			{
 				ID:   "click_1",
 				Name: "Click Template",
 				Type: "click_image",

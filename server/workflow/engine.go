@@ -2,7 +2,6 @@ package workflow
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -65,31 +64,46 @@ type WorkflowEdge struct {
 
 // Workflow 工作流定義
 type Workflow struct {
-	ID          string                   `json:"id"`
-	ProjectID   string                   `json:"projectId"`
-	Name        string                   `json:"name"`
-	Description string                   `json:"description"`
-	Platform    string                   `json:"platform"`
-	Nodes       map[string]*WorkflowNode `json:"nodes"`
-	Edges       []WorkflowEdge           `json:"edges"`
-	StartNodeID string                   `json:"startNodeId"`
+	ID          string          `json:"id"`
+	ProjectID   string          `json:"projectId"`
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	Platform    string          `json:"platform"`
+	Nodes       []*WorkflowNode `json:"nodes"`
+	Edges       []WorkflowEdge  `json:"edges"`
+	StartNodeID string          `json:"startNodeId"`
 }
 
 // FlowEngine 執行引擎
 type FlowEngine struct {
-	Workflow      *Workflow
-	GlobalContext map[string]interface{}
-	NodeResults   map[string]NodeOutput
-	OnStep        func(step ExecutionStep)
+	Workflow       *Workflow
+	GlobalContext  map[string]interface{}
+	NodeResults    map[string]NodeOutput
+	NodeMap        map[string]*WorkflowNode // Optimized lookup
+	ExecutionStore ExecutionStore           // Optional persistence
+	OnStep         func(step ExecutionStep)
 }
 
 // NewFlowEngine 建立執行引擎
 func NewFlowEngine(wf *Workflow) *FlowEngine {
+	// Build node map
+	nodeMap := make(map[string]*WorkflowNode)
+	for _, node := range wf.Nodes {
+		nodeMap[node.ID] = node
+	}
+
 	return &FlowEngine{
 		Workflow:      wf,
 		GlobalContext: make(map[string]interface{}),
 		NodeResults:   make(map[string]NodeOutput),
+		NodeMap:       nodeMap,
 	}
+}
+
+// WithStore attaches an execution store to the engine
+func (e *FlowEngine) WithStore(store ExecutionStore) *FlowEngine {
+	e.ExecutionStore = store
+	return e
 }
 
 // ExecutionStep 每個節點的執行記錄
@@ -125,10 +139,12 @@ func (e *FlowEngine) findStartNode() string {
 
 	var bestID string
 	var bestY float64 = 1e18
-	for id, node := range e.Workflow.Nodes {
-		if !hasIncoming[id] {
+
+	// Iterate over slice, order is stable
+	for _, node := range e.Workflow.Nodes {
+		if !hasIncoming[node.ID] {
 			if bestID == "" || node.Y < bestY {
-				bestID = id
+				bestID = node.ID
 				bestY = node.Y
 			}
 		}
@@ -312,6 +328,15 @@ func WireBuiltinExecutors(wf *Workflow, bridge *PythonBridge, logger func(string
 		if node.Executor != nil {
 			continue
 		}
+
+		nodeType := string(node.Type)
+		// Check Registry
+		if factory, ok := executorRegistry[nodeType]; ok {
+			node.Executor = factory(node, bridge, logger).Execute
+			continue
+		}
+
+		// Fallback to legacy or platform
 		node.Executor = createBuiltinExecutor(node, bridge, logger)
 	}
 }
@@ -343,421 +368,9 @@ func createBuiltinExecutor(node *WorkflowNode, bridge *PythonBridge, logger func
 		return createBridgeExecutor(node, rawConfig, bridge, logf)
 	}
 
-	// ── Flow Control / Pure Go 節點 ──
-	switch nodeType {
-
-	case "log":
-		return func(ctx context.Context, arg NodeArg) NodeOutput {
-			// Execute per item, pass through
-			for _, item := range arg.Input {
-				config := ResolveConfig(rawConfig, arg, &item)
-				msg := getConfigStr(config, "message", "")
-				level := getConfigStr(config, "type", "info")
-				logf("[Workflow][%s] %s", level, msg)
-			}
-			return singleOutput("success", arg.Input)
-		}
-
-	case "sleep":
-		return func(ctx context.Context, arg NodeArg) NodeOutput {
-			// We sleep once? Or per item?
-			// Typically sleep is "wait before proceeding".
-			// If we have 100 items, sleeping 1s per item = 100s.
-			// n8n 'Wait' node has 'Wait for amount of time' (once) or based on field.
-			// Our 'sleep' is simple. Let's do it ONCE based on first item, or max?
-			// Let's do: Resolve config using first item (if exists) and sleep once.
-			// This matches "Execute Once" behavior roughly.
-			var refItem *ExecutionItem
-			if len(arg.Input) > 0 {
-				refItem = &arg.Input[0]
-			}
-			config := ResolveConfig(rawConfig, arg, refItem)
-			ms := 0
-			if val, ok := config["seconds"]; ok {
-				switch v := val.(type) {
-				case float64:
-					ms = int(v * 1000)
-				case int:
-					ms = v * 1000
-				case string:
-					if f, err := strconv.ParseFloat(v, 64); err == nil {
-						ms = int(f * 1000)
-					}
-				}
-			} else {
-				ms = getConfigInt(config, "duration_ms", 1000)
-			}
-
-			logf("[Workflow] Sleep %dms", ms)
-			select {
-			case <-time.After(time.Duration(ms) * time.Millisecond):
-				return singleOutput("success", arg.Input)
-			case <-ctx.Done():
-				logf("[Workflow] Sleep cancelled")
-				return singleOutput("cancelled", nil)
-			}
-		}
-
-	case "if_condition":
-		return func(ctx context.Context, arg NodeArg) NodeOutput {
-			trueItems := ExecutionData{}
-			falseItems := ExecutionData{}
-
-			for _, item := range arg.Input {
-				config := ResolveConfig(rawConfig, arg, &item)
-
-				operator := getConfigStr(config, "operator", "")
-				value1Raw := config["value1"]
-				value2Raw := config["value2"]
-
-				// Backward compat
-				expression := getConfigStr(config, "expression", "")
-				if operator == "" && expression != "" {
-					result := false
-					if expression != "" && expression != "false" && expression != "0" {
-						result = true
-					}
-					if result {
-						trueItems = append(trueItems, item)
-					} else {
-						falseItems = append(falseItems, item)
-					}
-					continue
-				}
-
-				v1Str := fmt.Sprintf("%v", value1Raw)
-				v2Str := fmt.Sprintf("%v", value2Raw)
-				result := false
-
-				switch operator {
-				case "string:equals":
-					result = (v1Str == v2Str)
-				case "string:notEquals":
-					result = (v1Str != v2Str)
-				case "string:contains":
-					result = strings.Contains(v1Str, v2Str)
-				case "string:notContains":
-					result = !strings.Contains(v1Str, v2Str)
-				case "string:startsWith":
-					result = strings.HasPrefix(v1Str, v2Str)
-				case "string:endsWith":
-					result = strings.HasSuffix(v1Str, v2Str)
-				case "string:isEmpty":
-					result = (v1Str == "")
-				case "string:isNotEmpty":
-					result = (v1Str != "")
-				case "number:equals", "number:gt", "number:gte", "number:lt", "number:lte":
-					n1, err1 := strconv.ParseFloat(v1Str, 64)
-					n2, err2 := strconv.ParseFloat(v2Str, 64)
-					if err1 == nil && err2 == nil {
-						switch operator {
-						case "number:equals":
-							result = (n1 == n2)
-						case "number:gt":
-							result = (n1 > n2)
-						case "number:gte":
-							result = (n1 >= n2)
-						case "number:lt":
-							result = (n1 < n2)
-						case "number:lte":
-							result = (n1 <= n2)
-						}
-					}
-				case "boolean:isTrue":
-					result = (v1Str == "true")
-				case "boolean:isFalse":
-					result = (v1Str == "false")
-				default:
-					if strings.HasSuffix(operator, ":exists") {
-						result = (value1Raw != nil && v1Str != "")
-					}
-				}
-
-				if result {
-					trueItems = append(trueItems, item)
-				} else {
-					falseItems = append(falseItems, item)
-				}
-			}
-
-			return NodeOutput{
-				Outputs: map[string]ExecutionData{
-					"true":  trueItems,
-					"false": falseItems,
-				},
-			}
-		}
-
-	case "switch":
-		return func(ctx context.Context, arg NodeArg) NodeOutput {
-			outputs := make(map[string]ExecutionData)
-
-			// Pre-resolve config? No, config depends on item usually.
-			// But 'cases' might be constant.
-			// We resolve config per item.
-
-			for _, item := range arg.Input {
-				config := ResolveConfig(rawConfig, arg, &item)
-				valueRaw := config["value"]
-				mode := getConfigStr(config, "mode", "string")
-				valueStr := fmt.Sprintf("%v", valueRaw)
-
-				var casesRaw []interface{}
-				if slice, ok := config["cases"].([]interface{}); ok {
-					casesRaw = slice
-				} else if str, ok := config["cases"].(string); ok {
-					var parsed []interface{}
-					if err := json.Unmarshal([]byte(str), &parsed); err == nil {
-						casesRaw = parsed
-					}
-				}
-
-				matched := false
-				if casesRaw != nil {
-					for i, caseValRaw := range casesRaw {
-						caseValStr := fmt.Sprintf("%v", caseValRaw)
-						match := false
-						if mode == "number" {
-							n1, err1 := strconv.ParseFloat(valueStr, 64)
-							n2, err2 := strconv.ParseFloat(caseValStr, 64)
-							if err1 == nil && err2 == nil && n1 == n2 {
-								match = true
-							}
-						} else {
-							if valueStr == caseValStr {
-								match = true
-							}
-						}
-
-						if match {
-							key := fmt.Sprintf("%d", i)
-							outputs[key] = append(outputs[key], item)
-							matched = true
-							break
-						}
-					}
-				}
-
-				if !matched {
-					outputs["default"] = append(outputs["default"], item)
-				}
-			}
-			return NodeOutput{Outputs: outputs}
-		}
-
-	case "set_variable":
-		return func(ctx context.Context, arg NodeArg) NodeOutput {
-			var resultItems ExecutionData
-
-			// If no input, create one empty item to allow setting vars
-			inputList := arg.Input
-			if len(inputList) == 0 {
-				inputList = append(inputList, ExecutionItem{JSON: make(map[string]interface{})})
-			}
-
-			for _, item := range inputList {
-				newItem := ExecutionItem{
-					JSON:   make(map[string]interface{}),
-					Binary: item.Binary,
-				}
-				// Copy existing
-				for k, v := range item.JSON {
-					newItem.JSON[k] = v
-				}
-
-				config := ResolveConfig(rawConfig, arg, &item)
-
-				// 1. json_input
-				if jsonStr, ok := config["json_input"].(string); ok {
-					var parsedVars map[string]interface{}
-					if err := json.Unmarshal([]byte(jsonStr), &parsedVars); err == nil {
-						for k, v := range parsedVars {
-							newItem.JSON[k] = v
-						}
-					}
-				}
-
-				// 2. Direct keys
-				for k, v := range config {
-					if k == "json_input" {
-						continue
-					}
-					newItem.JSON[k] = v
-				}
-				resultItems = append(resultItems, newItem)
-			}
-
-			return singleOutput("success", resultItems)
-		}
-
-	case "loop":
-		// Simplified Loop: Iterate over list field OR count
-		// For now, let's assume it behaves like n8n's "Loop Over Items" if input has items.
-		// BUT the user interface has 'count' mode.
-		// If mode='count', we generate N items?
-
-		return func(ctx context.Context, arg NodeArg) NodeOutput {
-			// We need to resolve config. But config might depend on input.
-			// Let's take the first input item as reference for config.
-			var refItem *ExecutionItem
-			if len(arg.Input) > 0 {
-				refItem = &arg.Input[0]
-			}
-			config := ResolveConfig(rawConfig, arg, refItem)
-
-			// Check internal state
-			idxKey := fmt.Sprintf("loop_%s_index", node.ID)
-			idxRaw, exists := arg.GlobalContext[idxKey]
-			idx := 0
-			if exists {
-				idx = idxRaw.(int)
-			} else {
-				arg.GlobalContext[idxKey] = 0
-			}
-
-			// Mode: count or ...?
-			// The original code handled "items" array iteration.
-			// Let's support:
-			// 1. "items" array in config (loop over that)
-			// 2. "count" (loop N times)
-
-			itemsRaw := config["items"]
-			var items []interface{}
-
-			if itemsRaw != nil {
-				if slice, ok := itemsRaw.([]interface{}); ok {
-					items = slice
-				} else if str, ok := itemsRaw.(string); ok {
-					json.Unmarshal([]byte(str), &items)
-				}
-			} else if val, ok := config["count"]; ok {
-				// Generate N items
-				count := 0
-				switch v := val.(type) {
-				case int:
-					count = v
-				case float64:
-					count = int(v)
-				}
-				for i := 0; i < count; i++ {
-					items = append(items, map[string]interface{}{"index": i})
-				}
-			}
-
-			if len(items) == 0 {
-				// No items to loop
-				return singleOutput("done", arg.Input)
-			}
-
-			if idx >= len(items) {
-				delete(arg.GlobalContext, idxKey)
-				return singleOutput("done", arg.Input)
-			}
-
-			currentItem := items[idx]
-			arg.GlobalContext[idxKey] = idx + 1
-
-			// Create output item
-			// n8n Loop output is the item itself.
-			// If item is object, it becomes JSON.
-			newItem := ExecutionItem{
-				JSON: make(map[string]interface{}),
-			}
-			if m, ok := currentItem.(map[string]interface{}); ok {
-				newItem.JSON = m
-			} else {
-				newItem.JSON["item"] = currentItem
-			}
-			newItem.JSON["index"] = idx
-
-			return singleOutput("body", ExecutionData{newItem})
-		}
-
-	case "convert":
-		return func(ctx context.Context, arg NodeArg) NodeOutput {
-			return singleOutput("success", arg.Input)
-		}
-
-	case "sub_workflow":
-		return func(ctx context.Context, arg NodeArg) NodeOutput {
-			// Placeholder
-			return singleOutput("success", arg.Input)
-		}
-
-	case "code":
-		return func(ctx context.Context, arg NodeArg) NodeOutput {
-			// Resolve config using first item? Or pass unresolved?
-			// Code node usually gets raw code string.
-			// But user might use expression in code? Unlikely for "code" param.
-			// Let's resolve.
-			var refItem *ExecutionItem
-			if len(arg.Input) > 0 {
-				refItem = &arg.Input[0]
-			}
-			config := ResolveConfig(rawConfig, arg, refItem)
-			code := getConfigStr(config, "code", "")
-
-			if bridge == nil {
-				return singleOutput("error", ExecutionData{{JSON: map[string]interface{}{"error": "Python bridge not available"}}})
-			}
-
-			// Pass inputs as params
-			// We pass the raw ExecutionData list structure
-			params := map[string]interface{}{
-				"code":  code,
-				"input": arg.Input, // Contains JSON and Binary maps
-			}
-
-			resp, err := bridge.Call("exec_code", params)
-			if err != nil {
-				return singleOutput("error", ExecutionData{{JSON: map[string]interface{}{"error": err.Error()}}})
-			}
-			if resp.Error != "" {
-				return singleOutput("error", ExecutionData{{JSON: map[string]interface{}{"error": resp.Error}}})
-			}
-
-			// Parse Output
-			// Expected: Output is either list of objects or single object
-			// We need to convert it back to ExecutionData
-			var outputData ExecutionData
-
-			// Helper to convert arbitrary Map to ExecutionItem
-			toItem := func(val interface{}) ExecutionItem {
-				item := ExecutionItem{JSON: make(map[string]interface{})}
-				if m, ok := val.(map[string]interface{}); ok {
-					// Check if it has 'json'/'binary' structure already?
-					// If python returns exact structure, use it.
-					if j, hasJ := m["json"]; hasJ {
-						if jMap, ok := j.(map[string]interface{}); ok {
-							item.JSON = jMap
-						}
-					} else {
-						item.JSON = m
-					}
-					if b, hasB := m["binary"]; hasB {
-						if bMap, ok := b.(map[string]interface{}); ok {
-							item.Binary = bMap
-						}
-					}
-				}
-				return item
-			}
-
-			if list, ok := resp.Output.([]interface{}); ok {
-				for _, val := range list {
-					outputData = append(outputData, toItem(val))
-				}
-			} else if resp.Output != nil {
-				outputData = append(outputData, toItem(resp.Output))
-			}
-
-			return singleOutput("success", outputData)
-		}
-
-	default:
-		return func(ctx context.Context, arg NodeArg) NodeOutput {
-			return singleOutput("success", arg.Input)
-		}
+	// Default fallback
+	return func(ctx context.Context, arg NodeArg) NodeOutput {
+		return singleOutput("success", arg.Input)
 	}
 }
 
@@ -916,6 +529,17 @@ func (e *FlowEngine) Execute(ctx context.Context, input interface{}) (*Execution
 		return &ExecutionResult{Output: map[string]ExecutionData{}, ExecutionPath: executionPath}, fmt.Errorf("no start node")
 	}
 
+	// Create Persistence Record if store is present
+	var runID string
+	if e.ExecutionStore != nil {
+		var err error
+		runID, err = e.ExecutionStore.CreateExecution(e.Workflow.ID)
+		if err != nil {
+			// Log error but proceed? Or fail? Fail is safer for integrity.
+			return nil, fmt.Errorf("failed to create execution record: %v", err)
+		}
+	}
+
 	queue = append(queue, QueueItem{NodeID: startNodeID, Data: startData})
 
 	// To prevent infinite loops in cyclic graphs without consumption, we might need logic.
@@ -930,8 +554,8 @@ func (e *FlowEngine) Execute(ctx context.Context, input interface{}) (*Execution
 
 	// Pre-calculate Node Names
 	nodeNames := make(map[string]string)
-	for id, node := range e.Workflow.Nodes {
-		nodeNames[id] = node.Name
+	for _, node := range e.Workflow.Nodes {
+		nodeNames[node.ID] = node.Name
 	}
 
 	for len(queue) > 0 {
@@ -947,7 +571,7 @@ func (e *FlowEngine) Execute(ctx context.Context, input interface{}) (*Execution
 		currentNodeId := currentItem.NodeID
 		currentData := currentItem.Data
 
-		node, ok := e.Workflow.Nodes[currentNodeId]
+		node, ok := e.NodeMap[currentNodeId]
 		if !ok {
 			continue
 		}
@@ -1016,6 +640,11 @@ func (e *FlowEngine) Execute(ctx context.Context, input interface{}) (*Execution
 			e.OnStep(step)
 		}
 
+		// Persist Step
+		if e.ExecutionStore != nil && runID != "" {
+			_ = e.ExecutionStore.RecordStep(runID, step)
+		}
+
 		// Update Final Output (last step wins)
 		finalOutput = nodeOutput.Outputs
 
@@ -1038,6 +667,11 @@ func (e *FlowEngine) Execute(ctx context.Context, input interface{}) (*Execution
 				}
 			}
 		}
+	}
+
+	// Update final status
+	if e.ExecutionStore != nil && runID != "" {
+		_ = e.ExecutionStore.UpdateExecutionStatus(runID, "success")
 	}
 
 	return &ExecutionResult{

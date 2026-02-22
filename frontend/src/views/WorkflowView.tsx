@@ -243,14 +243,12 @@ interface GraphContextMenuProps {
     onClose: () => void;
     onDelete?: () => void;
     onDuplicate?: () => void;
-    onToFront?: () => void;
-    onToBack?: () => void;
     onProperties?: () => void;
     onAddNode?: () => void;
 }
 
 const GraphContextMenu: React.FC<GraphContextMenuProps> = ({
-    type, x, y, onClose, onDelete, onDuplicate, onToFront, onToBack, onProperties, onAddNode
+    type, x, y, onClose, onDelete, onDuplicate, onProperties, onAddNode
 }) => {
     return (
         <div
@@ -1398,25 +1396,23 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
     useEffect(() => {
         if (!nodes || !edges) return;
 
-        const nodesMap: Record<string, any> = {};
-        nodes.forEach(n => {
-            nodesMap[n.id] = {
-                id: n.id,
-                name: (n.data as any).label || '',
-                type: n.type || 'click',
-                config: (n.data as any).config || {},
-                x: Math.round(n.position.x),
-                y: Math.round(n.position.y),
-                style: { width: n.width, height: n.height, ...n.style },
-                disabled: (n.data as any).disabled,
-            };
-        });
+        const nodesList = nodes.map(n => ({
+            id: n.id,
+            name: (n.data as any).label || '',
+            type: n.type || 'click',
+            config: (n.data as any).config || {},
+            x: Math.round(n.position.x),
+            y: Math.round(n.position.y),
+            style: { width: n.width, height: n.height, ...n.style },
+            disabled: (n.data as any).disabled,
+        }));
+
         const edgeArr = edges.map(e => ({
             id: e.id, fromNodeId: e.source, toNodeId: e.target,
             signal: e.sourceHandle || String(e.label || 'success'),
         }));
 
-        const updated = { ...workflowData, nodes: nodesMap, edges: edgeArr };
+        const updated = { ...workflowData, nodes: nodesList, edges: edgeArr };
         const json = JSON.stringify(updated, null, 2);
 
         if (json !== tab.content) {
@@ -2107,8 +2103,6 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
                             onClose={() => setGraphContextMenu(null)}
                             onDelete={handleDeleteFromMenu}
                             onDuplicate={graphContextMenu.type === 'node' ? handleDuplicate : undefined}
-                            onToFront={graphContextMenu.type === 'node' ? moveNodeToFront : undefined}
-                            onToBack={graphContextMenu.type === 'node' ? moveNodeToBack : undefined}
                             onProperties={graphContextMenu.type === 'node' ? handlePropertiesFromMenu : undefined}
                             onAddNode={() => {
                                 setPendingConnection(null);

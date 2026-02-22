@@ -1133,7 +1133,7 @@ func createWorkflow(c *gin.Context) {
 		ProjectID:   req.ProjectID,
 		Name:        req.Name,
 		Description: req.Description,
-		Nodes:       make(map[string]*workflow.WorkflowNode),
+		Nodes:       []*workflow.WorkflowNode{},
 	}
 
 	if err := workflow.SaveWorkflow(wf); err != nil {
