@@ -158,11 +158,18 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                     "rounded-[10px] border-[1.5px]",
                     selected ? "border-primary ring-1 ring-primary shadow-lg" : "border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300",
                     isSuccess && !isRunning && "border-[#4fcc5d] bg-[#4fcc5d]/10 shadow-[0_0_10px_rgba(79,204,93,0.2)]",
-                    isRunning && "border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.4)] ring-2 ring-blue-500/20 animate-[pulse_1.5s_infinite] bg-blue-50/10",
+                    isRunning && "border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)] bg-blue-50/5",
                     isError && "border-red-500 bg-red-50/10",
                     isDisabled && "opacity-60 grayscale bg-gray-50"
                 )}
             >
+                {/* Border Flow & Revolving Dot for Running state */}
+                {isRunning && (
+                    <>
+                        <div className="n8n-node-running-border" />
+                        <div className="n8n-node-dot" />
+                    </>
+                )}
                 {/* Trigger Icon Overlay (Lightning Bolt) - if applicable */}
                 {isTrigger && (
                     <div className="absolute -top-2 left-4 z-20 bg-white border border-gray-200 rounded-full p-0.5 shadow-sm text-yellow-500">
@@ -188,6 +195,11 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                     )}
 
                     {/* Status Badge Overlays (Bottom-Right of Icon) */}
+                    {isRunning && (
+                        <div className="absolute -bottom-1.5 -right-1.5 w-5 h-5 bg-blue-500 rounded-full border-2 border-white flex items-center justify-center shadow-sm z-30">
+                            <Loader2 size={10} strokeWidth={4} className="text-white animate-spin" />
+                        </div>
+                    )}
                     {isSuccess && !isRunning && (
                         <div className="absolute -bottom-1.5 -right-1.5 w-5 h-5 bg-[#4fcc5d] rounded-full border-2 border-white flex items-center justify-center shadow-sm z-20">
                             <Check size={10} strokeWidth={4} className="text-white" />

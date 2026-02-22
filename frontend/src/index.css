@@ -75,4 +75,39 @@ body,
   .n8n-node-enter {
     animation: n8n-node-pop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
+
+  @keyframes border-flow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .n8n-node-running-border {
+    position: absolute;
+    inset: -2px;
+    border-radius: 12px;
+    background: linear-gradient(90deg, #3b82f6, #60a5fa, #93c5fd, #3b82f6);
+    background-size: 300% 300%;
+    animation: border-flow 2s linear infinite;
+    z-index: 0;
+  }
+
+  @keyframes revolving-dot {
+    0% { top: -4px; left: -4px; }
+    25% { top: -4px; left: calc(100% - 4px); }
+    50% { top: calc(100% - 4px); left: calc(100% - 4px); }
+    75% { top: calc(100% - 4px); left: -4px; }
+    100% { top: -4px; left: -4px; }
+  }
+
+  .n8n-node-dot {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background-color: #3b82f6;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #3b82f6, 0 0 20px #3b82f6;
+    z-index: 30;
+    animation: revolving-dot 4s linear infinite;
+  }
 }

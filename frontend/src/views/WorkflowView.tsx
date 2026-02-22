@@ -1834,6 +1834,10 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
                         onConnectEnd={onConnectEnd}
                         connectionLineType={ConnectionLineType.Bezier}
                         connectionLineStyle={{ stroke: '#b1b1b7', strokeWidth: 2 }}
+                        nodesDraggable={!isExecuting}
+                        nodesConnectable={!isExecuting}
+                        elementsSelectable={!isExecuting}
+                        edgesFocusable={!isExecuting}
                     >
                         <Background gap={20} size={1} color="#d4d4d8" variant={BackgroundVariant.Dots} style={{ backgroundColor: '#f5f5f5' }} />
 
