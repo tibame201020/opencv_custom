@@ -22,14 +22,14 @@ func getFirstValue(data ExecutionData) interface{} {
 func TestSimpleConvert(t *testing.T) {
 	wf := &Workflow{
 		ID: "simple",
-		Nodes: map[string]*WorkflowNode{
-			"n1": CreateConvertNode("n1", "toUpper", func(input interface{}) interface{} {
+		Nodes: []*WorkflowNode{
+			CreateConvertNode("n1", "toUpper", func(input interface{}) interface{} {
 				// input is map[string]interface{}
 				m := input.(map[string]interface{})
 				val := m["value"].(string)
 				return val + "!"
 			}),
-			"n2": CreateConvertNode("n2", "appendHash", func(input interface{}) interface{} {
+			CreateConvertNode("n2", "appendHash", func(input interface{}) interface{} {
 				m := input.(map[string]interface{})
 				val := m["value"].(string)
 				return val + "#"
@@ -61,18 +61,18 @@ func TestSimpleConvert(t *testing.T) {
 func TestIfCondition(t *testing.T) {
 	wf := &Workflow{
 		ID: "if_test",
-		Nodes: map[string]*WorkflowNode{
-			"check": CreateIfNode("check", "isLength3", func(input interface{}) bool {
+		Nodes: []*WorkflowNode{
+			CreateIfNode("check", "isLength3", func(input interface{}) bool {
 				m := input.(map[string]interface{})
 				val := m["value"].(string)
 				return len(val) == 3
 			}),
-			"ok": CreateConvertNode("ok", "prependOK", func(input interface{}) interface{} {
+			CreateConvertNode("ok", "prependOK", func(input interface{}) interface{} {
 				m := input.(map[string]interface{})
 				val := m["value"].(string)
 				return "OK:" + val
 			}),
-			"fail": CreateConvertNode("fail", "prependFAIL", func(input interface{}) interface{} {
+			CreateConvertNode("fail", "prependFAIL", func(input interface{}) interface{} {
 				m := input.(map[string]interface{})
 				val := m["value"].(string)
 				return "FAIL:" + val
@@ -107,8 +107,8 @@ func TestIfCondition(t *testing.T) {
 func TestCaseWhenBranching(t *testing.T) {
 	wf := &Workflow{
 		ID: "case_when",
-		Nodes: map[string]*WorkflowNode{
-			"switch": createCustomNode("switch", "categorizeLength", func(ctx context.Context, arg NodeArg) NodeOutput {
+		Nodes: []*WorkflowNode{
+			createCustomNode("switch", "categorizeLength", func(ctx context.Context, arg NodeArg) NodeOutput {
 				outputs := map[string]ExecutionData{}
 
 				for _, item := range arg.Input {
@@ -125,13 +125,13 @@ func TestCaseWhenBranching(t *testing.T) {
 				}
 				return NodeOutput{Outputs: outputs}
 			}),
-			"hShort": CreateConvertNode("hShort", "handleShort", func(input interface{}) interface{} {
+			CreateConvertNode("hShort", "handleShort", func(input interface{}) interface{} {
 				return "SHORT: " + input.(map[string]interface{})["value"].(string)
 			}),
-			"hMed": CreateConvertNode("hMed", "handleMedium", func(input interface{}) interface{} {
+			CreateConvertNode("hMed", "handleMedium", func(input interface{}) interface{} {
 				return "MEDIUM: " + input.(map[string]interface{})["value"].(string)
 			}),
-			"hLong": CreateConvertNode("hLong", "handleLong", func(input interface{}) interface{} {
+			CreateConvertNode("hLong", "handleLong", func(input interface{}) interface{} {
 				return "LONG: " + input.(map[string]interface{})["value"].(string)
 			}),
 		},

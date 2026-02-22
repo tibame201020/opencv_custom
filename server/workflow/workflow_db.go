@@ -73,7 +73,7 @@ func GetWorkflow(id string) (*Workflow, error) {
 
 	wf := &Workflow{
 		ID:    id,
-		Nodes: make(map[string]*WorkflowNode),
+		Nodes: []*WorkflowNode{},
 		Edges: []WorkflowEdge{},
 	}
 
@@ -88,7 +88,8 @@ func GetWorkflow(id string) (*Workflow, error) {
 	}
 	wf.Description = desc.String
 
-	// 2. 讀取節點
+	// 2. 讀取節點 (Assuming order of insertion/query matters? Usually Z-index logic should be explicit, but for now we rely on DB order if any, or just array)
+	// We might want to add ORDER BY id or a new 'z_index' column if strictly needed. For now, rely on default scan order.
 	rows, err := db.DB.Query("SELECT id, name, type, config, x, y FROM nodes WHERE workflow_id = ?", id)
 	if err != nil {
 		return nil, err
@@ -117,7 +118,7 @@ func GetWorkflow(id string) (*Workflow, error) {
 			node.Y = ny.Float64
 		}
 
-		wf.Nodes[node.ID] = node
+		wf.Nodes = append(wf.Nodes, node)
 	}
 
 	// 3. 讀取邊

@@ -78,6 +78,27 @@ func createSchema() error {
 			FOREIGN KEY (from_node_id) REFERENCES nodes(id) ON DELETE CASCADE,
 			FOREIGN KEY (to_node_id) REFERENCES nodes(id) ON DELETE CASCADE
 		);`,
+		`CREATE TABLE IF NOT EXISTS executions (
+			id TEXT PRIMARY KEY,
+			workflow_id TEXT NOT NULL,
+			status TEXT NOT NULL,
+			start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			end_time TIMESTAMP,
+			FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE
+		);`,
+		`CREATE TABLE IF NOT EXISTS execution_steps (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			execution_id TEXT NOT NULL,
+			node_id TEXT NOT NULL,
+			node_name TEXT,
+			node_type TEXT,
+			status TEXT,
+			start_time TIMESTAMP,
+			end_time TIMESTAMP,
+			duration INTEGER,
+			output TEXT,
+			FOREIGN KEY (execution_id) REFERENCES executions(id) ON DELETE CASCADE
+		);`,
 	}
 
 	for _, q := range queries {
