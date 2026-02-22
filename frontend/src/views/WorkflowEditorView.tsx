@@ -307,7 +307,16 @@ export const WorkflowEditorView: React.FC = () => {
                         try {
                             const msg = JSON.parse(event.data);
                             if (msg.type === 'execution_step') {
-                                setExecutionState(prev => [...prev, msg.data]);
+                                setExecutionState(prev => {
+                                    const next = [...prev];
+                                    const existingIndex = next.findIndex(s => s.nodeId === msg.data.nodeId);
+                                    if (existingIndex !== -1) {
+                                        next[existingIndex] = { ...next[existingIndex], ...msg.data };
+                                    } else {
+                                        next.push(msg.data);
+                                    }
+                                    return next;
+                                });
                             }
                             if (msg.type === 'status' && (msg.message?.includes('Complete') || msg.message?.includes('exited') || msg.message?.includes('cancelled'))) {
                                 setIsRunning(false);

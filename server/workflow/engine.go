@@ -962,6 +962,17 @@ func (e *FlowEngine) Execute(ctx context.Context, input interface{}) (*Execution
 		startTime := time.Now()
 		var nodeOutput NodeOutput
 
+		// Emit 'running' status before execution
+		if e.OnStep != nil {
+			e.OnStep(ExecutionStep{
+				NodeID:    node.ID,
+				NodeName:  node.Name,
+				NodeType:  string(node.Type),
+				Status:    "running",
+				StartTime: startTime,
+			})
+		}
+
 		if node.Type == NodeSubWorkflow && node.SubWorkflow != nil {
 			// Subworkflow logic (stub)
 			nodeOutput = singleOutput("success", currentData)

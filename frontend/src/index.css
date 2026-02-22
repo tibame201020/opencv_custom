@@ -12,7 +12,7 @@ body,
   .glass-card {
     @apply bg-base-100/40 backdrop-blur-xl border border-white/5 shadow-2xl;
   }
-  
+
   .glass-header {
     @apply sticky top-0 z-40 bg-base-200/60 backdrop-blur-md border-b border-white/10;
   }
@@ -34,12 +34,13 @@ body,
     from {
       stroke-dashoffset: 20;
     }
+
     to {
       stroke-dashoffset: 0;
     }
   }
 
-  .n8n-flow-active {
+  .n8n-flow-active .react-flow__edge-path {
     stroke-dasharray: 5;
     animation: n8n-marching-ants 0.5s linear infinite;
   }
@@ -48,9 +49,11 @@ body,
     0% {
       box-shadow: 0 0 0 0 rgba(255, 109, 90, 0.4);
     }
+
     70% {
       box-shadow: 0 0 0 10px rgba(255, 109, 90, 0);
     }
+
     100% {
       box-shadow: 0 0 0 0 rgba(255, 109, 90, 0);
     }
@@ -66,6 +69,7 @@ body,
       transform: scale(0.9);
       opacity: 0;
     }
+
     100% {
       transform: scale(1);
       opacity: 1;
@@ -77,9 +81,17 @@ body,
   }
 
   @keyframes border-flow {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+    0% {
+      background-position: 0% 50%;
+    }
+
+    50% {
+      background-position: 100% 50%;
+    }
+
+    100% {
+      background-position: 0% 50%;
+    }
   }
 
   .n8n-node-running-border {
@@ -93,11 +105,30 @@ body,
   }
 
   @keyframes revolving-dot {
-    0% { top: -4px; left: -4px; }
-    25% { top: -4px; left: calc(100% - 4px); }
-    50% { top: calc(100% - 4px); left: calc(100% - 4px); }
-    75% { top: calc(100% - 4px); left: -4px; }
-    100% { top: -4px; left: -4px; }
+    0% {
+      top: -4px;
+      left: -4px;
+    }
+
+    25% {
+      top: -4px;
+      left: calc(100% - 4px);
+    }
+
+    50% {
+      top: calc(100% - 4px);
+      left: calc(100% - 4px);
+    }
+
+    75% {
+      top: calc(100% - 4px);
+      left: -4px;
+    }
+
+    100% {
+      top: -4px;
+      left: -4px;
+    }
   }
 
   .n8n-node-dot {
