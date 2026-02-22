@@ -22,6 +22,7 @@
 | 1.8 | Global Context & Variables | ✅ | ⬜ | 跨節點變數存取 |
 | 1.9 | Expression Parser ({{ }}) | ✅ | ⬜ | 動態參數解析 |
 | 1.10 | If Condition Operators (55 types) | ✅ | ⬜ | 完整運算子支援 |
+| 1.11 | Go-Python-ADB-OpenCV Bridge Integration | ✅ | ✅ | 重大里程碑：完整端到端與真機驗證 |
 
 ## 2. Workflow Engine (Tests)
 

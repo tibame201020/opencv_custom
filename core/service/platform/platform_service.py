@@ -72,22 +72,31 @@ class PlatformService(ABC):
 
     def find_image(self, image_path: str, region: Optional["OcrRegion"] = None, threshold: float = 0.9) -> Optional[Tuple[float, float]]:
         """在螢幕中尋找指定圖片"""
+        import sys
         from ..core.opencv.mat_utility import MatUtility
+        
+        print(f"[Bridge/find_image] image_path={image_path}, threshold={threshold}, device_id={self.device_id}, project_root={self._project_root}", file=sys.stderr)
         
         src = self.snapshot()
         if src is None:
+            print(f"[Bridge/find_image] snapshot() returned None!", file=sys.stderr)
             return None
+        print(f"[Bridge/find_image] snapshot shape={src.shape}", file=sys.stderr)
         
         target = self._get_image_mat(image_path)
         if target is None:
+            print(f"[Bridge/find_image] _get_image_mat returned None for: {image_path}", file=sys.stderr)
             return None
+        print(f"[Bridge/find_image] target shape={target.shape}", file=sys.stderr)
             
         # 如果有指定區域，則進行裁切
         if region:
             src = MatUtility.slice_region_mat_from_source(src, region)
             
         pattern = self.open_cv_service.find_match(src, target)
-        if pattern.get_similar() >= threshold:
+        similarity = pattern.get_similar()
+        print(f"[Bridge/find_image] match similarity={similarity:.4f}, threshold={threshold}, match={'YES' if similarity >= threshold else 'NO'}", file=sys.stderr)
+        if similarity >= threshold:
             # 如果裁切過，座標需要補償
             if region:
                 return (pattern.point[0] + region.x1, pattern.point[1] + region.y1)
@@ -147,10 +156,23 @@ class PlatformService(ABC):
             # 自動搜尋專案根目錄
             if not self._project_root:
                 self._project_root = self._find_project_root()
-            path = self._project_root / image_path
+            
+            # Try direct path
+            direct_path = self._project_root / image_path
+            
+            # Try images/ subfolder fallback
+            if not direct_path.exists() and not str(image_path).startswith("images"):
+                fallback_path = self._project_root / "images" / image_path
+                if fallback_path.exists():
+                    path = fallback_path
+                else:
+                    path = direct_path
+            else:
+                path = direct_path
             
         if not path.exists():
-            print(f"[Platform] Image path not found: {path}")
+            import sys
+            print(f"[Platform] Image path not found: {path}", file=sys.stderr)
             return None
             
         return MatUtility.get_mat_from_file(str(path))

@@ -17,6 +17,11 @@ from pathlib import Path
 project_root = Path(__file__).parent.resolve()
 sys.path.insert(0, str(project_root))
 
+# Redirect stdout → stderr BEFORE any imports that might print.
+# Only the respond() function should write to the real stdout.
+_real_stdout = sys.stdout
+sys.stdout = sys.stderr
+
 from service.core.opencv.open_cv_service import OpenCvService
 
 # Globals
@@ -25,15 +30,15 @@ opencv_service = None
 
 
 def respond(signal: str, output=None, error: str = None):
-    """Write a JSON response line to stdout."""
+    """Write a JSON response line to the real stdout (Go reads this)."""
     obj = {"signal": signal}
     if output is not None:
         obj["output"] = output
     if error:
         obj["error"] = error
     line = json.dumps(obj, ensure_ascii=False, default=str)
-    sys.stdout.write(line + "\n")
-    sys.stdout.flush()
+    _real_stdout.write(line + "\n")
+    _real_stdout.flush()
 
 
 def handle_init(params: dict):
@@ -42,6 +47,7 @@ def handle_init(params: dict):
 
     plat_type = params.get("platform", "android").lower()
     device_id = params.get("device_id", None)
+    project_root = params.get("project_root", None)
     opencv_service = OpenCvService()
 
     if plat_type == "desktop":
@@ -57,6 +63,9 @@ def handle_init(params: dict):
         platform = AdbPlatform(adb, opencv_service)
         if device_id:
             platform.set_device_id(device_id)
+
+    if project_root:
+        platform._project_root = Path(project_root)
 
     respond("success", {"platform": plat_type, "device_id": device_id})
 
@@ -213,8 +222,15 @@ def _parse_region(region_data):
 
 def main():
     """Main loop: read JSON lines from stdin, dispatch, respond on stdout."""
-    # Unbuffered stderr for logging
-    sys.stderr = open(sys.stderr.fileno(), 'w', buffering=1)
+    # Line-buffered stderr for logging, force UTF-8 to avoid cp950 crashes on Windows
+    sys.stderr = open(sys.stderr.fileno(), 'w', buffering=1, encoding='utf-8', errors='replace')
+    # Re-apply stdout redirect to the new UTF-8 stderr stream
+    sys.stdout = sys.stderr
+
+    # Force stdin to UTF-8 so Go's UTF-8 JSON is decoded correctly
+    # (Windows defaults to cp950, which garbles Chinese filenames)
+    import io
+    sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8', errors='replace')
 
     # Send ready signal
     respond("ready", {"version": "1.0"})

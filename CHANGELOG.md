@@ -5,6 +5,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added — 2026-02-22 (Bridge Integration Milestone)
+- **Workflow Bridge**: Successfully verified full End-to-End integration of **Go Engine ↔ Python Bridge ↔ ADB ↔ OpenCV**.
+- **Workflow Bridge**: Implemented global `stdout` to `stderr` redirection in Python bridge to prevent JSON protocol corruption from internal print statements.
+- **Workflow Bridge**: Forced `UTF-8` encoding on Python `stdin`/`stderr` streams to resolve `cp950` codec crashes and garbled Chinese filenames on Windows.
+
+### Fixed — 2026-02-22
+- **Workflow Bridge**: Resolved project directory naming mismatch by using `ProjectID` directly for `projectRoot` construction in the Go backend.
+- **Workflow Bridge**: Added automatic logical fallback to `images/` subfolder in `PlatformService` when resolving relative asset paths.
+
 ### Added
 - **Docs**: Added `doc/go_python_integration.md` documenting the Go-Python bridge architecture and protocol.
 - **Tests**: Added headless integration tests for Go-Python communication (`server/workflow/bridge_integration_test.go`).

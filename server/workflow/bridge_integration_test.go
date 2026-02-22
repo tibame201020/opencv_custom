@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"script-platform/server/workflow"
 	"strings"
 	"testing"
@@ -46,6 +47,9 @@ func TestBridgeIntegration(t *testing.T) {
 	corePath := filepath.Join(root, "core")
 	toolsPath := filepath.Join(root, "tools")
 	adbStubPath := filepath.Join(toolsPath, "adb_stub")
+	if runtime.GOOS == "windows" {
+		adbStubPath += ".bat"
+	}
 
 	// Use TempDir for log isolation
 	tempDir := t.TempDir()
@@ -65,9 +69,12 @@ func TestBridgeIntegration(t *testing.T) {
 	t.Setenv("ADB_STUB_LOG", adbLogPath)
 
 	// Detect python
-	pythonCmd := "python3"
-	if _, err := exec.LookPath(pythonCmd); err != nil {
-		pythonCmd = "python" // Fallback
+	pythonCmd := "python"
+	if err := exec.Command(pythonCmd, "--version").Run(); err != nil {
+		pythonCmd = "python3"
+	}
+	if err := exec.Command(pythonCmd, "--version").Run(); err != nil {
+		pythonCmd = "py"
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -82,6 +89,7 @@ func TestBridgeIntegration(t *testing.T) {
 		"workflow_bridge.py",
 		"android",
 		"test_device_id",
+		"",
 	)
 	if err != nil {
 		t.Fatalf("Failed to start bridge: %v", err)

@@ -1308,6 +1308,9 @@ func runWorkflow(c *gin.Context) {
 			// Get deviceId from query
 			deviceId := c.Query("deviceId")
 
+			// The on-disk directory name IS the project ID (e.g. "E2E_Project_1771072786")
+			projectRoot := filepath.Join(manager.CorePath, "workflows", wf.ProjectID)
+
 			bridge, err = workflow.NewPythonBridge(
 				ctx, // Use the process context!
 				manager.CmdPath,
@@ -1315,6 +1318,7 @@ func runWorkflow(c *gin.Context) {
 				manager.EntryScript,
 				platform,
 				deviceId,
+				projectRoot,
 			)
 			if err != nil {
 				errMsg := fmt.Sprintf("Warning: Failed to start Python bridge: %v. Execution will continue with stubbed platform nodes.", err)

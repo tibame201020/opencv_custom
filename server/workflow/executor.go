@@ -28,13 +28,13 @@ type BridgeRequest struct {
 
 // BridgeResponse Python 回傳的回應
 type BridgeResponse struct {
-	Signal string                 `json:"signal"`
-	Output interface{}            `json:"output,omitempty"` // Changed to interface{} to support lists/objects
-	Error  string                 `json:"error,omitempty"`
+	Signal string      `json:"signal"`
+	Output interface{} `json:"output,omitempty"` // Changed to interface{} to support lists/objects
+	Error  string      `json:"error,omitempty"`
 }
 
 // NewPythonBridge 啟動 workflow_bridge.py subprocess
-func NewPythonBridge(ctx context.Context, pythonCmd, corePath, entryScript string, platform string, deviceId string) (*PythonBridge, error) {
+func NewPythonBridge(ctx context.Context, pythonCmd, corePath, entryScript string, platform string, deviceId string, projectRoot string) (*PythonBridge, error) {
 	bridgeScript := corePath + "/workflow_bridge.py"
 
 	var cmd *exec.Cmd
@@ -95,12 +95,14 @@ func NewPythonBridge(ctx context.Context, pythonCmd, corePath, entryScript strin
 	}
 	fmt.Printf("[Bridge] Python workflow bridge started (pid=%d)\n", cmd.Process.Pid)
 
-	// Send init command
 	initParams := map[string]interface{}{
 		"platform": platform,
 	}
 	if deviceId != "" {
 		initParams["device_id"] = deviceId
+	}
+	if projectRoot != "" {
+		initParams["project_root"] = projectRoot
 	}
 
 	initResp, err := bridge.Call("init", initParams)
