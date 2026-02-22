@@ -131,6 +131,7 @@ interface AppState {
     fetchScripts: () => Promise<void>;
     fetchProjects: () => Promise<void>;
     fetchDevices: () => Promise<void>;
+    fetchWorkflow: (workflowId: string) => Promise<boolean>;
 
     // Execution Module State
     scriptTabs: ScriptTabState[];
@@ -281,6 +282,33 @@ export const useAppStore = create<AppState>()(
                 } catch (err) {
                     console.error("Failed to fetch devices", err);
                 }
+            },
+
+            fetchWorkflow: async (workflowId: string) => {
+                if (!workflowId) return false;
+                const { apiBaseUrl, workflowTabs } = get();
+                const tabId = `wf:${workflowId}`;
+                try {
+                    const res = await fetch(`${apiBaseUrl}/workflows/${workflowId}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        const contentString = JSON.stringify(data);
+                        set({
+                            workflowTabs: workflowTabs.map(t =>
+                                t.id === tabId ? {
+                                    ...t,
+                                    content: contentString,
+                                    originalContent: contentString,
+                                    isDirty: false
+                                } : t
+                            )
+                        });
+                        return true;
+                    }
+                } catch (err) {
+                    console.error(`Failed to fetch workflow ${workflowId}`, err);
+                }
+                return false;
             },
 
             // Editor State Defaults
@@ -472,8 +500,6 @@ export const useAppStore = create<AppState>()(
                 workflowSelectedId: state.workflowSelectedId,
                 workflowAssetExplorerCollapsed: state.workflowAssetExplorerCollapsed,
                 workflowSidebarCollapsed: state.workflowSidebarCollapsed,
-                workflowTabs: state.workflowTabs,
-                activeWorkflowTabId: state.activeWorkflowTabId,
                 editorSelectedScriptId: state.editorSelectedScriptId,
                 editorTabs: state.editorTabs,
                 activeEditorTabId: state.activeEditorTabId,
@@ -481,6 +507,17 @@ export const useAppStore = create<AppState>()(
                 assetExplorerCollapsed: state.assetExplorerCollapsed,
                 scriptExplorerCollapsed: state.scriptExplorerCollapsed
             }),
+            onRehydrateStorage: (state) => {
+                return (rehydratedState, error) => {
+                    if (rehydratedState && !error) {
+                        // Wipe old workflow tabs on every rehydration to ensure fresh start
+                        rehydratedState.workflowTabs = [];
+                        rehydratedState.activeWorkflowTabId = null;
+                        rehydratedState.workflowSelectedId = null;
+                        console.log("[STORE] Rehydrated: Wiping workflow tabs for fresh start");
+                    }
+                }
+            }
         }
     )
 );

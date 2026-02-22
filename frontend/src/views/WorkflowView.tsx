@@ -1,4 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+/* [DIAGNOSTIC] Build context for Wails WebView2 verification */
+const BUILD_TIMESTAMP = new Date().toISOString();
+
 import {
     ReactFlow,
     MiniMap,
@@ -179,6 +182,44 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
 
 const edgeTypes = {
     hover: HoverEdge,
+};
+
+/* ============================================================
+ *  Wails / WebView2 Diagnostics Component
+ *  Logs critical rendering info to console for troubleshooting
+ * ============================================================ */
+const WorkflowDiagnostics: React.FC = () => {
+    useEffect(() => {
+        console.log(`[DIAGNOSTIC] Build Version: ${BUILD_TIMESTAMP}`);
+
+        // 1. Check Reduced Motion
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        console.log(`[DIAGNOSTIC] prefers-reduced-motion: ${reducedMotion} ${reducedMotion ? '⚠️ ANIMATIONS MAY BE DISABLED BY OS' : '✅ OS Motion Enabled'}`);
+
+        // 2. Check CSS Feature Support (Modern WebView2/Chromium checks)
+        const supportsConic = CSS.supports('background', 'conic-gradient(red, blue)');
+        const supportsBackdrop = CSS.supports('backdrop-filter', 'blur(10px)');
+        console.log(`[DIAGNOSTIC] CSS Support: { conic-gradient: ${supportsConic}, backdrop-filter: ${supportsBackdrop} }`);
+
+        // 3. Monitor rAF (RequestAnimationFrame) Activity
+        let rafCount = 0;
+        let lastTime = performance.now();
+        const checkRaf = () => {
+            rafCount++;
+            const now = performance.now();
+            if (now - lastTime >= 1000) {
+                console.log(`[DIAGNOSTIC] Render Loop (rAF): ${rafCount} FPS stable`);
+                rafCount = 0;
+                lastTime = now;
+            }
+            requestAnimationFrame(checkRaf);
+        };
+        const rafId = requestAnimationFrame(checkRaf);
+
+        return () => cancelAnimationFrame(rafId);
+    }, []);
+
+    return null; // Side-effect only component
 };
 
 const nodeTypes: Record<string, any> = {
@@ -1009,8 +1050,20 @@ interface WorkflowViewProps {
 }
 
 export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentChange, onRun, onStop, isExecuting = false, executionState = EMPTY_ARRAY }: WorkflowViewProps) => {
-    const { theme, apiBaseUrl } = useAppStore();
+    const { theme, apiBaseUrl, fetchWorkflow } = useAppStore();
     const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+
+    // [SYNC] Robust synchronization using value comparison to prevent loops and empty canvas
+    const lastProcessedContent = useRef<string>("");
+    const lastFetchedId = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (tab.workflowId && lastFetchedId.current !== tab.workflowId) {
+            console.log(`[SYNC] Auto-refreshing workflow ${tab.workflowId}`);
+            fetchWorkflow(tab.workflowId);
+            lastFetchedId.current = tab.workflowId;
+        }
+    }, [tab.workflowId, fetchWorkflow]);
 
     const getAssetUrl = useCallback((path: string) => {
         if (!path) return '';
@@ -1045,7 +1098,19 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
     const connectingHandleId = useRef<string | null>(null);
 
     const workflowData = useMemo(() => {
-        try { return JSON.parse(tab.content); } catch { return { nodes: {}, edges: [], variables: {} }; }
+        try {
+            console.log(`[SYNC] Parsing tab.content (type: ${typeof tab.content}, length: ${tab.content?.length || 0})`);
+            if (typeof tab.content === 'object' && tab.content !== null) {
+                console.log("[SYNC] tab.content is already an object");
+                return tab.content;
+            }
+            const parsed = JSON.parse(tab.content || '{}');
+            console.log(`[SYNC] Parsed workflowData. nodes: ${parsed.nodes?.length || 0}, edges: ${parsed.edges?.length || 0}`);
+            return parsed;
+        } catch (err) {
+            console.error("[SYNC] Parse failed:", err);
+            return { nodes: [], edges: [], variables: {} };
+        }
     }, [tab.id, tab.content]);
 
     // Open inspector automatically when execution starts
@@ -1056,8 +1121,8 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
     }, [isExecuting]);
 
     const initialNodes: Node[] = useMemo(() => {
-        const nodesMap = workflowData.nodes || {};
-        const nodeList = Object.values(nodesMap).map((n: any) => {
+        const nodesData = workflowData.nodes || [];
+        const nodeList = (Array.isArray(nodesData) ? nodesData : Object.values(nodesData)).map((n: any) => {
             const def = getNodeDef(n.type);
             let subtitle = '';
             if (n.config) {
@@ -1238,15 +1303,19 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
         };
     }, [selectedNode, setNodes, setEdges]);
 
-    const isInternalUpdate = useRef(false);
+    // [SYNC] isInternalUpdate is now replaced by lastProcessedContent comparison
 
     useEffect(() => {
-        if (isInternalUpdate.current) {
-            isInternalUpdate.current = false;
-            return;
+        // [SYNC] Only load if the content changed or if we are currently empty but have data
+        const isCurrentlyEmpty = nodes.length === 0 && initialNodes.length > 0;
+        const hasContentChanged = tab.content !== lastProcessedContent.current;
+
+        if (hasContentChanged || isCurrentlyEmpty) {
+            console.log(`[SYNC] LoadEffect: Triggered (Changed: ${hasContentChanged}, IsEmptyLoad: ${isCurrentlyEmpty}). Nodes: ${initialNodes.length}`);
+            setNodes(initialNodes);
+            setEdges(initialEdges);
+            lastProcessedContent.current = typeof tab.content === 'string' ? tab.content : JSON.stringify(tab.content);
         }
-        setNodes(initialNodes);
-        setEdges(initialEdges);
     }, [workflowData, setNodes, setEdges, executionState, isExecuting]);
 
     useEffect(() => {
@@ -1274,10 +1343,11 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
         const json = JSON.stringify(updated, null, 2);
 
         if (json !== tab.content) {
-            isInternalUpdate.current = true;
+            console.log("[SYNC] SyncEffect: Local change detected, pushing to store");
+            lastProcessedContent.current = json; // Avoid re-loading our own changes
             if (onContentChange) onContentChange(json);
         }
-    }, [nodes, edges]);
+    }, [nodes, edges, workflowData, onContentChange]);
 
     useEffect(() => {
         const handleEdgeDelete = (e: any) => {
@@ -1696,7 +1766,7 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
     const edgesWithData = useMemo(() => {
         if (!executionState || executionState.length === 0) return edges;
 
-        const totalSteps = executionState.length;
+        const totalStepsCount = executionState.length;
         const EDGE_TRAILING_THRESHOLD = 2; // Edges fade faster than nodes
 
         return edges.map(edge => {
@@ -1738,7 +1808,7 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
                 const edgeData = outputMap[signal];
 
                 // Trailing logic for edges
-                const isRecent = (totalSteps - 1 - sourceStepIdx) < EDGE_TRAILING_THRESHOLD;
+                const isRecent = (totalStepsCount - 1 - sourceStepIdx) < EDGE_TRAILING_THRESHOLD;
                 shouldHighlight = isExecuted && isRecent;
 
                 isSuccess = lastStep.status === 'success';
@@ -1754,8 +1824,10 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
                 }
             }
 
+            // [DIAGNOSTIC] Force new object reference for every mapping to bypass Edge cache
             return {
                 ...edge,
+                _fresh: Math.random(),
                 data: {
                     ...edge.data,
                     executed: isExecuted || status === 'running',
@@ -1804,6 +1876,7 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
 
     return (
         <div className="flex-1 flex h-full bg-base-100 overflow-hidden">
+            <WorkflowDiagnostics />
             <div className="flex-1 flex relative">
                 {/* Canvas */}
                 <div className="flex-1 relative">

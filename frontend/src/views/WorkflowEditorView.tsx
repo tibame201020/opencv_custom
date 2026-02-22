@@ -20,7 +20,7 @@ export const WorkflowEditorView: React.FC = () => {
         workflowSelectedId, setWorkflowSelectedId,
         workflowTabs, activeWorkflowTabId,
         openWorkflowTab, closeWorkflowTab, setActiveWorkflowTab,
-        updateWorkflowTabContent, saveWorkflowTab,
+        updateWorkflowTabContent, saveWorkflowTab
     } = useAppStore();
 
     const [searchTerm, setSearchTerm] = useState('');
@@ -154,29 +154,23 @@ export const WorkflowEditorView: React.FC = () => {
     // Helper to open workflow tab
     const openWorkflow = useCallback(async (id: string, projectId: string) => {
         const tabId = `wf:${id}`;
-        const existing = workflowTabs.find(t => t.id === tabId);
+        const existing = useAppStore.getState().workflowTabs.find(t => t.id === tabId);
         if (existing) {
             setActiveWorkflowTab(tabId);
             return;
         }
 
-        try {
-            const res = await fetch(`${apiBaseUrl}/workflows/${id}`);
-            if (res.ok) {
-                const data = await res.json();
-                // We must pass the content string, which contains the graph data (nodes/edges)
-                // data.content is already a JSON string from the backend
-                openWorkflowTab(id, projectId, data.name, data.content || '{}');
-            } else {
-                const errText = await res.text();
-                console.error(`[Workflow] Failed to load ${id}: ${res.status} ${errText}`);
-                showToast(`Failed to load workflow: ${res.statusText || 'Unknown error'}`, "error");
-            }
-        } catch (err) {
-            console.error("[Workflow] Network error:", err);
-            showToast("Network error loading workflow", "error");
+        // Try to find name from local projects list first to avoid extra fetch
+        let name = 'Workflow';
+        const project = projects.find(p => p.id === projectId);
+        if (project && project.workflows) {
+            const wf = project.workflows.find((w: any) => w.id === id);
+            if (wf) name = wf.name;
         }
-    }, [workflowTabs, apiBaseUrl, openWorkflowTab, setActiveWorkflowTab]);
+
+        // Open with empty content, WorkflowViewInner will fetch on mount
+        openWorkflowTab(id, projectId, name, '{}');
+    }, [projects, openWorkflowTab, setActiveWorkflowTab]);
 
     const handleCreateWorkflow = async () => {
         if (!newWfName.trim() || !projectSelectedId) return;
@@ -220,15 +214,14 @@ export const WorkflowEditorView: React.FC = () => {
         }
     };
 
-
-
     // Auto-open tab for selected workflow (Failsafe for when onClick doesn't trigger or external selection)
     useEffect(() => {
         if (!workflowSelectedId) return;
 
         // If tab is already open and active, do nothing
         const tabId = `wf:${workflowSelectedId}`;
-        if (activeWorkflowTabId === tabId && workflowTabs.some(t => t.id === tabId)) return;
+        const currentActive = useAppStore.getState().activeWorkflowTabId;
+        if (currentActive === tabId) return;
 
         // Find the project context for this workflow
         const allWorkflows = projects.flatMap(p => (p.workflows || []).map((w: any) => ({ ...w, projectId: p.id })));
@@ -237,7 +230,7 @@ export const WorkflowEditorView: React.FC = () => {
         if (wf) {
             openWorkflow(workflowSelectedId, wf.projectId);
         }
-    }, [workflowSelectedId, projects, activeWorkflowTabId, workflowTabs, openWorkflow]);
+    }, [workflowSelectedId, projects, openWorkflow]);
 
     // Save handler
     const handleSave = useCallback(async () => {
