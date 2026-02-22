@@ -130,3 +130,109 @@ func TestExecutionStore(t *testing.T) {
 		t.Errorf("Step 2 status mismatch: %s", s2.Status)
 	}
 }
+
+func TestComplexDataPersistence(t *testing.T) {
+	db, tempDir := setupTestDB(t)
+	defer db.Close()
+	defer os.RemoveAll(tempDir)
+
+	store := NewSQLiteExecutionStore(db)
+	runID, _ := store.CreateExecution("complex_wf")
+
+	// Complex nested JSON
+	complexOutput := map[string]ExecutionData{
+		"data": {
+			{
+				JSON: map[string]interface{}{
+					"string": "hello world",
+					"int":    42,
+					"float":  3.14159,
+					"bool":   true,
+					"null":   nil,
+					"nested": map[string]interface{}{
+						"array": []interface{}{1, "two", 3.0},
+						"deep":  map[string]interface{}{"key": "value"},
+					},
+					"special_chars": "你好!@#$%^&*()_+",
+				},
+			},
+		},
+	}
+
+	step := ExecutionStep{
+		NodeID:    "complex_node",
+		Status:    "success",
+		StartTime: time.Now(),
+		Output:    complexOutput,
+	}
+
+	if err := store.RecordStep(runID, step); err != nil {
+		t.Fatalf("Failed to record complex step: %v", err)
+	}
+
+	// Verify
+	result, err := store.GetExecution(runID)
+	if err != nil {
+		t.Fatalf("Failed to get execution: %v", err)
+	}
+
+	loadedJSON := result.ExecutionPath[0].Output["data"][0].JSON
+
+	// Deep check
+	if loadedJSON["string"] != "hello world" {
+		t.Errorf("String mismatch: %v", loadedJSON["string"])
+	}
+	// JSON numbers are often float64 when unmarshaled into interface{}
+	if val, ok := loadedJSON["int"].(float64); !ok || val != 42 {
+		t.Errorf("Int mismatch: %v (%T)", loadedJSON["int"], loadedJSON["int"])
+	}
+	if loadedJSON["special_chars"] != "你好!@#$%^&*()_+" {
+		t.Errorf("Special chars mismatch: %v", loadedJSON["special_chars"])
+	}
+
+	nested := loadedJSON["nested"].(map[string]interface{})
+	array := nested["array"].([]interface{})
+	if len(array) != 3 {
+		t.Errorf("Array length mismatch")
+	}
+}
+
+func TestErrorRecovery(t *testing.T) {
+	db, tempDir := setupTestDB(t)
+	defer db.Close()
+	defer os.RemoveAll(tempDir)
+
+	store := NewSQLiteExecutionStore(db)
+	runID, _ := store.CreateExecution("error_wf")
+
+	// 1. Valid Step
+	store.RecordStep(runID, ExecutionStep{NodeID: "n1", Status: "success", StartTime: time.Now()})
+
+	// 2. Simulate Status Update Failure (e.g. invalid ID, though SQL usually just returns 0 rows)
+	// Let's test standard error reporting logic
+	err := store.UpdateExecutionStatus("non_existent_id", "error")
+	if err != nil {
+		// Just ensuring it doesn't panic. SQLite might not error on 0 rows affected depending on driver config.
+	}
+
+	// 3. Verify consistency
+	// The original execution should still be "running"
+	row := db.QueryRow("SELECT status FROM executions WHERE id = ?", runID)
+	var status string
+	row.Scan(&status)
+	if status != "running" {
+		t.Errorf("Execution status should remain running, got %s", status)
+	}
+
+	// 4. Update to Error
+	store.UpdateExecutionStatus(runID, "error")
+	row = db.QueryRow("SELECT status, end_time FROM executions WHERE id = ?", runID)
+	var endTime sql.NullTime
+	row.Scan(&status, &endTime)
+	if status != "error" {
+		t.Errorf("Status failed to update to error")
+	}
+	if !endTime.Valid {
+		t.Errorf("End time was not set on error")
+	}
+}
