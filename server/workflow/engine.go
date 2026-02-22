@@ -76,11 +76,12 @@ type Workflow struct {
 
 // FlowEngine 執行引擎
 type FlowEngine struct {
-	Workflow      *Workflow
-	GlobalContext map[string]interface{}
-	NodeResults   map[string]NodeOutput
-	NodeMap       map[string]*WorkflowNode // Optimized lookup
-	OnStep        func(step ExecutionStep)
+	Workflow       *Workflow
+	GlobalContext  map[string]interface{}
+	NodeResults    map[string]NodeOutput
+	NodeMap        map[string]*WorkflowNode // Optimized lookup
+	ExecutionStore ExecutionStore           // Optional persistence
+	OnStep         func(step ExecutionStep)
 }
 
 // NewFlowEngine 建立執行引擎
@@ -97,6 +98,12 @@ func NewFlowEngine(wf *Workflow) *FlowEngine {
 		NodeResults:   make(map[string]NodeOutput),
 		NodeMap:       nodeMap,
 	}
+}
+
+// WithStore attaches an execution store to the engine
+func (e *FlowEngine) WithStore(store ExecutionStore) *FlowEngine {
+	e.ExecutionStore = store
+	return e
 }
 
 // ExecutionStep 每個節點的執行記錄
@@ -522,6 +529,17 @@ func (e *FlowEngine) Execute(ctx context.Context, input interface{}) (*Execution
 		return &ExecutionResult{Output: map[string]ExecutionData{}, ExecutionPath: executionPath}, fmt.Errorf("no start node")
 	}
 
+	// Create Persistence Record if store is present
+	var runID string
+	if e.ExecutionStore != nil {
+		var err error
+		runID, err = e.ExecutionStore.CreateExecution(e.Workflow.ID)
+		if err != nil {
+			// Log error but proceed? Or fail? Fail is safer for integrity.
+			return nil, fmt.Errorf("failed to create execution record: %v", err)
+		}
+	}
+
 	queue = append(queue, QueueItem{NodeID: startNodeID, Data: startData})
 
 	// To prevent infinite loops in cyclic graphs without consumption, we might need logic.
@@ -622,6 +640,11 @@ func (e *FlowEngine) Execute(ctx context.Context, input interface{}) (*Execution
 			e.OnStep(step)
 		}
 
+		// Persist Step
+		if e.ExecutionStore != nil && runID != "" {
+			_ = e.ExecutionStore.RecordStep(runID, step)
+		}
+
 		// Update Final Output (last step wins)
 		finalOutput = nodeOutput.Outputs
 
@@ -644,6 +667,11 @@ func (e *FlowEngine) Execute(ctx context.Context, input interface{}) (*Execution
 				}
 			}
 		}
+	}
+
+	// Update final status
+	if e.ExecutionStore != nil && runID != "" {
+		_ = e.ExecutionStore.UpdateExecutionStatus(runID, "success")
 	}
 
 	return &ExecutionResult{

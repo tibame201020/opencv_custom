@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"os"
 	"testing"
 )
 
@@ -170,5 +171,50 @@ func createCustomNode(id, name string, executor func(context.Context, NodeArg) N
 		Name:     name,
 		Type:     NodeCustom,
 		Executor: executor,
+	}
+}
+
+func TestEngineIntegrationWithStore(t *testing.T) {
+	db, tempDir := setupTestDB(t) // Reusing helper from execution_store_test.go? No, it's in a different file/package context if not exported.
+	// Since both are in package 'workflow', we can share helper if it's not in _test.go or if we duplicate setup.
+	// setupTestDB is in execution_store_test.go. Go tests in same package share code.
+	defer db.Close()
+	defer os.RemoveAll(tempDir)
+
+	store := NewSQLiteExecutionStore(db)
+
+	wf := &Workflow{
+		ID: "integration_test",
+		Nodes: []*WorkflowNode{
+			CreateConvertNode("n1", "start", func(input interface{}) interface{} { return "data" }),
+		},
+		Edges: []WorkflowEdge{},
+	}
+
+	engine := NewFlowEngine(wf).WithStore(store)
+	_, err := engine.Execute(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("Execute failed: %v", err)
+	}
+
+	// Verify DB persistence
+	// 1. Check Execution
+	row := db.QueryRow("SELECT status FROM executions WHERE workflow_id = ?", "integration_test")
+	var status string
+	if err := row.Scan(&status); err != nil {
+		t.Fatalf("Failed to query execution: %v", err)
+	}
+	if status != "success" {
+		t.Errorf("Expected status success, got %s", status)
+	}
+
+	// 2. Check Step
+	row = db.QueryRow("SELECT node_id, status FROM execution_steps WHERE node_id = ?", "n1")
+	var nodeID, nodeStatus string
+	if err := row.Scan(&nodeID, &nodeStatus); err != nil {
+		t.Fatalf("Failed to query step: %v", err)
+	}
+	if nodeID != "n1" || nodeStatus != "success" {
+		t.Errorf("Step mismatch: %s/%s", nodeID, nodeStatus)
 	}
 }
