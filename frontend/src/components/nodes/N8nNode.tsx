@@ -1,4 +1,4 @@
-import { memo, useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Handle, Position, type NodeProps, type Node, useHandleConnections, useStore } from '@xyflow/react';
 import {
     Check, Loader2, Play, Eye, EyeOff, Trash2, MoreHorizontal, Plus, AlertTriangle, Zap
@@ -129,11 +129,18 @@ const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, 
     );
 };
 
-export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
+export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
     const nodeType = (type || (data.nodeType as string) || 'click');
     const def = getNodeDef(nodeType);
     const IconComp = def?.icon;
     const [hovered, setHovered] = useState(false);
+
+    // [DIAGNOSTIC] Log state changes to verify React reactivity in Wails WebView2
+    useEffect(() => {
+        if (data.status === 'running') {
+            console.log(`[DIAGNOSTIC] Node ${id} state: RUNNING`, { data });
+        }
+    }, [id, data.status]);
 
     // Status Logic
     const isRunning = data.status === 'running';
@@ -146,19 +153,19 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
 
     return (
         <div
-            className="group relative flex flex-col font-sans"
-            style={{ width: '240px' }}
+            className="group relative flex flex-col items-center font-sans"
+            style={{ width: '72px' }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
             {/* 1. Node Card */}
             <div
                 className={clsx(
-                    "relative flex flex-row items-center w-full h-[80px] bg-white transition-all duration-200 z-10 px-3 py-2",
-                    "rounded-[10px] border-[1.5px]",
-                    selected ? "border-primary ring-1 ring-primary shadow-lg" : "border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300",
-                    isSuccess && !isRunning && "border-[#4fcc5d] bg-[#4fcc5d]/10 shadow-[0_0_10px_rgba(79,204,93,0.2)]",
-                    isRunning && "border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)] bg-blue-50/5",
+                    "relative flex items-center justify-center w-[72px] h-[72px] bg-white transition-all duration-200 z-10",
+                    "rounded-2xl border-[1.5px]",
+                    selected ? "border-primary ring-2 ring-primary/20 shadow-lg scale-105" : "border-gray-200 shadow hover:shadow-md hover:border-gray-300",
+                    isSuccess && !isRunning && "border-[#4fcc5d] bg-[#4fcc5d]/5",
+                    isRunning && "border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)] bg-blue-50/10",
                     isError && "border-red-500 bg-red-50/10",
                     isDisabled && "opacity-60 grayscale bg-gray-50"
                 )}
@@ -172,74 +179,52 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                 )}
                 {/* Trigger Icon Overlay (Lightning Bolt) - if applicable */}
                 {isTrigger && (
-                    <div className="absolute -top-2 left-4 z-20 bg-white border border-gray-200 rounded-full p-0.5 shadow-sm text-yellow-500">
-                        <Zap size={10} fill="currentColor" />
+                    <div className="absolute -top-2.5 -left-2.5 z-20 bg-white border border-gray-200 rounded-full p-1 shadow-sm text-yellow-500">
+                        <Zap size={12} fill="currentColor" />
                     </div>
                 )}
 
-                {/* Icon Section (Left) */}
-                <div className={clsx(
-                    "flex-shrink-0 relative w-12 h-12 rounded-xl flex items-center justify-center mr-3 transition-colors",
-                    "bg-gray-50 text-gray-600 border border-gray-100"
-                )}>
+                {/* Icon Section */}
+                <div className="relative w-10 h-10 flex items-center justify-center transition-colors text-gray-600">
                     {data.imagePreview ? (
                         <img
                             src={data.imagePreview as string}
                             alt="Node Preview"
-                            className="w-full h-full object-contain rounded-lg"
+                            className="w-full h-full object-contain rounded-[8px]"
                             loading="lazy"
                             draggable={false}
                         />
                     ) : (
-                        IconComp ? <IconComp size={22} strokeWidth={1.5} /> : <div className="text-[9px] font-bold">Node</div>
+                        IconComp ? <IconComp size={32} strokeWidth={1.5} /> : <div className="text-[10px] font-bold">Node</div>
                     )}
+                </div>
 
-                    {/* Status Badge Overlays (Bottom-Right of Icon) */}
+                {/* Status Badges (Bottom-Right Corner) */}
+                <div className="absolute -bottom-2 -right-2 z-30 flex">
                     {isRunning && (
-                        <div className="absolute -bottom-1.5 -right-1.5 w-5 h-5 bg-blue-500 rounded-full border-2 border-white flex items-center justify-center shadow-sm z-30">
+                        <div className="w-5 h-5 bg-blue-500 rounded-full border-[2px] border-white flex items-center justify-center shadow-sm">
                             <Loader2 size={10} strokeWidth={4} className="text-white animate-spin" />
                         </div>
                     )}
                     {isSuccess && !isRunning && (
-                        <div className="absolute -bottom-1.5 -right-1.5 w-5 h-5 bg-[#4fcc5d] rounded-full border-2 border-white flex items-center justify-center shadow-sm z-20">
+                        <div className="w-5 h-5 bg-[#4fcc5d] rounded-full border-[2px] border-white flex items-center justify-center shadow-sm">
                             <Check size={10} strokeWidth={4} className="text-white" />
                         </div>
                     )}
                     {isError && !isRunning && (
-                        <div className="absolute -bottom-1.5 -right-1.5 w-5 h-5 bg-[#ff6d5b] rounded-full border-2 border-white flex items-center justify-center shadow-sm z-20">
+                        <div className="w-5 h-5 bg-[#ff6d5b] rounded-full border-[2px] border-white flex items-center justify-center shadow-sm">
                             <span className="text-white text-[10px] font-black leading-none mt-[1px]">!</span>
                         </div>
                     )}
                 </div>
 
-                {/* Text Section (Right/Middle) */}
-                <div className="flex-1 flex flex-col min-w-0 justify-center h-full py-1">
-                    <span className={clsx(
-                        "text-[14px] font-bold truncate leading-tight mb-1",
-                        selected ? "text-primary" : "text-gray-900"
-                    )}>
-                        {(data.label as string) || def?.label || 'Node'}
-                    </span>
-                    <span className="text-[11px] text-gray-400 truncate font-medium">
-                        {(data.subtitle as string) || def?.description || nodeType}
-                    </span>
-                </div>
-
-                {/* Warning Indicator (Top-Right inside card) */}
-                <div className="absolute top-2 right-2 flex gap-1">
-                    {isWarning && !isRunning && !isError && (
-                        <div className="text-yellow-500" title="Configuration Warning">
-                            <AlertTriangle size={14} fill="currentColor" className="text-white stroke-yellow-500" />
-                        </div>
-                    )}
-                </div>
-
-                {/* Running Spinner overlay on top right */}
-                {isRunning && (
-                    <div className="absolute top-2 right-2 text-blue-500 animate-spin">
-                        <Loader2 size={14} />
+                {/* Warning Indicator (Top-Right Corner) */}
+                {isWarning && !isRunning && !isError && (
+                    <div className="absolute -top-2 -right-2 z-20 bg-white rounded-full border border-gray-200 p-0.5 shadow-sm text-yellow-500" title="Configuration Warning">
+                        <AlertTriangle size={12} fill="currentColor" className="text-white stroke-yellow-500" />
                     </div>
                 )}
+
 
 
                 {/* Input Handle (Left Edge) */}
@@ -286,6 +271,20 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
                     ));
                 })()}
             </div>
+
+            {/* Floating Text Section (Bottom) */}
+            <div className="absolute top-[80px] left-1/2 -translate-x-1/2 flex flex-col items-center min-w-[140px] pointer-events-none z-20">
+                <span className={clsx(
+                    "text-[13px] font-bold text-center leading-tight mb-0.5",
+                    selected ? "text-primary px-1.5 bg-white/90 rounded-md backdrop-blur-sm shadow-sm" : "text-gray-700"
+                )} style={selected ? {} : { textShadow: '0px 1px 2px rgba(255,255,255,0.8), 0px -1px 2px rgba(255,255,255,0.8)' }}>
+                    {(data.label as string) || def?.label || 'Node'}
+                </span>
+                <span className="text-[11px] text-gray-500 text-center font-medium max-w-[160px] truncate bg-white/60 px-1 rounded-sm">
+                    {(data.subtitle as string) || def?.description || nodeType}
+                </span>
+            </div>
+
 
             {/* 3. Floating Toolbar (Above Node) */}
             <div className={clsx(
@@ -342,4 +341,4 @@ export const N8nNode = memo(({ data, id, type, selected }: NodeProps<Node>) => {
             </div>
         </div>
     );
-});
+};

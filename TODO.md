@@ -68,6 +68,8 @@
 | 3.3.1 | SmoothStep 路由 | ✅ | ⬜ | 正交路由 |
 | 3.3.2 | 邊可選取/刪除 | ✅ | ⬜ | `interactionWidth: 20` |
 | 3.3.3 | 拖曳端點重新連接 | ✅ | ⬜ | `updatable: true` |
+| 3.3.4 | Smart Edge Routing (Bezier/SmoothStep 動態切換) | ✅ | ✅ | 自動適應相對位置 |
+| 3.3.5 | Edge 動畫與零輸出節點同步修復 | ✅ | ✅ | 精準縮放動畫與即時狀態響應 |
 
 ### 3.4 畫布互動
 

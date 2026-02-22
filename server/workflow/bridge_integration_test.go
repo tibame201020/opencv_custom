@@ -117,8 +117,8 @@ func TestBridgeIntegration(t *testing.T) {
 	if !ok {
 		t.Fatalf("Unexpected output format: %v", resp.Output)
 	}
-	if val, ok := outputMap["clicked"]; !ok || val != true {
-		t.Errorf("Expected clicked=true, got %v", val)
+	if val, ok := outputMap["success"]; !ok || val != true {
+		t.Errorf("Expected success=true, got %v", val)
 	}
 
 	// 3. Verify ADB Calls Order

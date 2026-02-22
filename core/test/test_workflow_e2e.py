@@ -88,7 +88,7 @@ def test_workflow_bridge_e2e(setup_adb_stub):
 
         resp = read_response()
         assert resp["signal"] == "success", f"click_image failed: {resp.get('error')}"
-        assert resp["output"].get("clicked") is True
+        assert resp["output"].get("success") is True
 
         # 4. Shutdown
         send_request("shutdown")

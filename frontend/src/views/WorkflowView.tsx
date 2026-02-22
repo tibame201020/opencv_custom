@@ -1192,7 +1192,26 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
             const { stroke, strokeWidth } = e.style || {};
 
             const sourceNodeId = e.fromNodeId || e.source;
+            const targetNodeId = e.toNodeId || e.target;
             const edgeSignal = e.signal || 'success';
+
+            // Smart Edge Routing: Bezier normally, but SmoothStep for backward edges or sharp vertical drops
+            let edgeType = 'default';
+            const sourceNode = workflowData.nodes?.[sourceNodeId];
+            const targetNode = workflowData.nodes?.[targetNodeId];
+
+            if (sourceNode && targetNode) {
+                const dx = targetNode.x - sourceNode.x;
+                const dy = Math.abs(targetNode.y - sourceNode.y);
+
+                // If the target is to the left (backwards) or almost directly above/below with a large drop
+                if (dx < 150) {
+                    edgeType = 'smoothstep';
+                } else if (dy > 300 && dx < 300) {
+                    // Switch to smoothstep for very tall vertical jumps that don't go far right
+                    edgeType = 'smoothstep';
+                }
+            }
 
             // Find execution step for source node
             const sourceStep = executionState.slice().reverse().find(s => s.nodeId === sourceNodeId);
@@ -1200,24 +1219,39 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
             // Check traversal based on output signals in the step
             let isTraversed = false;
             let itemCount = 0;
+            let targetIsRunning = false;
 
-            if (sourceStep && sourceStep.output) {
-                // If edge signal is specific (e.g., 'true', 'false', 'loop'), check if it exists in output
-                // If edge signal is 'success' (default), check if 'success' exists OR if it's the only output?
-                // n8n usually maps 'main' output to 'success'.
+            if (sourceStep) {
+                // If it produced output, evaluate the selected wire
+                if (sourceStep.output && Object.keys(sourceStep.output).length > 0) {
+                    if (sourceStep.output[edgeSignal]) {
+                        isTraversed = true;
+                        itemCount = sourceStep.output[edgeSignal].length;
+                    } else if (edgeSignal === 'success' && sourceStep.output['main']) {
+                        isTraversed = true;
+                        itemCount = sourceStep.output['main'].length;
+                    }
+                } else if (sourceStep.signal && sourceStep.signal === edgeSignal) {
+                    isTraversed = true;
+                } else if (sourceStep.status === 'success') {
+                    // Nodes like Sleep/Log with no explicit item output but successfully completed
+                    // If this edge is the default 'success' route, consider it traversed
+                    if (edgeSignal === 'success') {
+                        isTraversed = true;
+                    }
+                }
+            }
 
-                if (sourceStep.output[edgeSignal]) {
-                    isTraversed = true;
-                    itemCount = sourceStep.output[edgeSignal].length;
-                } else if (edgeSignal === 'success' && sourceStep.output['main']) {
-                    // specific case for main?
-                    isTraversed = true;
-                    itemCount = sourceStep.output['main'].length;
+            if (isExecuting) {
+                // Check if the target node of this edge is currently running
+                const targetStep = executionState.slice().reverse().find(s => s.nodeId === e.toNodeId || s.nodeId === e.target);
+                if (targetStep && targetStep.status === 'running') {
+                    targetIsRunning = true;
                 }
             }
 
             let edgeColor = stroke || '#9ca3af'; // Gray-400
-            let animated = isExecuting;
+            let animated = isExecuting && targetIsRunning && !isTraversed;
             let label = e.signal || 'success';
 
             if (isTraversed) {
@@ -1233,8 +1267,8 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
                 } else {
                     label = `${itemCount} item${itemCount !== 1 ? 's' : ''}`;
                 }
-            } else if (isExecuting) {
-                edgeColor = '#ff6d5a';
+            } else if (animated) {
+                edgeColor = '#3b82f6'; // Blue indicating active path flow
             }
 
             return {
@@ -1243,14 +1277,18 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
                 target: e.toNodeId || e.target,
                 sourceHandle: e.signal || 'success',
                 label: label,
-                type: 'hover',
+                type: edgeType,
                 animated: animated,
-                className: isExecuting || isTraversed ? 'n8n-flow-active' : '',
+                className: animated ? 'n8n-flow-active' : '',
                 style: {
                     stroke: edgeColor,
                     strokeWidth: isTraversed ? 3 : (strokeWidth || 2)
                 },
-                markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: edgeColor },
+                labelBgPadding: [8, 4],
+                labelBgBorderRadius: 10,
+                labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9, stroke: '#e5e7eb', strokeWidth: 1 },
+                labelStyle: { fill: '#374151', fontWeight: 600, fontSize: 10 },
+                markerEnd: { type: MarkerType.ArrowClosed, width: 15, height: 15, color: edgeColor },
                 interactionWidth: 20,
                 selectable: true,
                 updatable: true,
@@ -1316,7 +1354,46 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
             setEdges(initialEdges);
             lastProcessedContent.current = typeof tab.content === 'string' ? tab.content : JSON.stringify(tab.content);
         }
-    }, [workflowData, setNodes, setEdges, executionState, isExecuting]);
+    }, [workflowData, setNodes, setEdges, isExecuting]); // Removed executionState since visual sync handles it safely below
+
+    // --- REAKTIVE VISUAL SYNC: Dynamically update edges & nodes without resetting canvas interactions ---
+    useEffect(() => {
+        setEdges(eds => eds.map(e => {
+            const match = initialEdges.find(ie => ie.id === e.id);
+            if (!match) return e;
+            const styleChanged = JSON.stringify(e.style) !== JSON.stringify(match.style);
+            if (
+                e.type !== match.type ||
+                e.className !== match.className ||
+                e.animated !== match.animated ||
+                e.label !== match.label ||
+                styleChanged
+            ) {
+                return {
+                    ...e,
+                    type: match.type,
+                    className: match.className,
+                    animated: match.animated,
+                    label: match.label,
+                    style: match.style
+                };
+            }
+            return e;
+        }));
+    }, [initialEdges, setEdges]);
+
+    useEffect(() => {
+        setNodes(nds => nds.map(n => {
+            const match = initialNodes.find(inNode => inNode.id === n.id);
+            if (!match) return n;
+            const statusChanged = n.data.status !== match.data.status;
+            const previewChanged = n.data.imagePreview !== match.data.imagePreview;
+            if (statusChanged || previewChanged) {
+                return { ...n, data: { ...n.data, status: match.data.status, imagePreview: match.data.imagePreview } };
+            }
+            return n;
+        }));
+    }, [initialNodes, setNodes]);
 
     useEffect(() => {
         if (!nodes || !edges) return;
@@ -1373,16 +1450,36 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
     }, [edges, setEdges]);
 
     const onConnect = useCallback((params: Connection) => {
-        setEdges((eds) => addEdge({
-            ...params,
-            label: 'success',
-            type: 'hover',
-            animated: true,
-            style: { strokeWidth: 2, stroke: '#9ca3af' },
-            markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: '#9ca3af' },
-            interactionWidth: 20,
-        } as any, eds));
-    }, [setEdges]);
+        setEdges((eds) => {
+            let edgeType = 'default';
+            const sourceNode = nodes.find(n => n.id === params.source);
+            const targetNode = nodes.find(n => n.id === params.target);
+
+            if (sourceNode && targetNode) {
+                const dx = targetNode.position.x - sourceNode.position.x;
+                const dy = Math.abs(targetNode.position.y - sourceNode.position.y);
+                if (dx < 150) {
+                    edgeType = 'smoothstep';
+                } else if (dy > 300 && dx < 300) {
+                    edgeType = 'smoothstep';
+                }
+            }
+
+            return addEdge({
+                ...params,
+                label: 'success',
+                type: edgeType,
+                animated: true,
+                style: { strokeWidth: 2, stroke: '#9ca3af' },
+                labelBgPadding: [8, 4],
+                labelBgBorderRadius: 10,
+                labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9, stroke: '#e5e7eb', strokeWidth: 1 },
+                labelStyle: { fill: '#374151', fontWeight: 600, fontSize: 10 },
+                markerEnd: { type: MarkerType.ArrowClosed, width: 15, height: 15, color: '#9ca3af' },
+                interactionWidth: 20,
+            } as any, eds);
+        });
+    }, [setEdges, nodes]);
 
     const onConnectStart: OnConnectStart = useCallback((_, { nodeId, handleId }) => {
         connectingNodeId.current = nodeId;

@@ -93,6 +93,8 @@ interface AppState {
     setWorkflowAssetExplorerCollapsed: (collapsed: boolean) => void;
     setWorkflowSidebarCollapsed: (collapsed: boolean) => void;
 
+    // Edge Style (Removed for now)
+
     // Workflow Editor Tabs (Independent from Script Editor)
     workflowTabs: WorkflowTab[];
     activeWorkflowTabId: string | null;
@@ -507,7 +509,7 @@ export const useAppStore = create<AppState>()(
                 assetExplorerCollapsed: state.assetExplorerCollapsed,
                 scriptExplorerCollapsed: state.scriptExplorerCollapsed
             }),
-            onRehydrateStorage: (state) => {
+            onRehydrateStorage: () => {
                 return (rehydratedState, error) => {
                     if (rehydratedState && !error) {
                         // Wipe old workflow tabs on every rehydration to ensure fresh start

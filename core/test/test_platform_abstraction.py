@@ -45,17 +45,17 @@ class TestPlatformServiceBase:
         
         result = platform.find_image("anything.png", threshold=0.9)
         
-        assert result == (50.5, 50.5)
+        assert result == {"x": 50.5, "y": 50.5, "similarity": 1.0}
         mock_opencv.find_match.assert_called_once()
 
     def test_click_image_delegation(self, mock_opencv):
         platform = DummyPlatform(mock_opencv)
-        platform.find_image = MagicMock(return_value=(10.0, 20.0))
+        platform.find_image = MagicMock(return_value={"x": 10.0, "y": 20.0, "similarity": 0.99})
         platform.click = MagicMock(return_value=True)
         
-        success = platform.click_image("btn.png")
+        result = platform.click_image("btn.png")
         
-        assert success is True
+        assert result == {"success": True, "x": 10.0, "y": 20.0, "similarity": 0.99}
         platform.click.assert_called_with(10, 20)
 
     def test_find_image_with_region(self, mock_opencv):
@@ -69,7 +69,7 @@ class TestPlatformServiceBase:
         # OpenCv match point is relative to the sliced region
         # If match is at (5, 5) in 40x40 slice, absolute is (10+5, 10+5)
         # Our mock returns (50.5, 50.5) by default
-        assert result == (50.5 + 10, 50.5 + 10)
+        assert result == {"x": 50.5 + 10, "y": 50.5 + 10, "similarity": 1.0}
 
     def test_ocr_delegation(self, mock_opencv):
         platform = DummyPlatform(mock_opencv)

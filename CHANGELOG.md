@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added — 2026-02-22 (Smart Edge Routing & Visual Fixes)
+- **Frontend / Workflow Canvas**: Implemented N8n-style "Smart Edge Routing" which calculates distance dynamically to transition from default Bezier curves to Orthogonal SmoothStep routing when jumping long distances vertically or backwards horizontally.
+- **Frontend / Workflow Canvas**: Separated edge rendering calculation into dedicated independent reactive effects (`useEffect`) so that real-time node state and outputs immediately trigger color updates.
+- **Tests (Python Core)**: Fixed Python test assertions to check for modern Dictionary schema (`success`/`similarity` keys) instead of legacy Tuple bindings.
+
+### Fixed — 2026-02-22
+- **Frontend / Workflow Editor**: Removed experimental global Edge Routing toggle menu favoring the new adaptive Smart Edge algorithm instead.
+- **Frontend / Workflow Canvas**: Fixed "Marching Ants" edge animations persisting indiscriminately; animations now only apply contextually to edges when their explicit target node `status === running`.
+- **Frontend / Workflow Canvas**: Fixed 0-output nodes (e.g. Sleep, Click) rendering with frozen grey lines despite successful execution by evaluating explicit `targetNode.status` and `sourceNode.signal` alignment.
+
 ### Added — 2026-02-22 (Bridge Integration Milestone)
 - **Workflow Bridge**: Successfully verified full End-to-End integration of **Go Engine ↔ Python Bridge ↔ ADB ↔ OpenCV**.
 - **Workflow Bridge**: Improved console output to show node names, parameters (images, text, coords), and execution results (similarity scores).
