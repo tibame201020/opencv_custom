@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Braces, Search } from 'lucide-react';
+import { getNodeDef } from '../workflow/nodeRegistry';
 
 interface ExpressionInputProps {
     value: string;
@@ -44,14 +45,62 @@ export const ExpressionInput: React.FC<ExpressionInputProps> = ({ value, onChang
         setTimeout(() => textarea.focus(), 0);
     };
 
-    // Prepare data for picker
-    // For now, list all other nodes. 
-    
-    // Group execution results by node
-    const nodeResults = new Map<string, any>();
-    executionState.forEach(step => {
-        nodeResults.set(step.nodeId, step.output);
-    });
+    // Prepare data for picker: Merge Execution State (Truth) with Static Schema (Plan)
+    const nodeDataMap = useMemo(() => {
+        const map = new Map<string, { label: string, data: any, isStatic: boolean }>();
+
+        // 1. Fill from Nodes (Static Schema)
+        nodes.forEach(node => {
+            const def = getNodeDef(node.type || (node.data as any).nodeType);
+            const staticData: Record<string, string> = {};
+
+            // Build dummy object from outputs
+            if (def && def.outputs) {
+                def.outputs.forEach(out => {
+                    staticData[out.key] = `(${out.type})`;
+                });
+            }
+
+            map.set(node.id, {
+                label: (node.data as any).label || def?.label || 'Node',
+                data: staticData,
+                isStatic: true
+            });
+        });
+
+        // 2. Override with Execution Data (Runtime Truth)
+        executionState.forEach(step => {
+            if (map.has(step.nodeId)) {
+                const entry = map.get(step.nodeId)!;
+                // Merge or replace? Execution data usually has { success: [...items] } or just the fields?
+                // The engine returns { output: { success: [Item] } } or similar structure.
+                // But `step.output` in `WorkflowView` logic seems to be map[string]ExecutionData.
+                // We need to flatten it for the picker.
+
+                // If the output has 'success', take the first item's JSON
+                let runtimeData = step.output;
+                if (runtimeData && runtimeData['success'] && runtimeData['success'].length > 0) {
+                    runtimeData = runtimeData['success'][0].json;
+                } else if (runtimeData && Object.keys(runtimeData).length > 0) {
+                    // Fallback: take first available output
+                    const firstKey = Object.keys(runtimeData)[0];
+                    if (runtimeData[firstKey] && runtimeData[firstKey].length > 0) {
+                        runtimeData = runtimeData[firstKey][0].json;
+                    }
+                }
+
+                if (runtimeData) {
+                    map.set(step.nodeId, {
+                        ...entry,
+                        data: runtimeData,
+                        isStatic: false
+                    });
+                }
+            }
+        });
+
+        return map;
+    }, [nodes, executionState]);
 
     return (
         <div className="relative w-full">
@@ -105,24 +154,32 @@ export const ExpressionInput: React.FC<ExpressionInputProps> = ({ value, onChang
                         </button>
 
                         <div className="text-[9px] font-bold uppercase tracking-widest opacity-40 px-2 py-1 mt-2">Nodes</div>
-                        {nodes.map(node => {
-                            const result = nodeResults.get(node.id);
+                        {Array.from(nodeDataMap.entries()).map(([nodeId, entry]) => {
+                            // Filter by search
+                            if (search && !entry.label.toLowerCase().includes(search.toLowerCase())) return null;
+
+                            const keys = entry.data && typeof entry.data === 'object' ? Object.keys(entry.data) : [];
+                            const isEmpty = keys.length === 0;
+
                             return (
-                                <div key={node.id} className="collapse collapse-arrow rounded-none">
+                                <div key={nodeId} className="collapse collapse-arrow rounded-none">
                                     <input type="checkbox" className="min-h-0 py-0" /> 
                                     <div className="collapse-title min-h-0 py-1 px-2 text-xs flex items-center gap-2 hover:bg-base-200" style={{ minHeight: '24px' }}>
-                                        <span className="truncate flex-1">{(node.data as any).label}</span>
+                                        <span className={entry.isStatic ? "text-base-content/70 italic" : "text-base-content"}>
+                                            {entry.label} {entry.isStatic && "*"}
+                                        </span>
                                     </div>
                                     <div className="collapse-content px-0 pb-0">
                                         <div className="pl-2 space-y-0.5 border-l-2 border-base-200 ml-2 my-1">
-                                            {result && typeof result === 'object' ? (
-                                                Object.keys(result).map(key => (
+                                            {!isEmpty ? (
+                                                keys.map(key => (
                                                     <button 
                                                         key={key}
-                                                        className="w-full text-left px-2 py-0.5 text-[10px] hover:bg-primary/10 rounded font-mono truncate"
-                                                        onClick={() => insertVariable(`$node["${(node.data as any).label}"].json.${key}`)}
+                                                        className="w-full text-left px-2 py-0.5 text-[10px] hover:bg-primary/10 rounded font-mono truncate flex justify-between group"
+                                                        onClick={() => insertVariable(`$node["${entry.label}"].json.${key}`)}
                                                     >
-                                                        {key}
+                                                        <span>{key}</span>
+                                                        {entry.isStatic && <span className="opacity-30 text-[9px] group-hover:opacity-100">{entry.data[key]}</span>}
                                                     </button>
                                                 ))
                                             ) : (
@@ -130,7 +187,7 @@ export const ExpressionInput: React.FC<ExpressionInputProps> = ({ value, onChang
                                             )}
                                              <button 
                                                 className="w-full text-left px-2 py-0.5 text-[10px] hover:bg-primary/10 rounded font-mono truncate opacity-50"
-                                                onClick={() => insertVariable(`$node["${(node.data as any).label}"].json`)}
+                                                onClick={() => insertVariable(`$node["${entry.label}"].json`)}
                                             >
                                                 (Whole JSON)
                                             </button>

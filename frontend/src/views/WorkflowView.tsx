@@ -245,10 +245,12 @@ interface GraphContextMenuProps {
     onDuplicate?: () => void;
     onProperties?: () => void;
     onAddNode?: () => void;
+    onToFront?: () => void;
+    onToBack?: () => void;
 }
 
 const GraphContextMenu: React.FC<GraphContextMenuProps> = ({
-    type, x, y, onClose, onDelete, onDuplicate, onProperties, onAddNode
+    type, x, y, onClose, onDelete, onDuplicate, onProperties, onAddNode, onToFront, onToBack
 }) => {
     return (
         <div
@@ -2104,6 +2106,8 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
                             onDelete={handleDeleteFromMenu}
                             onDuplicate={graphContextMenu.type === 'node' ? handleDuplicate : undefined}
                             onProperties={graphContextMenu.type === 'node' ? handlePropertiesFromMenu : undefined}
+                            onToFront={graphContextMenu.type === 'node' ? moveNodeToFront : undefined}
+                            onToBack={graphContextMenu.type === 'node' ? moveNodeToBack : undefined}
                             onAddNode={() => {
                                 setPendingConnection(null);
                                 setIsSidebarOpen(true);
