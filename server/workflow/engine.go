@@ -591,22 +591,12 @@ func createBuiltinExecutor(node *WorkflowNode, bridge *PythonBridge, logger func
 		}
 
 	case "loop":
-		// Simplified Loop: Iterate over list field OR count
-		// For now, let's assume it behaves like n8n's "Loop Over Items" if input has items.
-		// BUT the user interface has 'count' mode.
-		// If mode='count', we generate N items?
-
+		// Loop Node: Iterates over list or count.
+		// Caches items in GlobalContext to support feedback loops where input changes.
 		return func(ctx context.Context, arg NodeArg) NodeOutput {
-			// We need to resolve config. But config might depend on input.
-			// Let's take the first input item as reference for config.
-			var refItem *ExecutionItem
-			if len(arg.Input) > 0 {
-				refItem = &arg.Input[0]
-			}
-			config := ResolveConfig(rawConfig, arg, refItem)
-
-			// Check internal state
 			idxKey := fmt.Sprintf("loop_%s_index", node.ID)
+			itemsKey := fmt.Sprintf("loop_%s_items", node.ID)
+
 			idxRaw, exists := arg.GlobalContext[idxKey]
 			idx := 0
 			if exists {
@@ -615,51 +605,62 @@ func createBuiltinExecutor(node *WorkflowNode, bridge *PythonBridge, logger func
 				arg.GlobalContext[idxKey] = 0
 			}
 
-			// Mode: count or ...?
-			// The original code handled "items" array iteration.
-			// Let's support:
-			// 1. "items" array in config (loop over that)
-			// 2. "count" (loop N times)
-
-			itemsRaw := config["items"]
 			var items []interface{}
 
-			if itemsRaw != nil {
-				if slice, ok := itemsRaw.([]interface{}); ok {
-					items = slice
-				} else if str, ok := itemsRaw.(string); ok {
-					json.Unmarshal([]byte(str), &items)
+			// If starting fresh (idx=0) or not cached, resolve items
+			_, cached := arg.GlobalContext[itemsKey]
+			if !cached || idx == 0 {
+				// We need to resolve config. But config might depend on input.
+				var refItem *ExecutionItem
+				if len(arg.Input) > 0 {
+					refItem = &arg.Input[0]
 				}
-			} else if val, ok := config["count"]; ok {
-				// Generate N items
-				count := 0
-				switch v := val.(type) {
-				case int:
-					count = v
-				case float64:
-					count = int(v)
+				config := ResolveConfig(rawConfig, arg, refItem)
+
+				itemsRaw := config["items"]
+				if itemsRaw != nil {
+					if slice, ok := itemsRaw.([]interface{}); ok {
+						items = slice
+					} else if str, ok := itemsRaw.(string); ok {
+						json.Unmarshal([]byte(str), &items)
+					}
+				} else if val, ok := config["count"]; ok {
+					count := 0
+					switch v := val.(type) {
+					case int:
+						count = v
+					case float64:
+						count = int(v)
+					}
+					for i := 0; i < count; i++ {
+						items = append(items, map[string]interface{}{"index": i})
+					}
 				}
-				for i := 0; i < count; i++ {
-					items = append(items, map[string]interface{}{"index": i})
+
+				// Cache resolved items
+				if items != nil {
+					arg.GlobalContext[itemsKey] = items
+				}
+			} else {
+				// Use cached items
+				if cachedItems, ok := arg.GlobalContext[itemsKey].([]interface{}); ok {
+					items = cachedItems
 				}
 			}
 
 			if len(items) == 0 {
-				// No items to loop
 				return singleOutput("done", arg.Input)
 			}
 
 			if idx >= len(items) {
 				delete(arg.GlobalContext, idxKey)
+				delete(arg.GlobalContext, itemsKey)
 				return singleOutput("done", arg.Input)
 			}
 
 			currentItem := items[idx]
 			arg.GlobalContext[idxKey] = idx + 1
 
-			// Create output item
-			// n8n Loop output is the item itself.
-			// If item is object, it becomes JSON.
 			newItem := ExecutionItem{
 				JSON: make(map[string]interface{}),
 			}
