@@ -118,47 +118,48 @@ def handle_action(action: str, params: dict):
 
     elif action == "find_image":
         template = params.get("template", params.get("image", ""))
-        pos = platform.find_image(
+        res = platform.find_image(
             template,
             region=_parse_region(params.get("region")),
             threshold=float(params.get("threshold", 0.8))
         )
-        if pos:
-            respond("success", {"found": True, "x": pos[0], "y": pos[1]})
+        if res:
+            respond("success", {"found": True, "x": res["x"], "y": res["y"], "similarity": res["similarity"]})
         else:
             respond("success", {"found": False})
 
     elif action == "click_image":
         template = params.get("template", params.get("image", ""))
-        result = platform.click_image(
+        res = platform.click_image(
             template,
             region=_parse_region(params.get("region")),
             threshold=float(params.get("threshold", 0.8))
         )
-        respond("success", {"clicked": result})
+        # res IS the dict {"success": bool, ...}
+        respond("success", res)
 
     elif action == "wait_image":
         template = params.get("template", params.get("image", ""))
-        pos = platform.wait_image(
+        res = platform.wait_image(
             template,
             timeout=int(params.get("timeout", 10)),
             threshold=float(params.get("threshold", 0.8)),
             region=_parse_region(params.get("region"))
         )
-        if pos:
-            respond("success", {"found": True, "x": pos[0], "y": pos[1]})
+        if res:
+            respond("success", {"found": True, "x": res["x"], "y": res["y"], "similarity": res["similarity"]})
         else:
             respond("success", {"found": False, "timeout": True})
 
     elif action == "wait_click_image":
         template = params.get("template", params.get("image", ""))
-        result = platform.wait_click_image(
+        res = platform.wait_click_image(
             template,
             timeout=int(params.get("timeout", 10)),
             threshold=float(params.get("threshold", 0.8)),
             region=_parse_region(params.get("region"))
         )
-        respond("success", {"clicked": result})
+        respond("success", res)
 
     elif action == "ocr_text":
         text = platform.ocr_text(

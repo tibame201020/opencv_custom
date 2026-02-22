@@ -70,24 +70,20 @@ class PlatformService(ABC):
 
     # --- 高階 OpenCV 封裝 (基類直接提供，子類可覆寫) ---
 
-    def find_image(self, image_path: str, region: Optional["OcrRegion"] = None, threshold: float = 0.9) -> Optional[Tuple[float, float]]:
+    def find_image(self, image_path: str, region: Optional["OcrRegion"] = None, threshold: float = 0.9) -> Optional[dict]:
         """在螢幕中尋找指定圖片"""
         import sys
         from ..core.opencv.mat_utility import MatUtility
         
-        print(f"[Bridge/find_image] image_path={image_path}, threshold={threshold}, device_id={self.device_id}, project_root={self._project_root}", file=sys.stderr)
+        # print(f"[Bridge/find_image] image_path={image_path}, threshold={threshold}", file=sys.stderr)
         
         src = self.snapshot()
         if src is None:
-            print(f"[Bridge/find_image] snapshot() returned None!", file=sys.stderr)
             return None
-        print(f"[Bridge/find_image] snapshot shape={src.shape}", file=sys.stderr)
         
         target = self._get_image_mat(image_path)
         if target is None:
-            print(f"[Bridge/find_image] _get_image_mat returned None for: {image_path}", file=sys.stderr)
             return None
-        print(f"[Bridge/find_image] target shape={target.shape}", file=sys.stderr)
             
         # 如果有指定區域，則進行裁切
         if region:
@@ -95,37 +91,45 @@ class PlatformService(ABC):
             
         pattern = self.open_cv_service.find_match(src, target)
         similarity = pattern.get_similar()
-        print(f"[Bridge/find_image] match similarity={similarity:.4f}, threshold={threshold}, match={'YES' if similarity >= threshold else 'NO'}", file=sys.stderr)
+        
         if similarity >= threshold:
             # 如果裁切過，座標需要補償
+            x, y = pattern.point
             if region:
-                return (pattern.point[0] + region.x1, pattern.point[1] + region.y1)
-            return pattern.point
+                x += region.x1
+                y += region.y1
+            return {
+                "x": x,
+                "y": y,
+                "similarity": similarity
+            }
         return None
 
-    def click_image(self, image_path: str, region: Optional["OcrRegion"] = None, threshold: float = 0.9) -> bool:
+    def click_image(self, image_path: str, region: Optional["OcrRegion"] = None, threshold: float = 0.9) -> dict:
         """尋找圖片並點擊"""
-        pos = self.find_image(image_path, region, threshold)
-        if pos:
-            return self.click(int(pos[0]), int(pos[1]))
-        return False
+        res = self.find_image(image_path, region, threshold)
+        if res:
+            self.click(int(res["x"]), int(res["y"]))
+            return {"success": True, "x": res["x"], "y": res["y"], "similarity": res["similarity"]}
+        return {"success": False}
 
-    def wait_image(self, image_path: str, timeout: int = 10, frequency: float = 0.5, threshold: float = 0.9, region: Optional["OcrRegion"] = None) -> Optional[Tuple[float, float]]:
+    def wait_image(self, image_path: str, timeout: int = 10, frequency: float = 0.5, threshold: float = 0.9, region: Optional["OcrRegion"] = None) -> Optional[dict]:
         """等待圖片出現"""
         start_time = time.time()
-        while time.time() - start_time < timeout:
-            pos = self.find_image(image_path, region, threshold)
-            if pos:
-                return pos
+        while (time.time() - start_time) < timeout:
+            res = self.find_image(image_path, region, threshold)
+            if res:
+                return res
             time.sleep(frequency)
         return None
 
-    def wait_click_image(self, image_path: str, timeout: int = 10, frequency: float = 0.5, threshold: float = 0.9, region: Optional["OcrRegion"] = None) -> bool:
+    def wait_click_image(self, image_path: str, timeout: int = 10, frequency: float = 0.5, threshold: float = 0.9, region: Optional["OcrRegion"] = None) -> dict:
         """等待圖片出現並點擊"""
-        pos = self.wait_image(image_path, timeout, frequency, threshold, region)
-        if pos:
-            return self.click(int(pos[0]), int(pos[1]))
-        return False
+        res = self.wait_image(image_path, timeout, frequency, threshold, region)
+        if res:
+            self.click(int(res["x"]), int(res["y"]))
+            return {"success": True, "x": res["x"], "y": res["y"], "similarity": res["similarity"]}
+        return {"success": False}
 
     # --- OCR 操作 封裝 ---
 

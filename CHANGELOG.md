@@ -7,6 +7,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added — 2026-02-22 (Bridge Integration Milestone)
 - **Workflow Bridge**: Successfully verified full End-to-End integration of **Go Engine ↔ Python Bridge ↔ ADB ↔ OpenCV**.
+- **Workflow Bridge**: Improved console output to show node names, parameters (images, text, coords), and execution results (similarity scores).
 - **Workflow Bridge**: Implemented global `stdout` to `stderr` redirection in Python bridge to prevent JSON protocol corruption from internal print statements.
 - **Workflow Bridge**: Forced `UTF-8` encoding on Python `stdin`/`stderr` streams to resolve `cp950` codec crashes and garbled Chinese filenames on Windows.
 

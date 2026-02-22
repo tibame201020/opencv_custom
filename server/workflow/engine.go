@@ -340,7 +340,7 @@ func createBuiltinExecutor(node *WorkflowNode, bridge *PythonBridge, logger func
 
 	// ── Platform/Vision 節點 (Execute Per Item) ──
 	if isPlatformNode(nodeType) {
-		return createBridgeExecutor(nodeType, rawConfig, bridge, logf)
+		return createBridgeExecutor(node, rawConfig, bridge, logf)
 	}
 
 	// ── Flow Control / Pure Go 節點 ──
@@ -762,10 +762,16 @@ func createBuiltinExecutor(node *WorkflowNode, bridge *PythonBridge, logger func
 }
 
 // createBridgeExecutor 建立透過 PythonBridge 執行的 Executor
-func createBridgeExecutor(nodeType string, rawConfig map[string]interface{}, bridge *PythonBridge, logf func(string, ...interface{})) func(context.Context, NodeArg) NodeOutput {
+func createBridgeExecutor(node *WorkflowNode, rawConfig map[string]interface{}, bridge *PythonBridge, logf func(string, ...interface{})) func(context.Context, NodeArg) NodeOutput {
+	nodeType := string(node.Type)
+	nodeName := node.Name
+	if nodeName == "" {
+		nodeName = nodeType
+	}
+
 	return func(ctx context.Context, arg NodeArg) NodeOutput {
 		if bridge == nil {
-			logf("[Workflow] No bridge, stubbing %s\n", nodeType)
+			logf("[Workflow] No bridge, stubbing [%s]\n", nodeName)
 			return singleOutput("success", ExecutionData{{JSON: map[string]interface{}{"stub": true}}})
 		}
 
@@ -788,7 +794,23 @@ func createBridgeExecutor(nodeType string, rawConfig map[string]interface{}, bri
 				params[k] = v
 			}
 
-			logf("[Workflow] Bridge call: %s\n", nodeType)
+			// 建立更有意義的 Log
+			paramInfo := ""
+			if nodeType == "click_image" || nodeType == "find_image" || nodeType == "wait_image" || nodeType == "wait_click_image" {
+				if img, ok := params["image"].(string); ok {
+					paramInfo = fmt.Sprintf(" image=%s", img)
+				}
+			} else if nodeType == "type_text" {
+				if txt, ok := params["text"].(string); ok {
+					paramInfo = fmt.Sprintf(" text=%s", txt)
+				}
+			} else if nodeType == "click" {
+				paramInfo = fmt.Sprintf(" x=%v, y=%v", params["x"], params["y"])
+			} else if nodeType == "key_event" {
+				paramInfo = fmt.Sprintf(" key=%v", params["key_code"])
+			}
+
+			logf("[Workflow] Executing [%s] (%s)%s\n", nodeName, nodeType, paramInfo)
 
 			resp, err := bridge.Call(nodeType, params)
 
@@ -798,8 +820,10 @@ func createBridgeExecutor(nodeType string, rawConfig map[string]interface{}, bri
 
 			if err != nil {
 				newItem.JSON["error"] = err.Error()
+				logf("[Workflow] [%s] Error: %v\n", nodeName, err)
 			} else if resp.Error != "" {
 				newItem.JSON["error"] = resp.Error
+				logf("[Workflow] [%s] Bridge Error: %v\n", nodeName, resp.Error)
 			} else {
 				if resp.Output != nil {
 					// Merge output into item? Or replace?
@@ -808,9 +832,22 @@ func createBridgeExecutor(nodeType string, rawConfig map[string]interface{}, bri
 					// Let's assume Output is the new JSON content.
 					if outMap, ok := resp.Output.(map[string]interface{}); ok {
 						newItem.JSON = outMap
+						// Log result info if meaningful
+						if success, ok := outMap["success"].(bool); ok {
+							sim := ""
+							if s, ok := outMap["similarity"].(float64); ok {
+								sim = fmt.Sprintf(" (similarity: %.2f)", s)
+							}
+							logf("[Workflow] [%s] Returned: %v%s\n", nodeName, success, sim)
+						} else if val, ok := outMap["text"].(string); ok {
+							logf("[Workflow] [%s] Result text: %s\n", nodeName, val)
+						}
 					} else {
 						newItem.JSON["result"] = resp.Output
+						logf("[Workflow] [%s] Result: %v\n", nodeName, resp.Output)
 					}
+				} else {
+					logf("[Workflow] [%s] Done\n", nodeName)
 				}
 			}
 			resultItems = append(resultItems, newItem)
