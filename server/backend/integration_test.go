@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"script-platform/server/backend"
 	"script-platform/server/db"
 	"script-platform/server/workflow"
@@ -60,6 +61,9 @@ func TestRunWorkflowIntegration(t *testing.T) {
 	corePath := filepath.Join(root, "core")
 	toolsPath := filepath.Join(root, "tools")
 	adbStubPath := filepath.Join(toolsPath, "adb_stub")
+	if runtime.GOOS == "windows" {
+		adbStubPath += ".bat"
+	}
 
 	// Use TempDir for log isolation
 	tempDir := t.TempDir()
@@ -76,6 +80,7 @@ func TestRunWorkflowIntegration(t *testing.T) {
 	if err := db.Init(dbPath); err != nil {
 		t.Fatalf("Failed to init db: %v", err)
 	}
+	defer db.Close()
 	// No need to remove dbPath manually, t.TempDir cleans up automatically
 
 	// Verify ADB Stub works manually
