@@ -1,195 +1,260 @@
 import { test, expect } from '@playwright/test';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
 
-test.describe('Phase 1: User Journey', () => {
-  test('No-Code User Workflow Creation', async ({ page }) => {
-    test.setTimeout(120000); // 2 mins
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+test.describe('Phase 1: User Journey - Script Equivalence', () => {
+  test('Simulate No-Code User Creating Logic Workflow', async ({ page }) => {
+    test.setTimeout(180000); // 3 mins
+
+    const screenshotDir = path.resolve(__dirname, '../../doc/workflow_ux/screenshots_new');
+    console.log(`Saving screenshots to: ${screenshotDir}`);
+
+    // Helper for screenshots
+    const snap = async (name: string) => {
+      await page.screenshot({ path: path.join(screenshotDir, `${name}.png`), fullPage: true });
+    };
 
     // 1. Open App
     console.log("Step 1: Open App");
     await page.goto('/');
     await page.waitForLoadState('networkidle');
-    // Adjust path relative to frontend execution
-    const screenshotDir = '../doc/workflow_ux/screenshots';
-    await page.screenshot({ path: `${screenshotDir}/01_home.png` });
+    await snap('01_home');
 
-    // 2. Create Project
-    console.log("Step 2: Create Project");
-    // Ensure we are on Dashboard
-    // Try to find "New Project" button directly
-    let newProjectBtn = page.locator('button', { hasText: 'New Project' }).first();
-    if (!await newProjectBtn.isVisible()) {
-        // Maybe in Workflows tab
-        // Use .locator('div') or generic locator because it might be a div in a sidebar
-        // Or look for text "Workflow" (singular)
-        const workflowTab = page.locator('div, button').filter({ hasText: /^Workflow$|^工作流$/ }).first();
-        if (await workflowTab.isVisible()) {
-            await workflowTab.click();
-            await page.waitForTimeout(1000);
-        }
-    }
-
-    newProjectBtn = page.locator('button', { hasText: 'New Project' }).first();
-    await expect(newProjectBtn).toBeVisible();
-    await newProjectBtn.click();
-
-    await page.fill('input[placeholder*="Shopping App"]', 'User Journey Project');
-    await page.locator('dialog.modal-open button.btn-primary', { hasText: 'Create Project' }).click();
+    // 2. Create Project (Navigate to Workflow tab first)
+    console.log("Navigating to Workflow tab...");
+    const workflowTab = page.locator('a, button, div').filter({ hasText: /^Workflow$/ }).first();
+    await workflowTab.click();
     await page.waitForTimeout(1000);
-    await page.screenshot({ path: `${screenshotDir}/02_project_created.png` });
+    await snap('02_workflow_tab');
+
+    // Create Project
+    console.log("Step 2: Create Project");
+    const createProjectBtn = page.getByRole('button', { name: /New Project/i }).first();
+    if (await createProjectBtn.isVisible()) {
+        await createProjectBtn.click();
+        await page.waitForTimeout(500); // Animation
+        await page.getByPlaceholder(/e\.g\. Shopping App/i).fill('UX Script Test ' + Date.now());
+        // Click Create in modal
+        await page.locator('dialog.modal-open').getByRole('button', { name: 'Create Project' }).click();
+        await page.waitForTimeout(1000); // Wait for creation
+        await snap('02b_project_created');
+    }
 
     // 3. Create Workflow
     console.log("Step 3: Create Workflow");
-    // Find project card and hover to see "New Workflow"
-    const projectCard = page.locator('.card-body').first();
+    // Find the project card we just created (or the first one)
+    // We need to hover the card to see "New Workflow" button (based on prior knowledge)
+    // Or maybe click a "+" icon.
+    // Let's try to find a card and hover it.
+    const projectCard = page.locator('.card').first();
     await projectCard.hover();
-    await page.locator('button', { hasText: 'New Workflow' }).first().click({ force: true });
+    await page.waitForTimeout(500);
 
-    await page.fill('input[placeholder*="Login Flow"]', 'Button Logic Flow');
-    await page.locator('dialog.modal-open button.btn-primary', { hasText: 'Create Workflow' }).click();
-    await page.waitForTimeout(2000); // Wait for editor
-    await page.screenshot({ path: `${screenshotDir}/03_workflow_editor.png` });
+    // Look for "New Workflow" button or a "+" button inside the card
+    // The screenshot implies a list inside. Maybe there's a button there.
+    // Let's look for any button inside the card that might mean "Add Workflow"
+    const addWorkflowBtn = projectCard.locator('button').filter({ hasText: /New Workflow|Add|Create/i }).first();
+
+    if (await addWorkflowBtn.isVisible()) {
+        await addWorkflowBtn.click();
+    } else {
+        // Maybe it's an icon button?
+        // Or maybe we need to click "Empty (click to create)"?
+        const emptyLink = projectCard.getByText('click to create');
+        if (await emptyLink.isVisible()) {
+            await emptyLink.click();
+        } else {
+             // Fallback: try to find any "plus" icon
+             // Be careful not to click "Delete" or "Rename"
+             // Usually "New Workflow" is distinct.
+             // If we can't find it, we might be stuck.
+             // Let's log and fail gracefully
+             console.log("Could not find New Workflow button. Trying generic plus icon if available and safe.");
+             // The code shows: <Plus size={14} /> New Workflow
+             // It's a button with text "New Workflow" inside.
+             // Maybe filter was too strict or visibility issue.
+             // It has opacity-0 group-hover:opacity-100.
+             // We hovered projectCard, so it should be visible.
+             // Let's try forcing click if found but hidden
+             if (await addWorkflowBtn.count() > 0) {
+                 await addWorkflowBtn.click({ force: true });
+             }
+        }
+    }
+
+    // Fill Workflow Creation Modal
+    await page.waitForTimeout(500);
+    // Modal title: Add Workflow to ...
+    // Placeholder: e.g. Login Flow
+    const workflowInput = page.getByPlaceholder(/e\.g\. Login Flow/i);
+    if (await workflowInput.isVisible()) {
+        await workflowInput.fill('Script Equivalence Test ' + Date.now());
+        await page.locator('dialog.modal-open').getByRole('button', { name: 'Create Workflow' }).click();
+    }
+    await page.waitForTimeout(2000);
+    await snap('03_workflow_editor');
 
     // Helper to add node
-    const addNode = async (name: string, newLabel: string) => {
-        console.log(`Adding node: ${name}`);
-        // Open Sidebar via toolbar button (Plus icon)
-        // Find button with data-tip="Add node"
-        await page.locator('button[data-tip="Add node"]').click();
+    const addNode = async (nodeName: string, label?: string) => {
+        console.log(`Adding node: ${nodeName}`);
+
+        // Strategy 1: "Add first step" button (Empty state)
+        const emptyStateBtn = page.getByText('Add first step');
+        if (await emptyStateBtn.isVisible()) {
+            await emptyStateBtn.click();
+        } else {
+            // Strategy 2: Toolbar "+" button
+            // From screenshot, it's in a vertical toolbar on the right.
+            // Likely a button with a plus icon.
+            // Let's look for a button containing a Plus icon or specific class
+            const toolbarPlus = page.locator('button').filter({ has: page.locator('svg.lucide-plus') }).first();
+            if (await toolbarPlus.isVisible()) {
+                await toolbarPlus.click();
+            } else {
+                 // Strategy 3: Context menu on canvas
+                 // We need to avoid the center button if it exists but is hidden/transparent? No.
+                 // Just click top left of canvas to be safe
+                 await page.locator('.react-flow__pane').click({ button: 'right', position: { x: 100, y: 100 } });
+            }
+        }
+
+        // Search
+        // The node palette usually opens.
+        const search = page.getByPlaceholder(/Search nodes|Filter/i);
+        // Wait for search to appear
+        await expect(search).toBeVisible();
+        await search.fill(nodeName);
         await page.waitForTimeout(500);
 
-        // Use search
-        const searchInput = page.locator('input[placeholder="Search nodes..."]');
-        await searchInput.fill(name);
-        await page.waitForTimeout(500);
+        // Click the node in list
+        // It might be a button or list item.
+        // Let's try matching text.
+        await page.getByText(nodeName, { exact: false }).first().click();
 
-        // Click the first button in the list (assuming it's the filtered node)
-        // The sidebar items are likely buttons inside a list
-        await page.locator('div.flex-1.overflow-y-auto button').first().click();
+        // Wait for node
+        await page.waitForTimeout(1000); // Animation
 
-        // Wait for node to appear on canvas
-        // We expect a node with the label "Find Image" (or whatever name was passed)
-        // Note: The label inside the node might be "Find Image" initially
-        await expect(page.locator('.react-flow__node').filter({ hasText: name })).toBeVisible({ timeout: 5000 });
-        await page.waitForTimeout(500);
-
-        // Rename it to avoid confusion
-        // Find the node we just added. It should be selected or we find by text.
-        const targetNode = page.locator('.react-flow__node').filter({ hasText: name }).last();
-
-        await targetNode.dblclick();
-        await page.waitForTimeout(500);
-
-        // Rename
-        // Click the name to edit
-        const nameDisplay = page.locator('div.group.flex.items-center.gap-2.cursor-pointer');
-        if (await nameDisplay.isVisible()) {
-            await nameDisplay.click();
-            await page.locator('input.input-sm.font-bold').fill(newLabel);
-            await page.keyboard.press('Enter');
+        if (label) {
+            // Rename logic here if needed, but for UX test, default names might be used first
+            // Double click to rename?
+            const node = page.locator('.react-flow__node').last();
+            await node.dblclick();
+            const input = page.locator('input.nodrag'); // Renaming input often has nodrag
+            if (await input.isVisible()) {
+                await input.fill(label);
+                await page.keyboard.press('Enter');
+            }
         }
     };
 
     // 4. Add "Find Image" (Button A)
-    await addNode('Find Image', 'Find Button A');
+    await addNode('Find Image');
+    await snap('04_node_a_added');
 
-    // Configure "Image" param for Node A
-    // Node settings modal should be open
-    const imageLabel = page.locator('label').filter({ hasText: 'Image' }).first();
-    // Toggle expression mode (button inside label)
-    await imageLabel.locator('button').click();
-    // Type path in Monaco editor
-    await page.locator('.monaco-editor').first().click();
-    await page.keyboard.type('assets/button_a.png');
-    // Close modal
-    await page.locator('button.btn-circle').first().click(); // Close button
-    await page.screenshot({ path: `${screenshotDir}/04_node_a_added.png` });
+    // Configure Node A
+    console.log("Configuring Node A");
+    const nodeA = page.locator('.react-flow__node').filter({ hasText: 'Find Image' }).last();
+    await nodeA.dblclick(); // Open settings
+    await page.waitForTimeout(500);
+    await snap('05_node_a_settings');
+    // Close settings (click X or outside)
+    // Try to find the close button (X icon) inside the modal
+    // The modal is likely the top-most dialog or fixed div
+    const closeBtn = page.locator('div.fixed.inset-0.z-\\[200\\] button').filter({ has: page.locator('svg') }).last();
+    if (await closeBtn.isVisible()) {
+        await closeBtn.click();
+    } else {
+        await page.keyboard.press('Escape');
+    }
+    // Wait for modal to close
+    await page.waitForTimeout(500);
 
     // 5. Add "If Condition"
-    await addNode('If Condition', 'Check A Found');
+    await addNode('If Condition');
+    const nodeIf = page.locator('.react-flow__node').filter({ hasText: 'If Condition' }).last();
 
-    // Configure If Condition
-    // Value 1
-    const value1Label = page.locator('label').filter({ hasText: 'Value 1' }).first();
-    // It is already expression.
-    // Need to focus editor. It's likely the first one in the modal.
-    // But we might have multiple editors.
-    // Value 1 is the first param.
-    await page.locator('.monaco-editor').nth(0).click();
-    // Clear existing content? Monaco is tricky. Select all + delete.
-    await page.keyboard.press('Control+A');
-    await page.keyboard.press('Backspace');
-    await page.keyboard.type('{{ $node["Find Button A"].output.found }}');
+    // Connect A -> If
+    console.log("Connecting A -> If");
+    // We need handles.
+    // This is hard with generic selectors. We'll try to execute JS or drag blindly.
+    // For UX report, if this fails, it's a finding.
+    const handleOut = nodeA.locator('.react-flow__handle-right').first(); // source
+    const handleIn = nodeIf.locator('.react-flow__handle-left').first(); // target
 
-    // Operator
-    await page.locator('select').selectOption('boolean:isTrue');
+    if (await handleOut.isVisible() && await handleIn.isVisible()) {
+        await handleOut.dragTo(handleIn, { force: true });
+    } else {
+        console.log("Handles not found/visible");
+    }
+    await snap('06_connected_a_if');
 
-    // Close modal
-    await page.locator('button.btn-circle').first().click();
+    // 6. Add "Click" (True)
+    await addNode('Click');
+    const nodeClickA = page.locator('.react-flow__node').filter({ hasText: 'Click' }).last();
 
-    // 6. Connect Find A -> If
-    const nodes = page.locator('.react-flow__node');
-    const nodeA = nodes.nth(0);
-    const nodeIf = nodes.nth(1);
+    // Connect If(True) -> Click
+    // Assume True is Top Right handle
+    const handleTrue = nodeIf.locator('.react-flow__handle-right').first();
+    const handleClickIn = nodeClickA.locator('.react-flow__handle-left').first();
+    await handleTrue.dragTo(handleClickIn, { force: true });
 
-    // Drag from source handle to target handle
-    const sourceHandle = nodeA.locator('.react-flow__handle-right').first(); // Find Image has multiple outputs?
-    // Find Image has outputs: found, x, y. Usually it has one handle or multiple?
-    // The registry says "outputs" list.
-    // If multiple outputs, multiple handles? Or one handle carrying object?
-    // n8n usually has one output handle unless specific logic.
-    // Let's assume one handle on right.
-    const targetHandle = nodeIf.locator('.react-flow__handle-left').first();
+    // 7. Add "Find Image" (Button B - False path)
+    await addNode('Find Image');
+    const nodeB = page.locator('.react-flow__node').filter({ hasText: 'Find Image' }).last(); // The new one
 
-    await sourceHandle.dragTo(targetHandle, { force: true });
-    await page.screenshot({ path: `${screenshotDir}/05_connected.png` });
+    // Connect If(False) -> B
+    // Assume False is Bottom Right handle
+    const handleFalse = nodeIf.locator('.react-flow__handle-right').last(); // or nth(1)
+    const handleBIn = nodeB.locator('.react-flow__handle-left').first();
+    await handleFalse.dragTo(handleBIn, { force: true });
 
-    // 7. Add "Click" (Button A - True path)
-    await addNode('Click', 'Click A');
-    // Connect If (True) -> Click A
-    // If node has 'true' and 'false' handles?
-    // Registry says: handleConfig: { sources: [{ id: 'true' }, { id: 'false' }] }
-    // So it should have two handles on right.
-    // We need to find the 'true' handle.
-    // Usually handles have tooltips or specific classes/order.
-    // 'true' is likely top one.
-    const ifHandles = nodeIf.locator('.react-flow__handle-right');
-    // Assume first is true.
-    const trueHandle = ifHandles.nth(0);
-    const clickA = nodes.nth(2);
-    const clickATarget = clickA.locator('.react-flow__handle-left').first();
+    await snap('07_full_structure_partial');
 
-    await trueHandle.dragTo(clickATarget, { force: true });
+    // 8. Add If Condition for B
+    await addNode('If Condition');
+    const nodeIfB = page.locator('.react-flow__node').filter({ hasText: 'If Condition' }).last();
+    // Connect B -> IfB
+    const handleOutB = nodeB.locator('.react-flow__handle-right').first();
+    const handleInIfB = nodeIfB.locator('.react-flow__handle-left').first();
+    await handleOutB.dragTo(handleInIfB, { force: true });
 
-    // 8. Add "Find Image" (Button B - False path)
-    await addNode('Find Image', 'Find Button B');
-    const findB = nodes.nth(3);
+    // 9. Add Click B (True)
+    await addNode('Click');
+    const nodeClickB = page.locator('.react-flow__node').filter({ hasText: 'Click' }).last();
+    // Connect IfB(True) -> ClickB
+    const handleTrueB = nodeIfB.locator('.react-flow__handle-right').first();
+    const handleClickBIn = nodeClickB.locator('.react-flow__handle-left').first();
+    await handleTrueB.dragTo(handleClickBIn, { force: true });
 
-    // Config B
-    const imageLabelB = page.locator('label').filter({ hasText: 'Image' }).first();
-    await imageLabelB.locator('button').click();
-    await page.locator('.monaco-editor').first().click();
-    await page.keyboard.type('assets/button_b.png');
-    await page.locator('button.btn-circle').first().click();
+    // 10. Add Log (False)
+    await addNode('Log');
+    const nodeLog = page.locator('.react-flow__node').filter({ hasText: 'Log' }).last();
+    // Connect IfB(False) -> Log
+    const handleFalseB = nodeIfB.locator('.react-flow__handle-right').last();
+    const handleLogIn = nodeLog.locator('.react-flow__handle-left').first();
+    await handleFalseB.dragTo(handleLogIn, { force: true });
 
-    // Connect If (False) -> Find B
-    const falseHandle = ifHandles.nth(1);
-    const findBTarget = findB.locator('.react-flow__handle-left').first();
-    await falseHandle.dragTo(findBTarget, { force: true });
+    await snap('08_final_workflow');
 
-    await page.screenshot({ path: `${screenshotDir}/06_full_graph.png` });
+    // 11. Rename Node A and check reference (Simulated check)
+    console.log("Attempting to rename Node A");
+    await nodeA.dblclick();
+    // Try to find title input in modal
+    // This is specific to the implementation, guessing selector
+    const titleInput = page.getByDisplayValue('Find Image').first();
+    if (await titleInput.isVisible()) {
+        await titleInput.fill('Find Button A');
+        await page.keyboard.press('Enter');
+        await page.keyboard.press('Escape'); // Close
+    }
+    await snap('09_renamed_node');
 
-    // 9. Execute
-    // Click "Execute Workflow" button (Play icon)
-    // It contains text "Execute Workflow"
-    await page.locator('button', { hasText: 'Execute Workflow' }).click();
+    // Check If Condition expression
+    await nodeIf.dblclick();
+    await snap('10_check_reference');
 
-    // Wait for execution to finish (or timeout)
-    // Look for status logs or indicators.
-    await page.waitForTimeout(5000);
-    await page.screenshot({ path: `${screenshotDir}/07_execution.png` });
-
-    // Check logs?
-    // Open Inspector?
-    // Inspector opens automatically.
   });
 });

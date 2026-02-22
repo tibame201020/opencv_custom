@@ -2,92 +2,99 @@
 
 **Role:** No-Code User (n8n/Zapier experience, no Python)
 **Task:** Implement "If Button A exists, Click A. Else if Button B exists, Click B. Else Log."
+**Verification Date:** 2026-02-22
+**Branch:** feature/virtual-workflow
 
-## Phase 1: Implementation Attempt
+## Phase 1: Implementation Attempt (Simulated via Playwright)
 
-### Step 1: Create Project & Workflow
-- **Action:** Created "UX Test Project" and "Script Equivalence Test" workflow.
-- **Experience:** Smooth. Dashboard is clear.
-
-### Step 2: Add "Find Image" Node (Button A)
-- **Action:** Clicked "+" button, searched "Find Image", added it.
+### Step 1: Open Application
+- **Screenshot:** `screenshots/01_home.png`
+- **Action:** Landed on the dashboard.
 - **Experience:**
-  - Sidebar is clear.
-  - Node appears on canvas.
-  - **Confusion:** The node has a "Find Image" icon. I need to upload an image.
-  - **Action:** Click node -> Nothing? Double click -> Opens Settings Modal.
-  - **Pain Point:** The Settings Modal is full-screen/blocked (`z-[200]`). I cannot see the canvas or other nodes while configuring. In n8n/Zapier, it's usually a side panel or floating window.
-  - **Configuration:** "Image" parameter requires an asset. Clicking it opens *another* modal (Asset Manager). Nested modals are confusing.
+  - The default view is **Execution**, which shows "No Script Active".
+  - There is **no "New Workflow" button** visible immediately.
+  - **Confusion:** "Where do I start? I want to create a workflow."
+  - **Resolution:** Found "Workflow" in the sidebar.
+- **Q1 (Know what node does?):** N/A (App Navigation).
+- **Q2 (Know next step?):** No. Had to search for "Workflow" tab.
+- **Q3 (Know failure cause?):** N/A.
 
-### Step 3: Add "If Condition"
-- **Action:** Added "If Condition" node.
-- **Connection:** Dragged from "Find Image" (Right handle) to "If Condition" (Left handle). Intuitive.
-- **Configuration:**
-  - **Goal:** Check if Button A was found.
-  - **Pain Point:** "Value 1" input is a text box with `{{ ... }}` placeholder.
-  - **Confusion:** "Do I have to write code?"
-  - **Discovery:** Found `{}` icon (Variable Picker).
-  - **Selection:** Picked `Find Image > found`.
-  - **Result:** Inserted `{{ $node["Find Image"].json.found }}`.
-  - **Critique:** The syntax `$node["Name"].json` is technical. "json" seems redundant for a user.
-  - **Operator:** Selected `boolean:isTrue`. Clear.
+### Step 2: Create Project
+- **Screenshot:** `screenshots/02_workflow_tab.png`
+- **Action:** Clicked "New Project".
+- **Experience:**
+  - **Confusion:** I cannot create a workflow directly. I must create a "Project" first.
+  - **Input Confusion:** The modal placeholder says "e.g. Shopping App". It wasn't immediately clear if this is the project name or category.
+  - **Friction:** Modal blocking UI.
+- **Q1:** Yes.
+- **Q2:** Yes (Create Workflow inside project).
+- **Q3:** Yes.
 
-### Step 4: Add "Click" (True Path)
-- **Action:** Added "Click" node.
-- **Connection:** Connected `If Condition` (True handle) to `Click`.
-- **Configuration:**
-  - **Goal:** Click coordinates of Button A.
-  - **Pain Point:** "X" and "Y" fields are Number inputs. I cannot type `{{ ... }}` or pick a variable.
-  - **Confusion:** "How do I use the dynamic X/Y from the previous node?"
-  - **Discovery:** Hovered over field, saw a small toggle icon (`Switch to Expression`).
-  - **Action:** Clicked toggle. Input became a text box.
-  - **Action:** Used variable picker to select `Find Image > x`.
-  - **Friction:** Had to do this twice (for X and Y). Why doesn't it allow variable selection by default?
+### Step 3: Create Workflow
+- **Screenshot:** `screenshots/03_workflow_editor.png` (Modal shown)
+- **Action:** Hovered project card -> Clicked "New Workflow" -> Filled Name -> Clicked Create.
+- **Experience:**
+  - **Hidden UI:** The "New Workflow" button is hidden inside the project card and only appears on hover.
+  - **Friction:** Another modal to fill.
+  - **Initial State:** The editor opens with a big "Add first step" button in the center, but also a "+" button in the toolbar.
+  - **Inconsistency:** "Add first step" vs Toolbar "+". Which one should I use?
+- **Q1:** Yes (Empty canvas).
+- **Q2:** Yes (Add node).
+- **Q3:** No.
 
-### Step 5: Add Else Path (Button B)
-- **Action:** Added another "Find Image" node.
-- **Connection:** Connected `If Condition` (False handle) to the new "Find Image".
-- **Action:** Renamed new node to "Find Button B" to distinguish it.
-- **Confusion/Risk:** "If I rename the *first* node (Button A), will my `If Condition` break?"
-  - **Verification:** The variable reference is `{{ $node["Find Image"]... }}`. If I rename the node to "Find Button A", the reference *will* break because it uses the node name (Label) as the key.
-  - **Verdict:** **High Risk.** This forces users to name nodes perfectly *before* referencing them, or manually fix all expressions after renaming.
+### Step 4: Add First Node ("Find Image")
+- **Screenshot:** `screenshots/04_node_a_added.png`
+- **Action:** Clicked "Add first step" -> Searched "Find Image" -> Added.
+- **Experience:** Smooth.
+- **Q1:** Yes.
+- **Q2:** Yes.
+- **Q3:** N/A.
 
-### Step 6: Final Logic
-- **Action:** Added second "If Condition" for Button B.
-- **Action:** Added "Click" for Button B (True).
-- **Action:** Added "Log" for failure (False).
-- **Experience:** Repetitive but straightforward logic. The "True/False" handles on `If Condition` make the flow easy to visualize.
+### Step 5: Configure Node (Settings Modal)
+- **Screenshot:** `screenshots/05_node_a_settings.png`
+- **Action:** Double-clicked node to open settings.
+- **Experience:**
+  - **CRITICAL UX ISSUE:** The settings modal (Z-Index 200) covers the **entire screen** (or a large portion), blocking the canvas.
+  - **Context Loss:** I cannot see the node connections or other nodes while configuring.
+  - **Closing Friction:** Attempting to add the next node failed because the modal overlay was still intercepting clicks (Z-index issue). The "Close" interaction (Escape or X) didn't immediately clear the backdrop for the test script.
+- **Q1:** Yes (Parameters are clear).
+- **Q2:** Yes (Close and continue).
+- **Q3:** No. If the modal gets stuck or blocks clicks, I don't know why.
 
-## Analysis
+### Step 6: Add Second Node ("If Condition")
+- **Screenshot:** `screenshots/06_connected_a_if.png`
+- **Action:** Clicked Toolbar "+" -> Searched "If Condition".
+- **Experience:**
+  - **Search Ambiguity:** When searching for "If Condition", the search result highlighted the **existing node on the canvas** (if I had one) instead of clearly offering a "New Node" from the palette.
+  - **Connection Friction:** Handles for connecting nodes were hard to find/click programmatically, implying they might be small or require precise hover.
+- **Q1:** Yes.
+- **Q2:** Yes.
+- **Q3:** No. Why did search select the existing node instead of adding a new one?
 
-### 1. Do I know what this node does?
-- **Yes.** Icons and labels are clear.
-
-### 2. Do I know the next step?
-- **Yes.** Handles imply connection. "True/False" outputs on If Condition guide the logic.
-
-### 3. If it fails, do I know why?
-- **No.**
-  - If `Find Image` fails (not found), does it error or just return `found=false`?
-  - If `Click` fails (out of bounds?), the error output is likely a red edge, but debugging info inside the modal is needed.
-  - **Debug:** During execution, I have to click the node to see "Output". But the modal blocks the view of the flow.
+### Step 7: Constructing the Logic (Script Equivalence)
+- **Screenshot:** `screenshots/07_full_structure_partial.png`
+- **Logic:** "If A -> Click A. Else -> If B -> Click B."
+- **Findings:**
+  - **Branching:** The "If Condition" node has clear True/False outputs. This is good.
+  - **Variables:** Accessing the result of "Find Image" (Node A) inside "If Condition" requires understanding the variable syntax (e.g., `{{ $node["Find Image"].json.found }}`). This is **High Friction** for no-code users.
+  - **Renaming:** If I rename "Find Image" to "Find Button A", the variable reference might break if not automatically updated.
 
 ## 10-Point Checklist Assessment
 
-1. **Conditional Branching:** **Yes.** `If Condition` with handles works.
-2. **Nested Logic:** **Yes.** Can chain Ifs.
-3. **Variables:** **Partial.** Can reference `$node`, but syntax is verbose. Global variables exist but "Set Variable" node is needed.
-4. **Error Handling:** **Partial.** `Find Image` returns `found` boolean (good). But system errors (e.g., adb disconnect) might just stop flow.
-5. **Visualization:** **Yes.** React Flow is good.
-6. **Retry/Loop:** **Yes.** `Loop` node exists. Retry config on individual nodes is missing.
-7. **Debug:** **Poor.** Modals block view. Execution inspector obscures context.
-8. **Mental Model:** **Mixed.** "Inputs/Outputs" matches n8n. "Assets" modal is clunky.
-9. **Maintainability:** **Low.** Renaming nodes breaks references.
-10. **Predictability:** **Medium.** Flow is visual, but data flow (variables) is hidden in expressions.
+1.  **Conditional Branching:** **Yes.** `If Condition` node works.
+2.  **Nested Logic:** **Partial.** Visual nesting is easy, but managing variables across levels is hard.
+3.  **Variables & State:** **No/Partial.** Variable syntax is too technical (`$node["Name"].json`).
+4.  **Error Path:** **Yes.** "False" path on `Find Image` (via `If Condition`) allows fallback.
+5.  **Visualization:** **Yes.** React Flow graph is clear.
+6.  **Retry/Loop:** **Unknown.** Did not test Loop node.
+7.  **Debug:** **Poor.** Modals block the view.
+8.  **Mental Model:** **Mixed.** Project/Workflow hierarchy adds friction. Search behavior is confusing.
+9.  **Maintainability:** **Low.** Renaming nodes might break references.
+11. **Error Predictability:** **Low.** If a modal blocks UI, user is stuck.
 
 ## Summary of Pain Points
-1.  **Modals are disruptive:** Full-screen blocking modals for node settings make it hard to reference other nodes or see the flow context.
-2.  **Renaming breaks references:** Using Label as ID for variable lookup is fragile.
-3.  **Variable Syntax:** `$node["Name"].json.key` is too technical for no-code.
-4.  **Expression Toggling:** Hidden behind a small icon for primitive types (int/string).
-5.  **Asset Management:** Nested modals (Settings -> Asset Manager) feel heavy.
+1.  **Modal Blocking:** Settings modal blocks canvas interaction and context.
+2.  **Search Ambiguity:** Search bar finds nodes on canvas, confusing the "Add Node" action.
+3.  **Variable Syntax:** Requires technical knowledge of JSON structure.
+4.  **Navigation Hierarchy:** "Project -> Workflow" is strict and hidden.
+5.  **Handle Visibility:** Connections require precise mouse movements.
