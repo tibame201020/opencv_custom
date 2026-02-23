@@ -154,15 +154,15 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
     return (
         <div
             className="group relative flex flex-col items-center font-sans"
-            style={{ width: '54px' }}
+            style={{ width: '42px' }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
             {/* 1. Node Card */}
             <div
                 className={clsx(
-                    "relative flex items-center justify-center w-[54px] h-[54px] bg-white transition-all duration-200 z-10",
-                    "rounded-xl border-[1.5px]",
+                    "relative flex items-center justify-center w-[42px] h-[42px] bg-white transition-all duration-200 z-10",
+                    "rounded-lg border-[1.2px]",
                     selected ? "border-primary ring-2 ring-primary/20 shadow-lg scale-105" : "border-gray-200 shadow hover:shadow-md hover:border-gray-300",
                     isSuccess && !isRunning && "border-[#4fcc5d] bg-[#4fcc5d]/5",
                     isRunning && "border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)] bg-blue-50/10",
@@ -185,35 +185,35 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
                 )}
 
                 {/* Icon Section */}
-                <div className="relative w-8 h-8 flex items-center justify-center transition-colors text-gray-600">
+                <div className="relative w-6 h-6 flex items-center justify-center transition-colors text-gray-600">
                     {data.imagePreview ? (
                         <img
                             src={data.imagePreview as string}
                             alt="Node Preview"
-                            className="w-full h-full object-contain rounded-[6px]"
+                            className="w-full h-full object-contain rounded-[4px]"
                             loading="lazy"
                             draggable={false}
                         />
                     ) : (
-                        IconComp ? <IconComp size={24} strokeWidth={1.5} /> : <div className="text-[9px] font-bold">Node</div>
+                        IconComp ? <IconComp size={16} strokeWidth={1.5} /> : <div className="text-[8px] font-bold">Node</div>
                     )}
                 </div>
 
                 {/* Status Badges (Bottom-Right Corner) */}
-                <div className="absolute -bottom-2 -right-2 z-30 flex">
+                <div className="absolute -bottom-1.5 -right-1.5 z-30 flex">
                     {isRunning && (
-                        <div className="w-5 h-5 bg-blue-500 rounded-full border-[2px] border-white flex items-center justify-center shadow-sm">
-                            <Loader2 size={10} strokeWidth={4} className="text-white animate-spin" />
+                        <div className="w-4 h-4 bg-blue-500 rounded-full border-[1.5px] border-white flex items-center justify-center shadow-sm">
+                            <Loader2 size={8} strokeWidth={4} className="text-white animate-spin" />
                         </div>
                     )}
                     {isSuccess && !isRunning && (
-                        <div className="w-5 h-5 bg-[#4fcc5d] rounded-full border-[2px] border-white flex items-center justify-center shadow-sm">
-                            <Check size={10} strokeWidth={4} className="text-white" />
+                        <div className="w-4 h-4 bg-[#4fcc5d] rounded-full border-[1.5px] border-white flex items-center justify-center shadow-sm">
+                            <Check size={8} strokeWidth={4} className="text-white" />
                         </div>
                     )}
                     {isError && !isRunning && (
-                        <div className="w-5 h-5 bg-[#ff6d5b] rounded-full border-[2px] border-white flex items-center justify-center shadow-sm">
-                            <span className="text-white text-[10px] font-black leading-none mt-[1px]">!</span>
+                        <div className="w-4 h-4 bg-[#ff6d5b] rounded-full border-[1.5px] border-white flex items-center justify-center shadow-sm">
+                            <span className="text-white text-[8px] font-black leading-none mt-[1px]">!</span>
                         </div>
                     )}
                 </div>
@@ -229,7 +229,7 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
 
                 {/* Input Handle (Left Edge) */}
                 {!isTrigger && (
-                    <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-white border border-gray-400 rounded-full z-20 shadow-sm flex items-center justify-center">
+                    <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white border border-gray-400 rounded-full z-20 shadow-sm flex items-center justify-center">
                         <div className="w-1 h-1 bg-gray-400 rounded-full" />
                         <Handle
                             type="target"
@@ -273,14 +273,14 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
             </div>
 
             {/* Floating Text Section (Bottom) */}
-            <div className="absolute top-[60px] left-1/2 -translate-x-1/2 flex flex-col items-center min-w-[140px] pointer-events-none z-20">
+            <div className="absolute top-[46px] left-1/2 -translate-x-1/2 flex flex-col items-center min-w-[140px] pointer-events-none z-20">
                 <span className={clsx(
-                    "text-[12px] font-bold text-center leading-tight mb-0.5",
+                    "text-[11px] font-bold text-center leading-tight mb-0.5",
                     selected ? "text-primary px-1.5 bg-white/90 rounded-md backdrop-blur-sm shadow-sm" : "text-gray-700"
                 )} style={selected ? {} : { textShadow: '0px 1px 2px rgba(255,255,255,0.8), 0px -1px 2px rgba(255,255,255,0.8)' }}>
                     {(data.label as string) || def?.label || 'Node'}
                 </span>
-                <span className="text-[10px] text-gray-500 text-center font-medium max-w-[160px] truncate bg-white/60 px-1 rounded-sm">
+                <span className="text-[9px] text-gray-500 text-center font-medium max-w-[160px] truncate bg-white/60 px-1 rounded-sm">
                     {(data.subtitle as string) || def?.description || nodeType}
                 </span>
             </div>
