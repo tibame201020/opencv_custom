@@ -176,7 +176,7 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
                     onMouseLeave={() => setHovered(false)}
                 >
                     <button
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-primary transition-colors"
+                        className="p-1 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-primary transition-colors"
                         title="Insert node"
                         onClick={(e) => {
                             e.stopPropagation();
@@ -185,11 +185,10 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
                             }));
                         }}
                     >
-                        <Plus size={14} />
+                        <Plus size={11} />
                     </button>
-                    <div className="w-px h-3 bg-gray-200" />
                     <button
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-gray-500 hover:bg-red-50 hover:text-[#ff6d5b] transition-colors"
+                        className="p-1 rounded-full flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
                         title="Delete connection"
                         onClick={(e) => {
                             e.stopPropagation();
@@ -198,7 +197,7 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
                             }));
                         }}
                     >
-                        <Trash2 size={12} />
+                        <Trash2 size={11} />
                     </button>
                 </div>
             </EdgeLabelRenderer>
@@ -1552,20 +1551,9 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
         setGraphContextMenu(null);
     }, []);
 
-    const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
-        event.preventDefault();
-        setSelectedNode(node);
-        setGraphContextMenu({ type: 'node', x: event.clientX, y: event.clientY, id: node.id, data: node });
-    }, []);
-
     const onEdgeContextMenu = useCallback((event: React.MouseEvent, edge: Edge) => {
         event.preventDefault();
         setGraphContextMenu({ type: 'edge', x: event.clientX, y: event.clientY, id: edge.id });
-    }, []);
-
-    const onPaneContextMenu = useCallback((event: MouseEvent | React.MouseEvent) => {
-        event.preventDefault();
-        setGraphContextMenu({ type: 'pane', x: event.clientX, y: event.clientY });
     }, []);
 
     const moveNodeToFront = useCallback(() => {
@@ -2023,10 +2011,8 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
                         onConnect={onConnect}
                         onNodeClick={onNodeClick}
                         onNodeDoubleClick={onNodeDoubleClick}
-                        onNodeContextMenu={onNodeContextMenu}
                         onEdgeContextMenu={onEdgeContextMenu}
                         onPaneClick={onPaneClick}
-                        onPaneContextMenu={onPaneContextMenu}
                         onDragOver={onDragOver}
                         onDrop={onDrop}
                         nodeTypes={nodeTypes as any}
