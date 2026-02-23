@@ -159,6 +159,7 @@
 | 6.3 | Node Asset Selector | ✅ | ✅ | Asset Picker UI integration |
 | 6.4 | Project Asset API Boundary Tests| ✅ | ⬜ | Unit tests for filepath security |
 | 6.5 | Node Image Preview (Canvas + Panel) | ✅ | ⬜ | 即時縮圖預覽 & 子資料夾修正 |
+| 6.6 | 階層式文件知識庫系統 (Nested Docs) | ✅ | ✅ | 建立 `doc-categories.md` 索引與 `docs/` 模組導覽 |
 
 ## 7. Workflow Runtime Validation (Headless)
 

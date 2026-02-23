@@ -16,6 +16,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - **Frontend / Workflow Canvas**: Reduced edge stroke width (2→1, hover 3→1.5) and arrow marker size (20→12) for cleaner visual appearance.
 - **Backend / Engine**: Implemented `Disabled` node logic — engine now properly paths execution flow through disabled nodes without executing their logic (pass-through).
 - **Backend / DB**: Added `disabled` column to `nodes` table and synced state correctly.
+- **Documentation**: Established a new hierarchical documentation system (`docs/`) with a central index (`doc-categories.md`). Includes core contribution rules and detailed module guides (`backend_engine.md`, `frontend_canvas.md`, `node_development.md`, `python_bridge.md`, `schema_and_migration.md`, `api_and_store.md`).
 - **Test Suite Enhancements**:
     - Fixed race condition in Go backend `integration_test.go` by adding a short delay for WebSocket initialization.
     - Implemented `sanitizeRelPath` in `server.go` to solve absolute path injection issues on Windows.
