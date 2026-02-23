@@ -266,7 +266,7 @@ func createSetVariableExecutor(node *WorkflowNode, bridge *PythonBridge, logger 
 
 			config := ResolveConfig(rawConfig, arg, &item)
 
-			// 1. json_input
+			// 1. json_input (Legacy support for raw JSON string)
 			if jsonStr, ok := config["json_input"].(string); ok {
 				var parsedVars map[string]interface{}
 				if err := json.Unmarshal([]byte(jsonStr), &parsedVars); err == nil {
@@ -276,9 +276,16 @@ func createSetVariableExecutor(node *WorkflowNode, bridge *PythonBridge, logger 
 				}
 			}
 
-			// 2. Direct keys
+			// 2. Variables (Flattened from UI key_value editor)
+			if vars, ok := config["variables"].(map[string]interface{}); ok {
+				for k, v := range vars {
+					newItem.JSON[k] = v
+				}
+			}
+
+			// 3. Direct keys (Backward compatibility or other fields)
 			for k, v := range config {
-				if k == "json_input" {
+				if k == "json_input" || k == "variables" {
 					continue
 				}
 				newItem.JSON[k] = v

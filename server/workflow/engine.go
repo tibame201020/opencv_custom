@@ -174,31 +174,45 @@ func isPlatformNode(nodeType string) bool {
 // We'll update resolveValue signature to take 'item ExecutionItem' later.
 // For now, let's keep it but be aware it needs refactoring for per-item resolution.
 func resolveValue(val interface{}, arg NodeArg, item *ExecutionItem) interface{} {
-	strVal, ok := val.(string)
-	if !ok {
-		return val
-	}
-
-	re := regexp.MustCompile(`\{\{\s*(.*?)\s*\}\}`)
-	if !re.MatchString(strVal) {
-		return val
-	}
-
-	resolvedStr := re.ReplaceAllStringFunc(strVal, func(match string) string {
-		expr := strings.TrimSpace(match[2 : len(match)-2])
-		return fmt.Sprintf("%v", evaluateExpression(expr, arg, item))
-	})
-
-	trimmed := strings.TrimSpace(strVal)
-	if re.MatchString(trimmed) && strings.HasPrefix(trimmed, "{{") && strings.HasSuffix(trimmed, "}}") {
-		matches := re.FindAllString(trimmed, -1)
-		if len(matches) == 1 && matches[0] == trimmed {
-			expr := strings.TrimSpace(trimmed[2 : len(trimmed)-2])
-			return evaluateExpression(expr, arg, item)
+	switch v := val.(type) {
+	case string:
+		re := regexp.MustCompile(`\{\{\s*(.*?)\s*\}\}`)
+		if !re.MatchString(v) {
+			return v
 		}
-	}
 
-	return resolvedStr
+		resolvedStr := re.ReplaceAllStringFunc(v, func(match string) string {
+			expr := strings.TrimSpace(match[2 : len(match)-2])
+			return fmt.Sprintf("%v", evaluateExpression(expr, arg, item))
+		})
+
+		trimmed := strings.TrimSpace(v)
+		if re.MatchString(trimmed) && strings.HasPrefix(trimmed, "{{") && strings.HasSuffix(trimmed, "}}") {
+			matches := re.FindAllString(trimmed, -1)
+			if len(matches) == 1 && matches[0] == trimmed {
+				expr := strings.TrimSpace(trimmed[2 : len(trimmed)-2])
+				return evaluateExpression(expr, arg, item)
+			}
+		}
+		return resolvedStr
+
+	case map[string]interface{}:
+		resolvedMap := make(map[string]interface{})
+		for k, val := range v {
+			resolvedMap[k] = resolveValue(val, arg, item)
+		}
+		return resolvedMap
+
+	case []interface{}:
+		resolvedSlice := make([]interface{}, len(v))
+		for i, val := range v {
+			resolvedSlice[i] = resolveValue(val, arg, item)
+		}
+		return resolvedSlice
+
+	default:
+		return v
+	}
 }
 
 // getValueByPath traverses a map/struct using dot notation
