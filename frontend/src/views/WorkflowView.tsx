@@ -51,9 +51,9 @@ import Editor from '@monaco-editor/react';
 const PAN_ON_DRAG = [2];
 const DEFAULT_EDGE_OPTIONS = {
     type: 'hover' as const,
-    animated: true,
-    style: { strokeWidth: 1, stroke: '#b1b1b7' }, // n8n light grey
-    markerEnd: { type: MarkerType.ArrowClosed, width: 12, height: 12, color: '#b1b1b7' },
+    animated: false,
+    style: { strokeWidth: 1.5, stroke: '#cbd5e1' }, // n8n light grey
+    markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color: '#94a3b8' },
     interactionWidth: 20
 };
 
@@ -65,19 +65,10 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
     const [hovered, setHovered] = useState(false);
 
     // Smart n8n-style Routing Strategy
-    // 1. Forward flow (target is significantly to the right): Bezier S-curve
-    // 2. Backward flow (loop) OR Vertical drop (nearby X but far Y): SmoothStep
-    const dx = targetX - sourceX;
-    const dy = Math.abs(targetY - sourceY);
-    const useSmoothStep = dx < 150 || (dy > 300 && dx < 300);
-
-    const [edgePath, labelX, labelY] = useSmoothStep
-        ? getSmoothStepPath({
-            sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, borderRadius: 20
-        })
-        : getBezierPath({
-            sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition,
-        });
+    // Forcing n8n style smoothstep for all edges
+    const [edgePath, labelX, labelY] = getSmoothStepPath({
+        sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, borderRadius: 16
+    });
 
     // Execution data from edge.data
     const isExecuted = data?.executed;
@@ -89,12 +80,23 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
     const dataCount = data?.dataCount;
 
     // Determine Edge Color
-    let edgeColor = style?.stroke || '#cfcfcf'; // Default n8n edge grey
-    if (hovered || selected) edgeColor = '#4fcc5d'; // n8n hover green
-    else if (executionStatus === 'running') edgeColor = '#3b82f6'; // Blue for running
-    else if (isExecuted) {
-        if (isSuccess === false) edgeColor = '#ff6d5b'; // n8n error red
-        else edgeColor = '#4fcc5d'; // n8n success green
+    let edgeColor = style?.stroke || '#cbd5e1'; // Default n8n edge grey (slate-300)
+    let markerColor = '#94a3b8'; // slate-400
+
+    if (hovered || selected) {
+        edgeColor = '#94a3b8'; // darker slate on hover
+        markerColor = '#64748b';
+    } else if (executionStatus === 'running') {
+        edgeColor = '#3b82f6'; // Blue for running
+        markerColor = '#3b82f6';
+    } else if (isExecuted) {
+        if (isSuccess === false) {
+            edgeColor = '#fb7185'; // rose-400 for error
+            markerColor = '#fb7185';
+        } else {
+            edgeColor = '#94a3b8'; // slightly darker slate for successful execution, no neon green
+            markerColor = '#64748b';
+        }
     }
 
     // Determine stroke width
@@ -121,7 +123,13 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
                     stroke: edgeColor,
                     transition: 'stroke 0.3s ease, stroke-width 0.15s ease',
                 }}
-                markerEnd={markerEnd}
+                markerEnd={
+                    markerEnd ? (
+                        typeof markerEnd === 'object' && markerEnd !== null
+                            ? { ...markerEnd, color: markerColor }
+                            : markerEnd
+                    ) : undefined
+                }
             />
 
             <EdgeLabelRenderer>
@@ -1983,7 +1991,7 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
                         elementsSelectable={!isExecuting}
                         edgesFocusable={!isExecuting}
                     >
-                        <Background gap={20} size={1} color="#d4d4d8" variant={BackgroundVariant.Dots} style={{ backgroundColor: '#f5f5f5' }} />
+                        <Background gap={24} size={1.5} color="#e2e8f0" variant={BackgroundVariant.Dots} style={{ backgroundColor: '#f8fafc' }} />
 
                         <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-3">
                             {onRun && (

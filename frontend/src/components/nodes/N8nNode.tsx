@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Handle, Position, type NodeProps, type Node, useHandleConnections, useStore } from '@xyflow/react';
 import {
-    Check, Loader2, Eye, EyeOff, Trash2, Plus, AlertTriangle, Zap
+    Loader2, Eye, EyeOff, Trash2, Plus, AlertTriangle, Zap
 } from 'lucide-react';
 import clsx from 'clsx';
 import { getNodeDef } from '../../workflow/nodeRegistry';
@@ -80,13 +80,10 @@ const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, 
             <div
                 ref={handleRef}
                 className={clsx(
-                    "relative w-2.5 h-2.5 rounded-full bg-white border hover:scale-110 transition-all shadow-sm cursor-crosshair flex items-center justify-center",
-                    isConnected ? "border-gray-400 bg-gray-50" : "border-gray-400 hover:border-primary"
+                    "relative w-2 h-2 rounded-full cursor-crosshair flex items-center justify-center transition-all",
+                    isConnected ? "bg-slate-400" : "bg-slate-300 hover:bg-slate-400"
                 )}
             >
-                {/* Inner dot for unconnected state */}
-                {!isConnected && <div className="w-1 h-1 bg-gray-400 rounded-full" />}
-
                 <Handle
                     type="source"
                     position={Position.Right}
@@ -154,26 +151,26 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
 
     return (
         <div
-            className="group relative flex flex-col items-center font-sans z-10 w-[90px]"
+            className="group relative flex flex-col items-center font-sans z-10 w-[110px]"
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
             {/* 1. Main Node Box (Square Layout) */}
             <div
                 className={clsx(
-                    "relative flex items-center justify-center w-11 h-11 bg-white transition-all duration-200 z-10",
-                    "rounded-[10px] border-[1.2px]",
-                    selected ? "border-primary ring-2 ring-primary/20 shadow-md scale-105" : "border-gray-200 shadow-sm hover:shadow hover:border-gray-300",
+                    "relative flex items-center justify-center w-[60px] h-[60px] bg-white transition-all duration-200 z-10",
+                    "rounded-xl border",
+                    selected ? "border-slate-400 shadow-[0_2px_12px_rgba(0,0,0,0.08)] scale-105" : "border-slate-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md hover:border-slate-300",
                     isSuccess && !isRunning && "border-[#4fcc5d]/50 bg-[#4fcc5d]/5",
-                    isRunning && "border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.25)] bg-blue-50/10",
-                    isError && "border-red-500 bg-red-50/10",
+                    isRunning && "border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.2)] bg-blue-50/10",
+                    isError && "border-rose-500 bg-rose-50/10",
                     isDisabled && "opacity-60 grayscale bg-gray-50"
                 )}
             >
                 {/* Border Flow & Revolving Dot for Running state */}
                 {isRunning && (
                     <>
-                        <div className="n8n-node-running-border rounded-[10px]" />
+                        <div className="n8n-node-running-border rounded-xl" />
                         <div className="n8n-node-dot" />
                     </>
                 )}
@@ -184,23 +181,23 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
                         <img
                             src={data.imagePreview as string}
                             alt="Node Preview"
-                            className="w-full h-full object-contain p-1 rounded-lg"
+                            className="w-full h-full object-contain p-[6px] rounded-lg"
                             loading="lazy"
                             draggable={false}
                         />
                     ) : (
                         <div className={clsx(
                             "transition-colors",
-                            isSuccess ? "text-emerald-500" : isError ? "text-red-500" : isRunning ? "text-blue-500" : "text-gray-600"
+                            isSuccess ? "text-emerald-500" : isError ? "text-rose-500" : isRunning ? "text-blue-500" : "text-[#475569]"
                         )}>
-                            {IconComp ? <IconComp size={22} strokeWidth={1.5} /> : <div className="text-[10px] font-bold">Node</div>}
+                            {IconComp ? <IconComp size={26} strokeWidth={1.5} /> : <div className="text-[10px] font-bold">Node</div>}
                         </div>
                     )}
                 </div>
 
                 {/* Trigger Lightning Indicator */}
                 {isTrigger && (
-                    <div className="absolute -top-1.5 -left-1.5 z-20 bg-yellow-100 rounded-full border border-yellow-200 p-0.5 shadow-sm text-yellow-600">
+                    <div className="absolute -top-1.5 -left-1.5 z-20 bg-amber-50 rounded-full border border-amber-200 p-0.5 shadow-sm text-yellow-600">
                         <Zap size={10} fill="currentColor" />
                     </div>
                 )}
@@ -208,13 +205,8 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
                 {/* Status Badges Overlay (Bottom Right of the box) */}
                 <div className="absolute -bottom-1.5 -right-1.5 z-30 flex">
                     {isRunning && (
-                        <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center shadow-sm">
+                        <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center shadow-sm border border-white">
                             <Loader2 size={10} strokeWidth={3} className="text-white animate-spin" />
-                        </div>
-                    )}
-                    {isSuccess && !isRunning && (
-                        <div className="w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center shadow-sm backdrop-blur-sm border border-white">
-                            <Check size={10} strokeWidth={4} className="text-white" />
                         </div>
                     )}
                     {isError && !isRunning && (
@@ -233,8 +225,7 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
 
                 {/* Input Handle (Left Edge) */}
                 {!isTrigger && (
-                    <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white border border-gray-400 rounded-full z-20 flex items-center justify-center">
-                        <div className="w-1 h-1 bg-gray-400 rounded-full" />
+                    <div className="absolute left-0 top-1/2 -translate-x-[3px] -translate-y-1/2 w-1.5 h-1.5 bg-slate-300 rounded-full z-20 flex items-center justify-center">
                         <Handle
                             type="target"
                             position={Position.Left}
@@ -278,13 +269,13 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
             </div>
 
             {/* 2. Text Area (Below the box) */}
-            <div className="flex flex-col items-center mt-1.5 w-full px-1">
-                <span className="text-[11px] font-semibold text-gray-700 tracking-tight truncate w-full text-center drop-shadow-sm">
+            <div className="flex flex-col items-center mt-2.5 w-full px-1">
+                <span className="text-[13px] font-medium text-slate-700 tracking-normal w-full text-center">
                     {(data.label as string) || def?.label || 'Node'}
                 </span>
 
                 {((data.subtitle as string) || def?.description) && (
-                    <span className="text-[9px] text-gray-400 font-medium tracking-wide truncate w-full pt-px text-center leading-tight" title={typeof ((data.subtitle as string) || def?.description) === 'string' ? ((data.subtitle as string) || def?.description) : ''}>
+                    <span className="text-[11px] text-slate-400 font-normal w-full pt-0.5 text-center leading-tight whitespace-normal break-words" title={typeof ((data.subtitle as string) || def?.description) === 'string' ? ((data.subtitle as string) || def?.description) : ''}>
                         {(() => {
                             const sub = (data.subtitle as string) || def?.description || nodeType;
                             if (typeof sub === 'object') return JSON.stringify(sub);
