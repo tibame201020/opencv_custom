@@ -17,6 +17,7 @@ import {
     type Node,
     type OnConnectEnd,
     type OnConnectStart,
+    getBezierPath,
     getSmoothStepPath,
     EdgeLabelRenderer,
     type EdgeProps,
@@ -64,18 +65,24 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
     const [hovered, setHovered] = useState(false);
 
     // Smart n8n-style Routing Strategy
-    // Forcing n8n style smoothstep for all edges
-    const [edgePath, labelX, labelY] = getSmoothStepPath({
-        sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, borderRadius: 16
-    });
+    // Forward flow: Bezier S-curve (tight curvature)
+    // Backward flow (loop) OR Vertical drop: SmoothStep
+    const dx = targetX - sourceX;
+    const dy = Math.abs(targetY - sourceY);
+    const isForward = dx > 40 && (dy / Math.max(dx, 1)) < 2.5;
+
+    const [edgePath, labelX, labelY] = isForward
+        ? getBezierPath({
+            sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, curvature: 0.2
+        })
+        : getSmoothStepPath({
+            sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, borderRadius: 16
+        });
 
     // Execution data from edge.data
     const isExecuted = data?.executed;
     const isSuccess = data?.isSuccess;
     const executionStatus = data?.status;
-    // `label` can still override if it's explicitly 'true'/'false' for branches, else use data count
-    const isTrue = label === 'true';
-    const isFalse = label === 'false';
     const dataCount = data?.dataCount;
 
     // Determine Edge Color
@@ -132,23 +139,31 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
             />
 
             <EdgeLabelRenderer>
-                {/* Fixed text label (true/false) OR data count pill */}
-                {Boolean(label || (isExecuted && dataCount !== undefined)) && label !== 'success' && (
-                    <div
-                        className={clsx(
-                            "absolute px-1.5 py-0.5 rounded border shadow-sm pointer-events-none z-10 text-[9px] font-semibold tracking-wide transition-all duration-300 backdrop-blur-sm",
-                            isTrue ? "text-emerald-600 border-emerald-500/20 bg-emerald-50/50" :
-                                isFalse ? "text-rose-500 border-rose-500/20 bg-rose-50/50" :
-                                    isExecuted ? "text-gray-500 border-gray-200 bg-white/80" :
-                                        "text-gray-400 border-gray-200 bg-white/80"
-                        )}
-                        style={{
-                            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY - 14}px)`,
-                        }}
-                    >
-                        {typeof label === 'string' ? label : (label !== undefined && label !== null ? String(label) : `${dataCount} item${dataCount === 1 ? '' : 's'}`)}
-                    </div>
-                )}
+                {/* Data count pill OR Custom Text (excluding built-in true/false logic tags) */}
+                {(() => {
+                    let displayText = '';
+                    if (isExecuted && dataCount !== undefined) {
+                        displayText = `${dataCount} item${dataCount === 1 ? '' : 's'}`;
+                    } else if (label && !['true', 'false', 'success', 'error', 'done', 'loop'].includes(label.toString().toLowerCase())) {
+                        displayText = String(label);
+                    }
+
+                    if (!displayText) return null;
+
+                    return (
+                        <div
+                            className={clsx(
+                                "absolute px-1.5 py-0.5 rounded border shadow-sm pointer-events-none z-10 text-[9px] font-semibold tracking-wide transition-all duration-300 backdrop-blur-sm",
+                                isExecuted ? "text-gray-500 border-gray-200 bg-white/80" : "text-gray-400 border-gray-200 bg-white/80"
+                            )}
+                            style={{
+                                transform: `translate(-50%, -50%) translate(${labelX}px,${labelY - 14}px)`,
+                            }}
+                        >
+                            {displayText}
+                        </div>
+                    );
+                })()}
 
                 <div
                     className={clsx(
