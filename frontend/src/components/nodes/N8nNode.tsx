@@ -71,16 +71,19 @@ const N8nOutputHandle = ({ source, nodeId, index, total }: { source: any, nodeId
         }
     };
 
+    // Show label for multi-output nodes, or when it's not a generic "success"
+    const showLabel = total > 1 || (source.label && source.label !== 'Success');
+
     return (
         <div
-            className="absolute right-0 flex items-center group/stub pointer-events-auto z-20"
+            className="absolute right-0 flex items-center pointer-events-auto z-20"
             style={{ top, transform: 'translate(50%, -50%)' }}
         >
-            {/* The Handle Dot (Interactable & Visual) */}
+            {/* The Handle Dot (Visual anchor) */}
             <div
                 ref={handleRef}
                 className={clsx(
-                    "relative w-2 h-2 rounded-full cursor-crosshair flex items-center justify-center transition-all",
+                    "relative w-2 h-2 rounded-full cursor-crosshair flex items-center justify-center transition-all shrink-0",
                     isConnected ? "bg-slate-400" : "bg-slate-300 hover:bg-slate-400"
                 )}
             >
@@ -93,38 +96,43 @@ const N8nOutputHandle = ({ source, nodeId, index, total }: { source: any, nodeId
                 />
             </div>
 
-            {/* Unconnected STUB (Line + Plus) - Persistent when not connected AND not dragging from it */}
+            {/* n8n-Style: ○ label ——— + strip, always visible when unconnected */}
             {!isConnected && !isConnecting && (
                 <div
-                    className="absolute left-[4px] flex items-center pointer-events-none group-hover/stub:pointer-events-auto nodrag opacity-0 group-hover/stub:opacity-100 transition-opacity duration-200 pl-1"
+                    className="flex items-center nodrag pl-0.5 group/strip"
                     onMouseDown={onStubMouseDown}
                     onMouseUp={onStubMouseUp}
                 >
+                    {/* Label Badge */}
+                    {showLabel && (
+                        <span className={clsx(
+                            "text-[9px] font-semibold tracking-tight px-1 py-0 rounded whitespace-nowrap pointer-events-none select-none",
+                            source.id === 'default' ? "text-slate-400" : "text-slate-500"
+                        )}>
+                            {source.label}
+                        </span>
+                    )}
+
                     {/* Connecting Line */}
-                    <div className="w-4 h-[2px] bg-gray-300" />
+                    <div className="w-6 h-[1.5px] bg-gray-300 group-hover/strip:bg-gray-400 transition-colors" />
 
                     {/* Plus Button */}
                     <div
-                        className="w-5 h-5 bg-white border border-gray-300 rounded-full flex items-center justify-center text-gray-500 shadow-sm cursor-pointer hover:border-primary hover:text-primary hover:scale-110 transition-all pointer-events-auto"
+                        className="w-[18px] h-[18px] bg-white border border-gray-300 rounded-full flex items-center justify-center text-gray-400 shadow-sm cursor-pointer hover:border-primary hover:text-primary hover:scale-110 transition-all pointer-events-auto group-hover/strip:border-gray-400 group-hover/strip:text-gray-500"
                     >
-                        <Plus size={12} strokeWidth={3} />
+                        <Plus size={10} strokeWidth={3} />
                     </div>
                 </div>
             )}
 
-            {/* Label next to handle dot */}
-            {total > 1 && (
-                <div
-                    className="absolute right-full mr-1 whitespace-nowrap pointer-events-none"
-                    style={{ top: '50%', transform: 'translateY(-50%)' }}
-                >
-                    <span className={clsx(
-                        "text-[8px] font-bold tracking-wide px-1 py-0.5 rounded",
-                        source.id === 'default' ? "text-slate-400 bg-slate-100" : "text-primary/70 bg-primary/5 border border-primary/10"
-                    )}>
-                        {source.label}
-                    </span>
-                </div>
+            {/* Connected state: just show label badge if multi-output */}
+            {isConnected && showLabel && (
+                <span className={clsx(
+                    "ml-0.5 text-[9px] font-semibold tracking-tight px-1 py-0 rounded whitespace-nowrap pointer-events-none select-none",
+                    source.id === 'default' ? "text-slate-400" : "text-slate-500"
+                )}>
+                    {source.label}
+                </span>
             )}
         </div>
     );
