@@ -1,10 +1,68 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Handle, Position, type NodeProps, type Node, useHandleConnections, useStore } from '@xyflow/react';
 import {
     Check, Loader2, Play, Eye, EyeOff, Trash2, MoreHorizontal, Plus, AlertTriangle, Zap
 } from 'lucide-react';
 import clsx from 'clsx';
 import { getNodeDef } from '../../workflow/nodeRegistry';
+
+/**
+ * Hook to determine if a handle should flip its position based on connected nodes.
+ * @param type 'source' (Output) or 'target' (Input)
+ * @param nodeId The current node ID
+ * @param handleId The handle ID (optional)
+ * @param defaultPos The default position (Left for Input, Right for Output)
+ */
+function useSmartHandlePosition(
+    type: 'source' | 'target',
+    nodeId: string,
+    handleId: string | null,
+    defaultPos: Position
+): Position {
+    const connections = useHandleConnections({ type, nodeId, id: handleId });
+    const nodeLookup = useStore((s) => s.nodeLookup);
+    const myNode = nodeLookup.get(nodeId);
+
+    return useMemo(() => {
+        if (!myNode || connections.length === 0) return defaultPos;
+
+        let backwardCount = 0;
+        let forwardCount = 0;
+
+        connections.forEach((conn) => {
+            const otherId = type === 'source' ? conn.target : conn.source;
+            const otherNode = nodeLookup.get(otherId);
+            if (!otherNode) return;
+
+            // Determine if the connection is "backward" (loop-back) relative to normal flow
+            // Note: internal nodes have `internals.positionAbsolute` usually, but `position` is also available.
+            // We use `position` (relative) which is fine for same-parent nodes.
+            if (type === 'source') {
+                // Output: Normal flow is Target to the Right (x > my.x)
+                // If Target is significantly to the Left, it's a loop-back
+                if (otherNode.position.x < myNode.position.x - 50) {
+                    backwardCount++;
+                } else {
+                    forwardCount++;
+                }
+            } else {
+                // Input: Normal flow is Source to the Left (x < my.x)
+                // If Source is significantly to the Right, it's a loop-back (coming from ahead)
+                if (otherNode.position.x > myNode.position.x + 50) {
+                    backwardCount++;
+                } else {
+                    forwardCount++;
+                }
+            }
+        });
+
+        // If majority of connections are backward, flip the handle
+        if (backwardCount > forwardCount) {
+            return defaultPos === Position.Left ? Position.Right : Position.Left;
+        }
+        return defaultPos;
+    }, [connections, nodeLookup, myNode, nodeId, type, defaultPos]);
+}
 
 // Separate component for Output Handle to use hooks safely
 const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, nodeId: string, index: number, total: number, type: string }) => {
@@ -16,6 +74,10 @@ const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, 
     });
     const isConnected = connections.length > 0;
 
+    // Smart Handle Positioning
+    const handlePosition = useSmartHandlePosition('source', nodeId, source.id, Position.Right);
+    const isFlipped = handlePosition === Position.Left;
+
     // Check if we are currently dragging from THIS handle
     const isConnecting = useStore((s: any) =>
         s.connection?.fromNode?.id === nodeId && s.connection?.fromHandle?.id === source.id
@@ -25,7 +87,7 @@ const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, 
     const clickStartRef = useRef<number>(0);
     const mouseStartRef = useRef<{ x: number, y: number }>({ x: 0, y: 0 });
 
-    // Distribute handles vertically on the right
+    // Distribute handles vertically on the right (or left if flipped)
     const top = total === 1 ? '50%' : `${((index + 1) * 100) / (total + 1)}%`;
 
     const onStubMouseDown = (e: React.MouseEvent) => {
@@ -73,8 +135,11 @@ const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, 
 
     return (
         <div
-            className="absolute right-0 flex items-center group/stub pointer-events-auto z-20"
-            style={{ top, transform: 'translate(50%, -50%)' }}
+            className={clsx(
+                "absolute flex items-center group/stub pointer-events-auto z-20 transition-all duration-300",
+                isFlipped ? "left-0 flex-row-reverse" : "right-0 flex-row"
+            )}
+            style={{ top, transform: isFlipped ? 'translate(-50%, -50%)' : 'translate(50%, -50%)' }}
         >
             {/* The Handle Dot (Interactable & Visual) */}
             <div
@@ -89,7 +154,7 @@ const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, 
 
                 <Handle
                     type="source"
-                    position={Position.Right}
+                    position={handlePosition}
                     id={source.id}
                     className="!opacity-0 !absolute !inset-0 !w-full !h-full !border-0 cursor-crosshair"
                 />
@@ -98,7 +163,10 @@ const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, 
             {/* Unconnected STUB (Line + Plus) - Persistent when not connected AND not dragging from it */}
             {!isConnected && !isConnecting && (
                 <div
-                    className="absolute left-[6px] flex items-center pointer-events-none group-hover/stub:pointer-events-auto nodrag opacity-0 group-hover/stub:opacity-100 transition-opacity duration-200 pl-1"
+                    className={clsx(
+                        "absolute flex items-center pointer-events-none group-hover/stub:pointer-events-auto nodrag opacity-0 group-hover/stub:opacity-100 transition-opacity duration-200",
+                        isFlipped ? "right-[6px] flex-row-reverse pr-1" : "left-[6px] flex-row pl-1"
+                    )}
                     onMouseDown={onStubMouseDown}
                     onMouseUp={onStubMouseUp}
                 >
@@ -117,7 +185,8 @@ const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, 
             {/* Label (Outside Handle) */}
             {source.label && total > 1 && (
                 <div className={clsx(
-                    "absolute right-full mr-5 pointer-events-none whitespace-nowrap text-[10px] font-medium px-1.5 py-0.5 rounded transition-opacity z-20",
+                    "absolute pointer-events-none whitespace-nowrap text-[10px] font-medium px-1.5 py-0.5 rounded transition-opacity z-20",
+                    isFlipped ? "left-full ml-5" : "right-full mr-5",
                     (type === 'if_condition' || type === 'switch')
                         ? "text-gray-500 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm"
                         : "bg-gray-800 text-white shadow-md opacity-0 group-hover/stub:opacity-100"
@@ -134,6 +203,11 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
     const def = getNodeDef(nodeType);
     const IconComp = def?.icon;
     const [hovered, setHovered] = useState(false);
+
+    // Smart Input Handle
+    // Note: 'target' handle usually has no ID (null).
+    const inputHandlePosition = useSmartHandlePosition('target', id, null, Position.Left);
+    const isInputFlipped = inputHandlePosition === Position.Right;
 
     // [DIAGNOSTIC] Log state changes to verify React reactivity in Wails WebView2
     useEffect(() => {
@@ -227,20 +301,25 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
 
 
 
-                {/* Input Handle (Left Edge) */}
+                {/* Input Handle (Left Edge, or Right if flipped) */}
                 {!isTrigger && (
-                    <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white border border-gray-400 rounded-full z-20 shadow-sm flex items-center justify-center">
+                    <div
+                        className={clsx(
+                            "absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white border border-gray-400 rounded-full z-20 shadow-sm flex items-center justify-center transition-all duration-300",
+                            isInputFlipped ? "right-0 translate-x-1/2" : "left-0 -translate-x-1/2"
+                        )}
+                    >
                         <div className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
                         <Handle
                             type="target"
-                            position={Position.Left}
+                            position={inputHandlePosition}
                             isConnectableStart={false}
                             className="!opacity-0 !w-full !h-full !border-0"
                         />
                     </div>
                 )}
 
-                {/* Output Handles (Right Edge) */}
+                {/* Output Handles (Right Edge, or Left if flipped) */}
                 {(() => {
                     const config = def?.handleConfig;
                     let sources = config?.sources || [{ id: 'success', label: 'Success' }];

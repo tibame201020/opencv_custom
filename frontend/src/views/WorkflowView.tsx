@@ -67,9 +67,15 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
     // Smart n8n-style Routing Strategy
     // 1. Forward flow (target is significantly to the right): Bezier S-curve
     // 2. Backward flow (loop) OR Vertical drop (nearby X but far Y): SmoothStep
+    // 3. Smart Loops (Source=Left, Target=Right): Bezier (Direct connection)
     const dx = targetX - sourceX;
     const dy = Math.abs(targetY - sourceY);
-    const useSmoothStep = dx < 150 || (dy > 300 && dx < 300);
+
+    const isSmartLoop = sourcePosition === 'left' && targetPosition === 'right';
+
+    // If handles are flipped for a loop (Source Left -> Target Right), use Bezier for a direct/smooth path.
+    // Otherwise, use SmoothStep for short forward jumps or unoptimized backward loops.
+    const useSmoothStep = isSmartLoop ? false : (dx < 150 || (dy > 300 && dx < 300));
 
     const [edgePath, labelX, labelY] = useSmoothStep
         ? getSmoothStepPath({
@@ -1197,7 +1203,6 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
             const { stroke, strokeWidth } = e.style || {};
 
             const sourceNodeId = e.fromNodeId || e.source;
-            const targetNodeId = e.toNodeId || e.target;
             const edgeSignal = e.signal || 'success';
 
             // Smart Edge Routing: Bezier normally, but SmoothStep for backward edges or sharp vertical drops

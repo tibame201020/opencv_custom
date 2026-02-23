@@ -70,6 +70,7 @@
 | 3.3.3 | 拖曳端點重新連接 | ✅ | ⬜ | `updatable: true` |
 | 3.3.4 | Smart Edge Routing (Bezier/SmoothStep 動態切換) | ✅ | ✅ | 自動適應相對位置 (n8n Style - LOCKED 🔒) |
 | 3.3.5 | Edge 動畫與零輸出節點同步修復 | ✅ | ✅ | 精準縮放動畫與即時狀態響應 |
+| 3.3.6 | Smart Handles (Automatic Flip) | ✅ | ⬜ | 自動依據相鄰節點位置切換 Handles 左右側 |
 
 ### 3.4 畫布互動
 

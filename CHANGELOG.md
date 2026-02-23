@@ -5,6 +5,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added — 2026-02-22 (Smart Handles & Adaptive Routing)
+- **Frontend / Workflow Canvas**: Implemented "Smart Handles" for nodes. Input/Output connection points now automatically flip between Left/Right positions based on the relative position of connected nodes.
+    - **Forward Flow**: Default Left-Input / Right-Output.
+    - **Backward Loop**: Automatically flips to Right-Input / Left-Output to create clean, direct feedback loops without tangling.
+- **Frontend / Workflow Canvas**: Updated `HoverEdge` routing logic to prioritize smooth Bezier curves for these "Smart Loops" (Direct Backward connections), while retaining Orthogonal SmoothStep routing for unoptimized backward flows.
+
 ### Added — 2026-02-22 (Smart Edge Routing & Visual Fixes)
 - **Frontend / Workflow Canvas**: Implemented N8n-style "Smart Edge Routing" which calculates distance dynamically to transition from default Bezier curves to Orthogonal SmoothStep routing when jumping long distances vertically or backwards horizontally.
 - **Frontend / Workflow Canvas**: Separated edge rendering calculation into dedicated independent reactive effects (`useEffect`) so that real-time node state and outputs immediately trigger color updates.
