@@ -25,6 +25,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - **Workflow Bridge**: Resolved project directory naming mismatch by using `ProjectID` directly for `projectRoot` construction in the Go backend.
 - **Workflow Bridge**: Added automatic logical fallback to `images/` subfolder in `PlatformService` when resolving relative asset paths.
 
+### Changed — 2026-02-22 (Edge Routing Strategy)
+- **Frontend / Workflow Canvas**: Enforced strict n8n-style edge routing strategy within `HoverEdge`.
+  - Forward flow: Bezier S-curve.
+  - Backward/Vertical flow: SmoothStep (Orthogonal).
+  - **Note**: This strategy is now locked and should not be changed (`DO NOT CHANGE`).
+
 ### Added
 - **Docs**: Added `doc/go_python_integration.md` documenting the Go-Python bridge architecture and protocol.
 - **Tests**: Added headless integration tests for Go-Python communication (`server/workflow/bridge_integration_test.go`).

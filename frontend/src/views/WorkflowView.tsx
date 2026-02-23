@@ -64,14 +64,19 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
     const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, markerEnd, selected, label, data, className } = props;
     const [hovered, setHovered] = useState(false);
 
-    const isForward = targetX > sourceX + 50;
+    // Smart n8n-style Routing Strategy
+    // 1. Forward flow (target is significantly to the right): Bezier S-curve
+    // 2. Backward flow (loop) OR Vertical drop (nearby X but far Y): SmoothStep
+    const dx = targetX - sourceX;
+    const dy = Math.abs(targetY - sourceY);
+    const useSmoothStep = dx < 150 || (dy > 300 && dx < 300);
 
-    const [edgePath, labelX, labelY] = isForward
-        ? getBezierPath({
-            sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition,
-        })
-        : getSmoothStepPath({
+    const [edgePath, labelX, labelY] = useSmoothStep
+        ? getSmoothStepPath({
             sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, borderRadius: 20
+        })
+        : getBezierPath({
+            sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition,
         });
 
     // Execution data from edge.data
@@ -1196,22 +1201,8 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
             const edgeSignal = e.signal || 'success';
 
             // Smart Edge Routing: Bezier normally, but SmoothStep for backward edges or sharp vertical drops
-            let edgeType = 'default';
-            const sourceNode = workflowData.nodes?.[sourceNodeId];
-            const targetNode = workflowData.nodes?.[targetNodeId];
-
-            if (sourceNode && targetNode) {
-                const dx = targetNode.x - sourceNode.x;
-                const dy = Math.abs(targetNode.y - sourceNode.y);
-
-                // If the target is to the left (backwards) or almost directly above/below with a large drop
-                if (dx < 150) {
-                    edgeType = 'smoothstep';
-                } else if (dy > 300 && dx < 300) {
-                    // Switch to smoothstep for very tall vertical jumps that don't go far right
-                    edgeType = 'smoothstep';
-                }
-            }
+            // Note: We now use 'hover' type for ALL edges, and let HoverEdge component handle the path calculation logic internally.
+            const edgeType = 'hover';
 
             // Find execution step for source node
             const sourceStep = executionState.slice().reverse().find(s => s.nodeId === sourceNodeId);
@@ -1449,24 +1440,10 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
 
     const onConnect = useCallback((params: Connection) => {
         setEdges((eds) => {
-            let edgeType = 'default';
-            const sourceNode = nodes.find(n => n.id === params.source);
-            const targetNode = nodes.find(n => n.id === params.target);
-
-            if (sourceNode && targetNode) {
-                const dx = targetNode.position.x - sourceNode.position.x;
-                const dy = Math.abs(targetNode.position.y - sourceNode.position.y);
-                if (dx < 150) {
-                    edgeType = 'smoothstep';
-                } else if (dy > 300 && dx < 300) {
-                    edgeType = 'smoothstep';
-                }
-            }
-
             return addEdge({
                 ...params,
                 label: 'success',
-                type: edgeType,
+                type: 'hover',
                 animated: true,
                 style: { strokeWidth: 2, stroke: '#9ca3af' },
                 labelBgPadding: [8, 4],
