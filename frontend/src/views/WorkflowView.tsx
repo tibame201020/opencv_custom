@@ -77,11 +77,9 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
             sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, borderRadius: 16
         });
 
-    // n8n Style Edge Label Coordinates
-    // Labels are placed at the very beginning of the edge, slightly offset to the right.
-    // They are NOT placed at the 50% midpoint where they might collide.
-    const labelX = sourceX + 36;
-    const labelY = sourceY;
+    // Edge midpoint for toolbar positioning
+    const midX = (sourceX + targetX) / 2;
+    const midY = (sourceY + targetY) / 2;
 
     // Execution data from edge.data
     const isExecuted = data?.executed;
@@ -158,7 +156,7 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
                         <div
                             className="absolute px-1.5 py-0.5 rounded border pointer-events-none z-10 text-[9px] font-medium tracking-wide transition-all duration-300 backdrop-blur-sm whitespace-nowrap bg-white border-gray-200 shadow-sm text-gray-400"
                             style={{
-                                transform: `translate(0%, -50%) translate(${labelX}px,${labelY - 16}px)`,
+                                transform: `translate(-50%, -130%) translate(${midX}px,${midY}px)`,
                             }}
                         >
                             {displayText}
@@ -168,11 +166,11 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
 
                 <div
                     className={clsx(
-                        "absolute flex items-center gap-1 p-0.5 rounded-full bg-white border border-gray-200 shadow-sm transition-all duration-150 pointer-events-auto z-20",
+                        "absolute flex items-center gap-0.5 p-0.5 rounded-full transition-all duration-150 pointer-events-auto z-20",
                         (hovered || selected) ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"
                     )}
                     style={{
-                        transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+                        transform: `translate(-50%, -50%) translate(${midX}px,${midY}px)`,
                     }}
                     onMouseEnter={() => setHovered(true)}
                     onMouseLeave={() => setHovered(false)}
@@ -183,7 +181,7 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
                         onClick={(e) => {
                             e.stopPropagation();
                             window.dispatchEvent(new CustomEvent('workflow-edge-insert', {
-                                detail: { edgeId: id, x: labelX, y: labelY }
+                                detail: { edgeId: id, x: midX, y: midY }
                             }));
                         }}
                     >
