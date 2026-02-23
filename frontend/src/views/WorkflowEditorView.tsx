@@ -626,7 +626,9 @@ export const WorkflowEditorView: React.FC = () => {
                             <WorkflowView
                                 key={activeTab.id}
                                 tab={activeTab}
-                                onContentChange={(content: string) => updateWorkflowTabContent(activeTab.id, content)}
+                                onContentChange={(content: string) => {
+                                    updateWorkflowTabContent(activeTab.id, content);
+                                }}
                                 onRun={handleRun}
                                 onStop={handleStop}
                                 isExecuting={isRunning}
