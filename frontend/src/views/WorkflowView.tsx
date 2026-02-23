@@ -67,17 +67,21 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
     // Smart n8n-style Routing Strategy
     // Forward flow: Bezier S-curve (tight curvature)
     // Backward flow (loop) OR Vertical drop: SmoothStep
-    const dx = targetX - sourceX;
-    const dy = Math.abs(targetY - sourceY);
-    const isForward = dx > 40 && (dy / Math.max(dx, 1)) < 2.5;
+    const isForward = targetX > sourceX + 30;
 
-    const [edgePath, labelX, labelY] = isForward
+    const [edgePath] = isForward
         ? getBezierPath({
-            sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, curvature: 0.2
+            sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, curvature: 0.25
         })
         : getSmoothStepPath({
             sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, borderRadius: 16
         });
+
+    // n8n Style Edge Label Coordinates
+    // Labels are placed at the very beginning of the edge, slightly offset to the right.
+    // They are NOT placed at the 50% midpoint where they might collide.
+    const labelX = sourceX + 36;
+    const labelY = sourceY;
 
     // Execution data from edge.data
     const isExecuted = data?.executed;
@@ -153,11 +157,11 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
                     return (
                         <div
                             className={clsx(
-                                "absolute px-1.5 py-0.5 rounded border shadow-sm pointer-events-none z-10 text-[9px] font-semibold tracking-wide transition-all duration-300 backdrop-blur-sm",
-                                isExecuted ? "text-gray-500 border-gray-200 bg-white/80" : "text-gray-400 border-gray-200 bg-white/80"
+                                "absolute px-2 py-0.5 rounded border pointer-events-none z-10 text-[9px] font-medium tracking-wide transition-all duration-300 backdrop-blur-sm whitespace-nowrap",
+                                "bg-white border-gray-200 text-gray-500 shadow-sm hover:shadow"
                             )}
                             style={{
-                                transform: `translate(-50%, -50%) translate(${labelX}px,${labelY - 14}px)`,
+                                transform: `translate(0%, -50%) translate(${labelX}px,${labelY}px)`,
                             }}
                         >
                             {displayText}

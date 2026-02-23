@@ -7,7 +7,7 @@ import clsx from 'clsx';
 import { getNodeDef } from '../../workflow/nodeRegistry';
 
 // Separate component for Output Handle to use hooks safely
-const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, nodeId: string, index: number, total: number, type: string }) => {
+const N8nOutputHandle = ({ source, nodeId, index, total }: { source: any, nodeId: string, index: number, total: number }) => {
     // Check if this handle has connections
     const connections = useHandleConnections({
         type: 'source',
@@ -112,17 +112,7 @@ const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, 
                 </div>
             )}
 
-            {/* Label (Outside Handle) */}
-            {source.label && total > 1 && (
-                <div className={clsx(
-                    "absolute right-full mr-5 pointer-events-none whitespace-nowrap text-[10px] font-medium px-1.5 py-0.5 rounded transition-opacity z-20",
-                    (type === 'if_condition' || type === 'switch')
-                        ? "text-gray-500 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm"
-                        : "bg-gray-800 text-white shadow-md opacity-0 group-hover/stub:opacity-100"
-                )}>
-                    {source.label}
-                </div>
-            )}
+            {/* Label (Outside Handle) - Removed to use edge labels (Phase 7) */}
         </div>
     );
 };
@@ -262,7 +252,6 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
                             nodeId={id}
                             index={index}
                             total={sources.length}
-                            type={type || ''}
                         />
                     ));
                 })()}
