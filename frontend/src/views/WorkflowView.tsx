@@ -61,8 +61,10 @@ const DEFAULT_EDGE_OPTIONS = {
  *  n8n-Style Hover Edge with Midpoint Toolbar & Smart execution data
  * ============================================================ */
 const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
-    const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, markerEnd, selected, label, data, className } = props;
+    const { id, source, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, markerEnd, selected, label, data, className } = props;
+    const sourceHandle = (props as any).sourceHandleId || (props as any).sourceHandle || '';
     const [hovered, setHovered] = useState(false);
+    const { getNode } = useReactFlow();
 
     // Smart n8n-style Routing Strategy
     // Forward flow: Bezier S-curve (tight curvature)
@@ -145,11 +147,32 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
             />
 
             <EdgeLabelRenderer>
-                {/* Data count pill OR Custom Text (true/false) */}
+                {/* Data count pill OR Custom Text (true/false, case strings) */}
                 {(() => {
                     let text = '';
-                    if (label && label.toString().toLowerCase() !== 'success' && label.toString().toLowerCase() !== 'done') {
-                        text = String(label);
+                    const sourceNode = getNode(source);
+
+                    let resolvedLabel = label;
+                    if (!label && sourceHandle) {
+                        if (sourceNode?.type === 'switch') {
+                            if (sourceHandle !== 'default') {
+                                const caseIdx = parseInt(sourceHandle);
+                                const cases = (sourceNode.data?.config as any)?.cases;
+                                if (Array.isArray(cases) && cases[caseIdx] !== undefined) {
+                                    resolvedLabel = cases[caseIdx];
+                                } else {
+                                    resolvedLabel = `Case ${sourceHandle}`;
+                                }
+                            } else {
+                                resolvedLabel = 'default';
+                            }
+                        } else if (sourceNode?.type === 'if_condition') {
+                            resolvedLabel = sourceHandle;
+                        }
+                    }
+
+                    if (resolvedLabel && resolvedLabel.toString().toLowerCase() !== 'success' && resolvedLabel.toString().toLowerCase() !== 'done') {
+                        text = String(resolvedLabel);
                     }
 
                     // Prioritize specific edge labels like "true" or "false" over data count
@@ -160,9 +183,10 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
                     return (
                         <div
                             className={clsx(
-                                "absolute px-1.5 py-0.5 rounded border pointer-events-none z-10 text-[9.5px] font-medium tracking-wide transition-all duration-300 backdrop-blur-sm whitespace-nowrap",
-                                "bg-white border-gray-200 shadow-sm hover:shadow",
-                                ["true", "false", "0", "1"].includes(displayText.toLowerCase()) ? "text-slate-600" : "text-gray-400"
+                                "absolute px-1.5 py-0.5 rounded border pointer-events-none z-10 text-[10px] font-bold tracking-wide transition-all duration-300 backdrop-blur-sm whitespace-nowrap",
+                                "bg-white border-gray-200 shadow-sm hover:shadow max-w-[120px] truncate",
+                                displayText === 'default' ? "text-slate-400" :
+                                    ["true", "false"].includes(displayText.toLowerCase()) ? "text-slate-600" : "text-primary/80"
                             )}
                             style={{
                                 transform: `translate(0%, -50%) translate(${labelX}px,${labelY - 16}px)`,
@@ -1035,8 +1059,8 @@ const ParamField: React.FC<ParamFieldProps> = ({
                     <CommonLabel />
                     <div className="space-y-2 mb-2">
                         {items.map((item, i) => (
-                            <div key={i} className="flex gap-2 items-center bg-base-200/50 p-2 rounded-lg border border-base-300">
-                                <div className="text-[10px] font-mono opacity-50 w-4 text-center shrink-0">{i}</div>
+                            <div key={i} className="flex gap-2 items-center bg-base-200/50 p-2 rounded-lg border border-base-300 group">
+                                <div className="w-1.5 h-1.5 rounded-full bg-base-300 group-hover:bg-primary/50 shrink-0 transition-colors" />
                                 <div className="flex-1 min-w-0">
                                     <ExpressionInput
                                         value={item}

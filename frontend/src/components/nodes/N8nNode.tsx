@@ -112,7 +112,20 @@ const N8nOutputHandle = ({ source, nodeId, index, total }: { source: any, nodeId
                 </div>
             )}
 
-            {/* Label (Outside Handle) - Removed to use edge labels (Phase 7) */}
+            {/* Label next to handle dot */}
+            {total > 1 && (
+                <div
+                    className="absolute right-full mr-1 whitespace-nowrap pointer-events-none"
+                    style={{ top: '50%', transform: 'translateY(-50%)' }}
+                >
+                    <span className={clsx(
+                        "text-[8px] font-bold tracking-wide px-1 py-0.5 rounded",
+                        source.id === 'default' ? "text-slate-400 bg-slate-100" : "text-primary/70 bg-primary/5 border border-primary/10"
+                    )}>
+                        {source.label}
+                    </span>
+                </div>
+            )}
         </div>
     );
 };
@@ -236,7 +249,7 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
                         if (Array.isArray(cases)) {
                             const caseHandles = cases.map((caseVal: string, i: number) => ({
                                 id: `${i}`,
-                                label: caseVal ? `Case ${i}: ${caseVal}` : `Case ${i}`
+                                label: caseVal || `Case ${i}`
                             }));
                             sources = [...caseHandles, { id: 'default', label: 'Default' }];
                         } else {
