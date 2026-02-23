@@ -154,18 +154,18 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
 
     return (
         <div
-            className="group relative flex flex-col items-center font-sans z-10 w-[120px]"
+            className="group relative flex flex-col items-center font-sans z-10 w-[90px]"
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
             {/* 1. Main Node Box (Square Layout) */}
             <div
                 className={clsx(
-                    "relative flex items-center justify-center w-[54px] h-[54px] bg-white transition-all duration-200 z-10",
-                    "rounded-xl border-[1.2px]",
-                    selected ? "border-primary ring-2 ring-primary/20 shadow-lg scale-105" : "border-gray-200 shadow-sm hover:shadow hover:border-gray-300",
+                    "relative flex items-center justify-center w-11 h-11 bg-white transition-all duration-200 z-10",
+                    "rounded-[10px] border-[1.2px]",
+                    selected ? "border-primary ring-2 ring-primary/20 shadow-md scale-105" : "border-gray-200 shadow-sm hover:shadow hover:border-gray-300",
                     isSuccess && !isRunning && "border-[#4fcc5d]/50 bg-[#4fcc5d]/5",
-                    isRunning && "border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)] bg-blue-50/10",
+                    isRunning && "border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.25)] bg-blue-50/10",
                     isError && "border-red-500 bg-red-50/10",
                     isDisabled && "opacity-60 grayscale bg-gray-50"
                 )}
@@ -173,63 +173,61 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
                 {/* Border Flow & Revolving Dot for Running state */}
                 {isRunning && (
                     <>
-                        <div className="n8n-node-running-border rounded-xl" />
+                        <div className="n8n-node-running-border rounded-[10px]" />
                         <div className="n8n-node-dot" />
                     </>
                 )}
 
-                {/* Icon Container */}
-                <div className="relative w-8 h-8 border-gray-100 flex items-center justify-center shrink-0">
+                {/* Icon Container (Inner) */}
+                <div className="relative flex items-center justify-center w-full h-full pointer-events-none">
                     {data.imagePreview ? (
                         <img
                             src={data.imagePreview as string}
                             alt="Node Preview"
-                            className="w-full h-full object-contain rounded-md"
+                            className="w-full h-full object-contain p-1 rounded-lg"
                             loading="lazy"
                             draggable={false}
                         />
                     ) : (
                         <div className={clsx(
                             "transition-colors",
-                            isSuccess ? "text-emerald-500" : isError ? "text-red-500" : isRunning ? "text-blue-500" : "text-gray-500"
+                            isSuccess ? "text-emerald-500" : isError ? "text-red-500" : isRunning ? "text-blue-500" : "text-gray-600"
                         )}>
-                            {IconComp ? <IconComp size={18} strokeWidth={1.5} /> : <div className="text-[10px] font-bold">Node</div>}
+                            {IconComp ? <IconComp size={22} strokeWidth={1.5} /> : <div className="text-[10px] font-bold">Node</div>}
                         </div>
                     )}
-
-                    {/* Trigger Lightning Indicator */}
-                    {isTrigger && (
-                        <div className="absolute -top-1.5 -left-1.5 z-20 bg-yellow-100 rounded-full border border-yellow-200 p-0.5 shadow-sm text-yellow-600">
-                            <Zap size={10} fill="currentColor" />
-                        </div>
-                    )}
-
-                    {/* Status Badges Overlay on Icon */}
-                    <div className="absolute -bottom-1 -right-1 z-30 flex">
-                        {isRunning && (
-                            <div className="w-3.5 h-3.5 bg-blue-500 rounded-full flex items-center justify-center shadow-sm">
-                                <Loader2 size={10} strokeWidth={3} className="text-white animate-spin" />
-                            </div>
-                        )}
-                        {isSuccess && !isRunning && (
-                            <div className="w-3.5 h-3.5 bg-emerald-500 rounded-full flex items-center justify-center shadow-sm backdrop-blur-sm">
-                                <Check size={10} strokeWidth={4} className="text-white" />
-                            </div>
-                        )}
-                        {isError && !isRunning && (
-                            <div className="w-3.5 h-3.5 bg-rose-500 rounded-full flex items-center justify-center shadow-sm">
-                                <span className="text-white text-[9px] font-black leading-none mt-px">!</span>
-                            </div>
-                        )}
-                    </div>
                 </div>
 
-                {/* End of Main Node Box */}
+                {/* Trigger Lightning Indicator */}
+                {isTrigger && (
+                    <div className="absolute -top-1.5 -left-1.5 z-20 bg-yellow-100 rounded-full border border-yellow-200 p-0.5 shadow-sm text-yellow-600">
+                        <Zap size={10} fill="currentColor" />
+                    </div>
+                )}
+
+                {/* Status Badges Overlay (Bottom Right of the box) */}
+                <div className="absolute -bottom-1.5 -right-1.5 z-30 flex">
+                    {isRunning && (
+                        <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center shadow-sm">
+                            <Loader2 size={10} strokeWidth={3} className="text-white animate-spin" />
+                        </div>
+                    )}
+                    {isSuccess && !isRunning && (
+                        <div className="w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center shadow-sm backdrop-blur-sm border border-white">
+                            <Check size={10} strokeWidth={4} className="text-white" />
+                        </div>
+                    )}
+                    {isError && !isRunning && (
+                        <div className="w-4 h-4 bg-rose-500 rounded-full flex items-center justify-center shadow-sm border border-white">
+                            <span className="text-white text-[10px] font-black leading-none mt-px">!</span>
+                        </div>
+                    )}
+                </div>
 
                 {/* Warning Indicator (Top-Right Corner of the box) */}
                 {isWarning && !isRunning && !isError && (
-                    <div className="absolute -top-2 -right-2 z-20 bg-white rounded-full border border-gray-200 p-0.5 shadow-sm text-yellow-500" title="Configuration Warning">
-                        <AlertTriangle size={12} fill="currentColor" className="text-white stroke-yellow-500" />
+                    <div className="absolute -top-1.5 -right-1.5 z-20 bg-white rounded-full border border-gray-200 p-0.5 shadow-sm text-yellow-500" title="Configuration Warning">
+                        <AlertTriangle size={11} fill="currentColor" className="text-white stroke-yellow-500" />
                     </div>
                 )}
 
@@ -280,13 +278,13 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
             </div>
 
             {/* 2. Text Area (Below the box) */}
-            <div className="flex flex-col items-center mt-2 w-full px-1">
-                <span className="text-xs font-bold text-gray-700 tracking-tight truncate w-full text-center drop-shadow-sm">
+            <div className="flex flex-col items-center mt-1.5 w-full px-1">
+                <span className="text-[11px] font-semibold text-gray-700 tracking-tight truncate w-full text-center drop-shadow-sm">
                     {(data.label as string) || def?.label || 'Node'}
                 </span>
 
                 {((data.subtitle as string) || def?.description) && (
-                    <span className="text-[10px] text-gray-400 font-medium tracking-wide truncate w-full mt-0.5 text-center" title={typeof ((data.subtitle as string) || def?.description) === 'string' ? ((data.subtitle as string) || def?.description) : ''}>
+                    <span className="text-[9px] text-gray-400 font-medium tracking-wide truncate w-full pt-px text-center leading-tight" title={typeof ((data.subtitle as string) || def?.description) === 'string' ? ((data.subtitle as string) || def?.description) : ''}>
                         {(() => {
                             const sub = (data.subtitle as string) || def?.description || nodeType;
                             if (typeof sub === 'object') return JSON.stringify(sub);
