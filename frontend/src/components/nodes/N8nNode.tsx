@@ -22,6 +22,7 @@ const N8nOutputHandle = ({ source, nodeId, index, total }: { source: any, nodeId
     );
 
     const handleRef = useRef<HTMLDivElement>(null);
+    const isDraggingRef = useRef(false);
 
     // Distribute handles vertically on the right
     const top = total === 1 ? '50%' : `${((index + 1) * 100) / (total + 1)}%`;
@@ -30,31 +31,45 @@ const N8nOutputHandle = ({ source, nodeId, index, total }: { source: any, nodeId
         // ONLY Allow Left Click (button 0)
         if (e.button !== 0) return;
 
-        // Forward the mousedown event to the actual handle to trigger React Flow connection dragging
-        if (handleRef.current) {
-            e.preventDefault();
-            e.stopPropagation();
+        isDraggingRef.current = false;
+        const startX = e.clientX;
+        const startY = e.clientY;
 
-            const event = new MouseEvent('mousedown', {
-                bubbles: true,
-                cancelable: true,
-                view: window,
-                clientX: e.clientX,
-                clientY: e.clientY,
-                buttons: 1
-            });
+        const onMove = (moveEvt: globalThis.MouseEvent) => {
+            const dist = Math.sqrt(
+                Math.pow(moveEvt.clientX - startX, 2) +
+                Math.pow(moveEvt.clientY - startY, 2)
+            );
+            if (dist > 5 && !isDraggingRef.current) {
+                isDraggingRef.current = true;
+                // NOW forward the original mousedown to start React Flow connection drag
+                if (handleRef.current) {
+                    const syntheticDown = new MouseEvent('mousedown', {
+                        bubbles: true, cancelable: true, view: window,
+                        clientX: startX, clientY: startY, buttons: 1
+                    });
+                    const handleEl = handleRef.current.querySelector('.react-flow__handle') || handleRef.current;
+                    handleEl.dispatchEvent(syntheticDown);
+                }
+                window.removeEventListener('mousemove', onMove);
+            }
+        };
 
-            // We need to dispatch to the handle element itself
-            const handleEl = handleRef.current.querySelector('.react-flow__handle') || handleRef.current;
-            handleEl.dispatchEvent(event);
-        }
-    };
+        const onUp = () => {
+            window.removeEventListener('mousemove', onMove);
+            window.removeEventListener('mouseup', onUp);
+            if (!isDraggingRef.current) {
+                // It was a click, not a drag → open Quick Add
+                window.dispatchEvent(new CustomEvent('workflow-quick-add', {
+                    detail: { x: 0, y: 0, sourceNodeId: nodeId, sourceHandleId: source.id }
+                }));
+            }
+        };
 
-    const onStubMouseUp = (e: React.MouseEvent) => {
+        e.preventDefault();
         e.stopPropagation();
-        window.dispatchEvent(new CustomEvent('workflow-quick-add', {
-            detail: { x: 0, y: 0, sourceNodeId: nodeId, sourceHandleId: source.id }
-        }));
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
     };
 
     // Show label for multi-output nodes, or when it's not a generic "success"
@@ -87,7 +102,6 @@ const N8nOutputHandle = ({ source, nodeId, index, total }: { source: any, nodeId
                 <div
                     className="flex items-center nodrag pl-0.5 group/strip"
                     onMouseDown={onStubMouseDown}
-                    onMouseUp={onStubMouseUp}
                 >
                     {/* Label Badge */}
                     {showLabel && (
