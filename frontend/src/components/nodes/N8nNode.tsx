@@ -105,10 +105,7 @@ const N8nOutputHandle = ({ source, nodeId, index, total }: { source: any, nodeId
                 >
                     {/* Label Badge */}
                     {showLabel && (
-                        <span className={clsx(
-                            "text-[9px] font-semibold tracking-tight px-1 py-0 rounded whitespace-nowrap pointer-events-none select-none",
-                            source.id === 'default' ? "text-slate-400" : "text-slate-500"
-                        )}>
+                        <span className="text-[8px] font-normal tracking-tight px-1 py-0 rounded whitespace-nowrap pointer-events-none select-none text-gray-400">
                             {source.label}
                         </span>
                     )}
@@ -127,10 +124,7 @@ const N8nOutputHandle = ({ source, nodeId, index, total }: { source: any, nodeId
 
             {/* Connected state: just show label badge if multi-output */}
             {isConnected && showLabel && (
-                <span className={clsx(
-                    "ml-0.5 text-[9px] font-semibold tracking-tight px-1 py-0 rounded whitespace-nowrap pointer-events-none select-none",
-                    source.id === 'default' ? "text-slate-400" : "text-slate-500"
-                )}>
+                <span className="ml-0.5 text-[8px] font-normal tracking-tight px-1 py-0 rounded whitespace-nowrap pointer-events-none select-none text-gray-400">
                     {source.label}
                 </span>
             )}
