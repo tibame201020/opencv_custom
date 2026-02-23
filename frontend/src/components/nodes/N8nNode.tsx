@@ -76,8 +76,8 @@ const N8nOutputHandle = ({ source, nodeId, index, total }: { source: any, nodeId
 
     return (
         <div
-            className="absolute right-0 flex items-center pointer-events-auto z-20"
-            style={{ top, transform: 'translate(50%, -50%)' }}
+            className="absolute flex items-center pointer-events-auto z-20"
+            style={{ top, right: '-4px', transform: 'translateY(-50%)' }}
         >
             {/* The Handle Dot (Visual anchor) */}
             <div
