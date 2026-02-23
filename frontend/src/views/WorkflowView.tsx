@@ -17,7 +17,6 @@ import {
     type Node,
     type OnConnectEnd,
     type OnConnectStart,
-    getBezierPath,
     getSmoothStepPath,
     EdgeLabelRenderer,
     type EdgeProps,
@@ -126,7 +125,7 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
                 markerEnd={
                     markerEnd ? (
                         typeof markerEnd === 'object' && markerEnd !== null
-                            ? { ...markerEnd, color: markerColor }
+                            ? { ...(markerEnd as any), color: markerColor }
                             : markerEnd
                     ) : undefined
                 }
