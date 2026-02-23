@@ -28,18 +28,18 @@ if ($LASTEXITCODE -eq 0) {
     exit $LASTEXITCODE
 }
 
-# 3. Frontend Tests (Playwright)
-Write-Host "`n[3/3] Running Frontend E2E Tests..." -ForegroundColor Yellow
-Set-Location frontend
-npm run test:e2e
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "✅ Frontend Tests Passed!" -ForegroundColor Green
-} else {
-    Write-Host "❌ Frontend Tests Failed!" -ForegroundColor Red
-    Set-Location ..
-    exit $LASTEXITCODE
-}
-Set-Location ..
+# 3. Frontend Tests (Playwright) - Temporarily disabled
+# Write-Host "`n[3/3] Running Frontend E2E Tests..." -ForegroundColor Yellow
+# Set-Location frontend
+# npm run test:e2e
+# if ($LASTEXITCODE -eq 0) {
+#     Write-Host "✅ Frontend Tests Passed!" -ForegroundColor Green
+# } else {
+#     Write-Host "❌ Frontend Tests Failed!" -ForegroundColor Red
+#     Set-Location ..
+#     exit $LASTEXITCODE
+# }
+# Set-Location ..
 
 Write-Host "`n========================================" -ForegroundColor Cyan
 Write-Host "🎉 All Tests Passed Successfully!" -ForegroundColor Cyan

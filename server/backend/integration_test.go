@@ -174,6 +174,10 @@ func TestRunWorkflowIntegration(t *testing.T) {
 		t.Fatal("runId is empty")
 	}
 	t.Logf("Workflow running with ID: %s", runID)
+	// Give a small head start for server to initialize if needed, 
+	// though usually we want to connect ASAP.
+	// But let's add a small delay before connecting to ensure we don't miss the very first logs if there's a race.
+	time.Sleep(200 * time.Millisecond)
 
 	// 8. Connect to WebSocket to capture logs
 	wsURL := "ws" + strings.TrimPrefix(ts.URL, "http") + "/ws/logs/" + runID

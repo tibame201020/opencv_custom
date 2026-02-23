@@ -226,6 +226,18 @@ func normalizeID(id string) string {
 	return strings.ReplaceAll(id, " ", "_")
 }
 
+// sanitizeRelPath ensures a path is relative and safe from absolute path injection
+func sanitizeRelPath(path string) string {
+	relPath := filepath.FromSlash(path)
+	// Strip Windows volume name if present (e.g., C:)
+	vol := filepath.VolumeName(relPath)
+	if vol != "" {
+		relPath = strings.TrimPrefix(relPath, vol)
+	}
+	// Strip all leading separators (e.g., / or \)
+	return strings.TrimLeft(relPath, string(os.PathSeparator))
+}
+
 func listAssets(c *gin.Context) {
 	id := c.Param("id")
 	if strings.HasPrefix(id, "workflow:") {
@@ -1388,8 +1400,7 @@ func listProjectAssets(c *gin.Context) {
 func deleteProjectAsset(c *gin.Context) {
 	id := c.Param("id")
 	relPath := c.Param("filename")
-	relPath = filepath.FromSlash(relPath)
-	relPath = strings.TrimLeft(relPath, string(os.PathSeparator))
+	relPath = sanitizeRelPath(relPath)
 
 	projectRoot := filepath.Join(manager.CorePath, "workflows", id)
 	imagesRoot := filepath.Join(projectRoot, "images")
@@ -1495,11 +1506,8 @@ func getProjectAsset(c *gin.Context) {
 	id := c.Param("id")
 	relPath := c.Param("filename")
 
-	// Normalize path:
-	// 1. Convert URLs (forward slash) to OS separators (backslashes on Windows)
-	// 2. Trim leading separators to ensure it's treated as relative
-	relPath = filepath.FromSlash(relPath)
-	relPath = strings.TrimLeft(relPath, string(os.PathSeparator))
+	// Normalize path
+	relPath = sanitizeRelPath(relPath)
 
 	projectRoot := filepath.Join(manager.CorePath, "workflows", id)
 	imagesRoot := filepath.Join(projectRoot, "images")
@@ -1534,8 +1542,7 @@ func renameProjectAsset(c *gin.Context) {
 		return
 	}
 
-	relPath := filepath.FromSlash(req.Path)
-	relPath = strings.TrimLeft(relPath, string(os.PathSeparator))
+	relPath := sanitizeRelPath(req.Path)
 
 	projectRoot := filepath.Join(manager.CorePath, "workflows", id)
 	imagesRoot := filepath.Join(projectRoot, "images")
@@ -1571,8 +1578,7 @@ func copyProjectAsset(c *gin.Context) {
 		return
 	}
 
-	relPath := filepath.FromSlash(req.Path)
-	relPath = strings.TrimLeft(relPath, string(os.PathSeparator))
+	relPath := sanitizeRelPath(req.Path)
 
 	projectRoot := filepath.Join(manager.CorePath, "workflows", id)
 	imagesRoot := filepath.Join(projectRoot, "images")
@@ -1627,8 +1633,7 @@ func mkdirProjectAsset(c *gin.Context) {
 		return
 	}
 
-	relPath := filepath.FromSlash(req.Path)
-	relPath = strings.TrimLeft(relPath, string(os.PathSeparator))
+	relPath := sanitizeRelPath(req.Path)
 
 	projectRoot := filepath.Join(manager.CorePath, "workflows", id)
 	// Base directory for images
@@ -1664,8 +1669,8 @@ func moveProjectAsset(c *gin.Context) {
 		return
 	}
 
-	sourceRel := strings.TrimLeft(filepath.FromSlash(req.SourcePath), string(os.PathSeparator))
-	targetRel := strings.TrimLeft(filepath.FromSlash(req.TargetPath), string(os.PathSeparator))
+	sourceRel := sanitizeRelPath(req.SourcePath)
+	targetRel := sanitizeRelPath(req.TargetPath)
 
 	projectRoot := filepath.Join(manager.CorePath, "workflows", id)
 	imagesRoot := filepath.Join(projectRoot, "images")
