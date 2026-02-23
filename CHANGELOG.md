@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+### Removed — 2026-02-23 (Cleanup Milestone)
+- **Project**: Conducted comprehensive "noise file" cleanup.
+  - Removed unused screenshots and verification images (`edge_routing_verification.png`, `error_screenshot.png`, `server/robot-snapshot.png`, etc.).
+  - Permanently deleted unreferenced `screenshots_old` and `test-results` directories.
+  - Removed multiple unmanaged binary outputs (`script-platform.exe`, `server.exe`, etc.) and local test databases (`workflows.db`).
+- **Security**: Strengthened `.gitignore` to prevent future accidental commits of binary builds, logs, and local databases.
+
 
 ### Added — 2026-02-22 (Smart Edge Routing & Visual Fixes)
 - **Frontend / Workflow Canvas**: Implemented N8n-style "Smart Edge Routing" which calculates distance dynamically to transition from default Bezier curves to Orthogonal SmoothStep routing when jumping long distances vertically or backwards horizontally.

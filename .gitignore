@@ -165,3 +165,11 @@ frontend/test_output.txt
 
 # Issue / Debugging Logs
 issues/
+# Build Artifacts
+*.exe
+script-platform
+server/server.exe
+server/server.test.exe
+
+# Logs
+*.log

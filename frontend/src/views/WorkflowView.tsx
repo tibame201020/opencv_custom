@@ -1197,7 +1197,6 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
             const { stroke, strokeWidth } = e.style || {};
 
             const sourceNodeId = e.fromNodeId || e.source;
-            const targetNodeId = e.toNodeId || e.target;
             const edgeSignal = e.signal || 'success';
 
             // Smart Edge Routing: Bezier normally, but SmoothStep for backward edges or sharp vertical drops
