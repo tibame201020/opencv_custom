@@ -163,7 +163,7 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
                                 ["true", "false", "0", "1"].includes(displayText.toLowerCase()) ? "text-slate-600" : "text-gray-400"
                             )}
                             style={{
-                                transform: `translate(0%, -50%) translate(${labelX}px,${labelY}px)`,
+                                transform: `translate(0%, -50%) translate(${labelX}px,${labelY - 16}px)`,
                             }}
                         >
                             {displayText}
