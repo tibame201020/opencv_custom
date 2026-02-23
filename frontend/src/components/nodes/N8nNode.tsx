@@ -295,7 +295,7 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
 
             {/* 3. Floating Toolbar (Above Node) */}
             <div className={clsx(
-                "absolute -top-[17px] left-1/2 -translate-x-1/2 flex items-center gap-0.5 p-0.5 rounded-lg transition-all duration-200 z-50 pointer-events-auto",
+                "absolute -top-[18px] left-1/2 -translate-x-1/2 flex items-center gap-0.5 p-0.5 rounded-lg transition-all duration-200 z-50 pointer-events-auto",
                 (hovered || selected) ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-1 scale-95 pointer-events-none"
             )}>
                 <button
