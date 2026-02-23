@@ -6,7 +6,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 ### Removed — 2026-02-23 (Cleanup Milestone)
 - **Project**: Conducted comprehensive "noise file" cleanup (Phase 1, 2, & 3).
-  - Removed all design-related documentation directories (`design_docs/`, `design_process/`, `doc/`, `docs/`) and specifications (`N8N_UI_SPEC_V3.md`) to minimize development noise.
+  - Removed design-related documentation directories (`design_docs/`, `design_process/`, `doc/`) and specifications (`N8N_UI_SPEC_V3.md`) to minimize development noise.
+  - **Exception**: Preserved `docs/index.html` for GitHub Pages integration while removing other obsolete files in that directory.
   - Cleaned up unused screenshots and verification images across the repository.
   - Removed unused test assets in `core/assets/` and legacy Java PoC files.
   - Removed multiple unmanaged binary outputs (`script-platform.exe`, `server.exe`, etc.) and local test databases (`workflows.db`).
