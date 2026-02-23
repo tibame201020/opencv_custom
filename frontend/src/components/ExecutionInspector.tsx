@@ -125,11 +125,11 @@ export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
                 onClick={() => setIsOpen(!isOpen)}
             >
                 <div className="flex items-center gap-3">
-                    <div className={clsx("w-2.5 h-2.5 rounded-full", executionState.some(s => s.status === 'running') ? "bg-orange-500 animate-pulse" : "bg-green-500")} />
-                    <span className="text-xs font-bold uppercase tracking-wider text-gray-600">
+                    <div className={clsx("w-2 h-2 rounded-full", executionState.some(s => s.status === 'running') ? "bg-amber-400 animate-pulse" : "bg-emerald-500")} />
+                    <span className="text-sm font-semibold text-gray-700">
                         Execution Inspector
                     </span>
-                    <span className="text-[10px] bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded-full">
+                    <span className="text-[10px] font-medium bg-gray-100 border border-gray-200 text-gray-500 px-2 py-0.5 rounded-full">
                         {executionState.length} steps
                     </span>
                 </div>
@@ -157,7 +157,7 @@ export const ExecutionInspector: React.FC<ExecutionInspectorProps> = ({
                         className="p-1.5 hover:bg-gray-200 rounded text-gray-500 transition-colors"
                         onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
                     >
-                        {isOpen ? <X size={16} /> : <span className="text-xs font-bold text-primary">Show</span>}
+                        {isOpen ? <X size={15} /> : <span className="text-xs font-semibold text-emerald-600">Show Details</span>}
                     </button>
                 </div>
             </div>

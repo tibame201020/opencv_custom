@@ -129,14 +129,14 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
                 {Boolean(label || (isExecuted && dataCount !== undefined)) && label !== 'success' && (
                     <div
                         className={clsx(
-                            "absolute px-2 py-0.5 rounded-full bg-white border shadow-sm pointer-events-none z-10 text-[10px] font-bold tracking-tight transition-all duration-300",
-                            isTrue ? "text-[#4fcc5d] border-[#4fcc5d]/30 bg-[#4fcc5d]/5" :
-                                isFalse ? "text-[#ff6d5b] border-[#ff6d5b]/30 bg-[#ff6d5b]/5" :
-                                    isExecuted ? "text-gray-500 border-gray-200" :
-                                        "text-gray-400 border-gray-200"
+                            "absolute px-1.5 py-0.5 rounded border shadow-sm pointer-events-none z-10 text-[9px] font-semibold tracking-wide transition-all duration-300 backdrop-blur-sm",
+                            isTrue ? "text-emerald-600 border-emerald-500/20 bg-emerald-50/50" :
+                                isFalse ? "text-rose-500 border-rose-500/20 bg-rose-50/50" :
+                                    isExecuted ? "text-gray-500 border-gray-200 bg-white/80" :
+                                        "text-gray-400 border-gray-200 bg-white/80"
                         )}
                         style={{
-                            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY - 15}px)`,
+                            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY - 14}px)`,
                         }}
                     >
                         {typeof label === 'string' ? label : (label !== undefined && label !== null ? String(label) : `${dataCount} item${dataCount === 1 ? '' : 's'}`)}
@@ -1990,23 +1990,25 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
                                 <div className="flex gap-2">
                                     {isExecuting && onStop && (
                                         <button
-                                            className="btn h-10 min-h-0 bg-gray-100 hover:bg-gray-200 text-gray-700 border-none shadow-lg rounded-md px-4 gap-2 animate-in fade-in slide-in-from-right duration-300"
+                                            className="btn h-9 min-h-0 bg-white hover:bg-gray-50 text-error border border-error/20 shadow-sm rounded-lg px-3 gap-2 animate-in fade-in slide-in-from-right duration-300"
                                             onClick={onStop}
                                         >
-                                            <X size={16} className="text-error" />
-                                            <span className="font-bold text-sm">Stop</span>
+                                            <X size={14} strokeWidth={2.5} />
+                                            <span className="font-semibold text-xs transition-colors">Stop</span>
                                         </button>
                                     )}
                                     <button
                                         className={clsx(
-                                            "btn h-10 min-h-0 text-white border-none shadow-lg rounded-md px-6 gap-2 animate-in fade-in slide-in-from-top duration-300 group transition-all",
-                                            isExecuting ? "bg-[#ff6d5b]/70 cursor-not-allowed" : "bg-[#ff6d5b] hover:bg-[#ff6d5b]/90"
+                                            "btn h-9 min-h-0 border shadow-sm rounded-lg px-4 gap-2 animate-in fade-in slide-in-from-top duration-300 transition-all",
+                                            isExecuting
+                                                ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
+                                                : "bg-white hover:bg-slate-50 border-slate-200 hover:border-slate-300 text-slate-700 hover:text-slate-900"
                                         )}
                                         disabled={isExecuting}
                                         onClick={onRun}
                                     >
-                                        {isExecuting ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} fill="currentColor" className="group-hover:scale-110 transition-transform" />}
-                                        <span className="font-bold text-sm tracking-tight">{isExecuting ? 'Executing...' : 'Execute Workflow'}</span>
+                                        {isExecuting ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} fill="currentColor" className="text-emerald-500" />}
+                                        <span className="font-semibold text-xs tracking-tight">{isExecuting ? 'Executing...' : 'Execute Workflow'}</span>
                                     </button>
                                 </div>
                             )}
@@ -2070,7 +2072,18 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
                                 </div>
                             </div>
                         )}
-                        <MiniMap zoomable pannable />
+                        <MiniMap
+                            zoomable
+                            pannable
+                            style={{
+                                borderRadius: '12px',
+                                border: '1px solid #e5e7eb',
+                                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05)',
+                                overflow: 'hidden',
+                                height: 100,
+                                width: 150
+                            }}
+                        />
                     </ReactFlow>
 
                     {graphContextMenu && (

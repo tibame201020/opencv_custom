@@ -6,6 +6,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Fixed — 2026-02-23 (Workflow Canvas UI Polish)
+- **Frontend / Workflow Canvas**: Comprehensive Node UI Refinement — Titles scaled down to `12px`, subtitles to `9px`, added fine-grained drop shadows (`shadow-sm` and `border-gray-200`) and JSON stringify protection against `[object Object]` rendering errors.
+- **Frontend / Workflow Canvas**: Status Indicators (`Success Checkmark`, `Running Loader`) redesigned — Scaled down to 14px badges with backdrop-blur, meticulously positioned at the icon corners to avoid visual dominance.
+- **Frontend / Workflow Canvas**: Edge & Edge Label Refinement — Removed high-color-saturation background blocks from branch labels (`true`/`false`), opting for subtle `backdrop-blur-sm` and pastel text colors; label text sizes reduced to `9px`.
+- **Frontend / Workflow Canvas**: Global Control Panel Optimization — Replaced the bulky, high-saturation "Execute Workflow" button with an elegant outline primary-style button (`text-emerald-500`); minimized typography and whitespace in the Execution Inspector and added border-radius/shadow to the MiniMap.
 - **Frontend / Workflow Canvas**: Node toolbar refined — size reduced, translucent backdrop added, unused 'Execute Step' and 'More Actions' buttons removed.
 - **Frontend / Workflow Canvas**: New "Triggers" node category added to the top of the node sidebar. `manual_trigger` moved to this category.
 - **Frontend / Workflow Canvas**: Breadcrumb now shows `ProjectName / WorkflowName` format instead of just workflow name; clicking project name navigates back to workflow list.

@@ -201,20 +201,20 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
                 </div>
 
                 {/* Status Badges (Bottom-Right Corner) */}
-                <div className="absolute -bottom-1.5 -right-1.5 z-30 flex">
+                <div className="absolute -bottom-1 -right-1 z-30 flex">
                     {isRunning && (
-                        <div className="w-4 h-4 bg-blue-500 rounded-full border-[1.5px] border-white flex items-center justify-center shadow-sm">
-                            <Loader2 size={8} strokeWidth={4} className="text-white animate-spin" />
+                        <div className="w-[14px] h-[14px] bg-blue-500 rounded-full flex items-center justify-center shadow-sm">
+                            <Loader2 size={10} strokeWidth={3} className="text-white animate-spin" />
                         </div>
                     )}
                     {isSuccess && !isRunning && (
-                        <div className="w-4 h-4 bg-[#4fcc5d] rounded-full border-[1.5px] border-white flex items-center justify-center shadow-sm">
-                            <Check size={8} strokeWidth={4} className="text-white" />
+                        <div className="w-[14px] h-[14px] bg-[#4fcc5d] rounded-full flex items-center justify-center shadow-sm backdrop-blur-sm">
+                            <Check size={10} strokeWidth={4} className="text-white" />
                         </div>
                     )}
                     {isError && !isRunning && (
-                        <div className="w-4 h-4 bg-[#ff6d5b] rounded-full border-[1.5px] border-white flex items-center justify-center shadow-sm">
-                            <span className="text-white text-[8px] font-black leading-none mt-[1px]">!</span>
+                        <div className="w-[14px] h-[14px] bg-[#ff6d5b] rounded-full flex items-center justify-center shadow-sm">
+                            <span className="text-white text-[9px] font-black leading-none mt-px">!</span>
                         </div>
                     )}
                 </div>
@@ -275,16 +275,23 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
             </div>
 
             {/* Floating Text Section (Bottom) */}
-            <div className="absolute top-[46px] left-1/2 -translate-x-1/2 flex flex-col items-center min-w-[140px] pointer-events-none z-20">
+            <div className="absolute top-[48px] left-1/2 -translate-x-1/2 flex flex-col items-center min-w-[150px] pointer-events-none z-20">
                 <span className={clsx(
-                    "text-[11px] font-bold text-center leading-tight mb-0.5",
-                    selected ? "text-primary px-1.5 bg-white/90 rounded-md backdrop-blur-sm shadow-sm" : "text-gray-700"
-                )} style={selected ? {} : { textShadow: '0px 1px 2px rgba(255,255,255,0.8), 0px -1px 2px rgba(255,255,255,0.8)' }}>
+                    "text-[12px] font-semibold text-center leading-tight mb-0.5 tracking-tight",
+                    selected ? "text-primary px-2 bg-white/90 rounded border border-primary/20 backdrop-blur-sm shadow-sm" : "text-gray-700"
+                )} style={selected ? {} : { textShadow: '0 1px 2px white, 0 -1px 2px white, 1px 0 2px white, -1px 0 2px white' }}>
                     {(data.label as string) || def?.label || 'Node'}
                 </span>
-                <span className="text-[9px] text-gray-500 text-center font-medium max-w-[160px] truncate bg-white/60 px-1 rounded-sm">
-                    {(data.subtitle as string) || def?.description || nodeType}
-                </span>
+
+                {((data.subtitle as string) || def?.description) && (
+                    <span className="text-[9px] text-gray-400 text-center font-medium max-w-[140px] truncate bg-white/40 px-1 rounded backdrop-blur-sm leading-tight mt-0.5">
+                        {(() => {
+                            const sub = (data.subtitle as string) || def?.description || nodeType;
+                            if (typeof sub === 'object') return JSON.stringify(sub);
+                            return sub;
+                        })()}
+                    </span>
+                )}
             </div>
 
 
