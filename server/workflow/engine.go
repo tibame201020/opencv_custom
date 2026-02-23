@@ -708,6 +708,7 @@ func (e *FlowEngine) Execute(ctx context.Context, input interface{}) (*Execution
 				if edge.FromNodeID == currentNodeId && (edge.Signal == signal || edge.Signal == "") {
 					// edge.Signal == "" implies wildcard/default connection?
 					// Usually edges have signals.
+					fmt.Printf("[DEBUG] engine routing: %s (signal: %s) -> %s\n", e.NodeMap[currentNodeId].Name, signal, e.NodeMap[edge.ToNodeID].Name)
 					queue = append(queue, QueueItem{
 						NodeID: edge.ToNodeID,
 						Data:   outData,

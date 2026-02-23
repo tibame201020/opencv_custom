@@ -59,6 +59,7 @@ export interface WorkflowTab {
     content: string; // JSON string of the workflow data
     originalContent: string;
     isDirty: boolean;
+    executionPath?: any[]; // Array of ExecutionStep representing the traced path
 }
 
 export interface LogMessage {
@@ -104,6 +105,7 @@ interface AppState {
     setActiveWorkflowTab: (tabId: string) => void;
     updateWorkflowTabContent: (tabId: string, content: string) => void;
     saveWorkflowTab: (tabId: string) => void;
+    setWorkflowExecutionPath: (tabId: string, path: any[]) => void;
 
     // Editor State (Persisted) — Script Editor only
     editorSelectedScriptId: string | null;
@@ -220,15 +222,19 @@ export const useAppStore = create<AppState>()(
 
             updateWorkflowTabContent: (tabId: string, content: string) => set(state => ({
                 workflowTabs: state.workflowTabs.map(t =>
-                    t.id === tabId ? { ...t, content, isDirty: content !== t.originalContent } : t
+                    t.id === tabId ? { ...t, content, isDirty: content !== t.originalContent, executionPath: [] } : t
                 )
             })),
-
-
 
             saveWorkflowTab: (tabId: string) => set(state => ({
                 workflowTabs: state.workflowTabs.map(t =>
                     t.id === tabId ? { ...t, originalContent: t.content, isDirty: false } : t
+                )
+            })),
+
+            setWorkflowExecutionPath: (tabId: string, path: any[]) => set(state => ({
+                workflowTabs: state.workflowTabs.map(t =>
+                    t.id === tabId ? { ...t, executionPath: path } : t
                 )
             })),
 

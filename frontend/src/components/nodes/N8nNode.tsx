@@ -232,17 +232,16 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
                     let sources = config?.sources || [{ id: 'success', label: 'Success' }];
 
                     if (type === 'switch') {
-                        const caseStr = (data as any).config?.cases;
-                        try {
-                            const cases = typeof caseStr === 'string' ? JSON.parse(caseStr) : caseStr;
-                            if (Array.isArray(cases)) {
-                                const caseHandles = cases.map((caseVal: any, i: number) => ({
-                                    id: `${i}`,
-                                    label: typeof caseVal === 'object' ? JSON.stringify(caseVal) : String(caseVal)
-                                }));
-                                sources = [...caseHandles, { id: 'default', label: 'Default' }];
-                            }
-                        } catch { }
+                        const cases = (data as any).config?.cases;
+                        if (Array.isArray(cases)) {
+                            const caseHandles = cases.map((caseVal: string, i: number) => ({
+                                id: `${i}`,
+                                label: caseVal ? `Case ${i}: ${caseVal}` : `Case ${i}`
+                            }));
+                            sources = [...caseHandles, { id: 'default', label: 'Default' }];
+                        } else {
+                            sources = [{ id: 'default', label: 'Default' }];
+                        }
                     }
 
                     return sources.map((source: any, index: number) => (

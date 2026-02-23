@@ -25,7 +25,8 @@ export type ParamType =
     | 'expression' // 表達式（用於 If Condition）
     | 'json'       // JSON 編輯器
     | 'select'     // 下拉選單
-    | 'key_value'; // Key-Value 編輯器
+    | 'key_value'  // Key-Value 中介編輯器
+    | 'list';      // 動態陣列編輯器 (用於 Switch Cases 等)
 
 export interface ParamSchema {
     key: string;
@@ -447,10 +448,9 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
             {
                 key: 'cases',
                 label: 'Cases',
-                type: 'json', // We will interpret this as a string array in the UI
-                defaultValue: '["0", "1"]',
-                description: '匹配值列表 (Case 0, Case 1...)',
-                language: 'json'
+                type: 'list', // Array of dynamic string cases
+                defaultValue: [],
+                description: 'Add match rules for routing paths',
             },
         ],
         outputs: [

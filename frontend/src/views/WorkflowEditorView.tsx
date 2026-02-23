@@ -281,6 +281,7 @@ export const WorkflowEditorView: React.FC = () => {
 
         setIsRunning(true);
         setExecutionState([]); // Reset visual feedback
+        useAppStore.getState().setWorkflowExecutionPath(activeWorkflowTabId, []); // Clear frontend paths
         try {
             // Auto-save before running
             console.log("Auto-saving workflow before run:", tab.workflowId);
@@ -314,6 +315,7 @@ export const WorkflowEditorView: React.FC = () => {
                     }
 
                     const ws = new WebSocket(wsUrl);
+
                     ws.onmessage = (event) => {
                         try {
                             const msg = JSON.parse(event.data);
@@ -333,6 +335,10 @@ export const WorkflowEditorView: React.FC = () => {
                                 setIsRunning(false);
                                 setActiveRunId(null);
                                 ws.close();
+                            }
+                            // Capture the final execution result payload which has the `ExecutionPath`
+                            if (msg.type === 'execution_result' && msg.data?.executionPath) {
+                                useAppStore.getState().setWorkflowExecutionPath(activeWorkflowTabId, msg.data.executionPath);
                             }
                         } catch (e) { }
                     };

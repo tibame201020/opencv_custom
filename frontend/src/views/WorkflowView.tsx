@@ -104,8 +104,10 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
             edgeColor = '#fb7185'; // rose-400 for error
             markerColor = '#fb7185';
         } else {
-            edgeColor = '#94a3b8'; // slightly darker slate for successful execution, no neon green
-            markerColor = '#64748b';
+            // Apply the style stroke pushed by initialEdges (which we set to green/emerald/rose),
+            // OR default to the vivid green if undefined, completely removing the slate grey override.
+            edgeColor = style?.stroke || '#22c55e'; // Bright green for successful execution
+            markerColor = style?.stroke || '#22c55e';
         }
     }
 
@@ -1005,53 +1007,58 @@ const ParamField: React.FC<ParamFieldProps> = ({
         }
 
         case 'json':
-            // Special handling for Switch Cases (List of Strings)
-            if (param.key === 'cases' && param.label === 'Cases') {
-                let cases: string[] = [];
+        case 'list': {
+            let items: string[] = [];
+            if (Array.isArray(value)) {
+                items = value;
+            } else if (typeof value === 'string') {
                 try {
-                    cases = JSON.parse(value || '[]');
-                    if (!Array.isArray(cases)) cases = [];
-                } catch { cases = []; }
-
-                const addCase = () => {
-                    const newCases = [...cases, `${cases.length}`];
-                    onChange(param.key, JSON.stringify(newCases));
-                };
-                const removeCase = (idx: number) => {
-                    const newCases = cases.filter((_, i) => i !== idx);
-                    onChange(param.key, JSON.stringify(newCases));
-                };
-                const updateCase = (idx: number, val: string) => {
-                    const newCases = [...cases];
-                    newCases[idx] = val;
-                    onChange(param.key, JSON.stringify(newCases));
-                };
-
-                return (
-                    <div className="form-control w-full mb-4">
-                        <CommonLabel />
-                        <div className="space-y-2 mb-2">
-                            {cases.map((c, i) => (
-                                <div key={i} className="flex gap-2 items-center">
-                                    <div className="text-[10px] font-mono opacity-50 w-4 text-center">{i}</div>
-                                    <input
-                                        className="input input-sm input-bordered flex-1 font-mono"
-                                        value={c}
-                                        onChange={(e) => updateCase(i, e.target.value)}
-                                        placeholder={`Case Value`}
-                                    />
-                                    <button className="btn btn-sm btn-ghost btn-square text-error opacity-50 hover:opacity-100" onClick={() => removeCase(i)}>
-                                        <Trash2 size={12} />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                        <button className="btn btn-sm btn-outline btn-dashed w-full gap-2 opacity-60 hover:opacity-100" onClick={addCase}>
-                            <Plus size={12} /> Add Case
-                        </button>
-                    </div>
-                );
+                    items = JSON.parse(value);
+                    if (!Array.isArray(items)) items = [];
+                } catch { items = []; }
             }
+
+            const addItem = () => {
+                onChange(param.key, [...items, '']);
+            };
+            const removeItem = (idx: number) => {
+                onChange(param.key, items.filter((_, i) => i !== idx));
+            };
+            const updateItem = (idx: number, val: string) => {
+                const newItems = [...items];
+                newItems[idx] = val;
+                onChange(param.key, newItems);
+            };
+
+            return (
+                <div className="form-control w-full mb-4">
+                    <CommonLabel />
+                    <div className="space-y-2 mb-2">
+                        {items.map((item, i) => (
+                            <div key={i} className="flex gap-2 items-center bg-base-200/50 p-2 rounded-lg border border-base-300">
+                                <div className="text-[10px] font-mono opacity-50 w-4 text-center shrink-0">{i}</div>
+                                <div className="flex-1 min-w-0">
+                                    <ExpressionInput
+                                        value={item}
+                                        onChange={(val) => updateItem(i, val)}
+                                        nodes={nodes}
+                                        executionState={executionState}
+                                        placeholder={`Case ${i} Value`}
+                                    />
+                                </div>
+                                <button className="btn btn-sm btn-ghost btn-square text-error opacity-50 hover:opacity-100 shrink-0" onClick={() => removeItem(i)}>
+                                    <Trash2 size={14} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                    <button className="btn btn-sm btn-outline btn-dashed w-full gap-2 opacity-60 hover:opacity-100" onClick={addItem}>
+                        <Plus size={14} /> Add Item
+                    </button>
+                    <CommonDesc />
+                </div>
+            );
+        }
 
             return (
                 <div className="form-control w-full h-[300px]">
@@ -1178,11 +1185,18 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
                 // For now, if status is 'running' in step
             }
 
-            // Find specific step for this node
+            // Find specific step for this node from live websocket first
             const steps = executionState.filter(s => s.nodeId === n.id);
             if (steps.length > 0) {
                 const lastStep = steps[steps.length - 1];
                 status = lastStep.status;
+            } else if (tab.executionPath && Array.isArray(tab.executionPath)) {
+                // If not in live state, check historical execution path
+                const historicalSteps = tab.executionPath.filter((s: any) => s.nodeId === n.id);
+                if (historicalSteps.length > 0) {
+                    const lastStep = historicalSteps[historicalSteps.length - 1];
+                    status = lastStep.status;
+                }
             }
 
             let imagePreview = '';
@@ -1216,30 +1230,43 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
 
     const initialEdges: Edge[] = useMemo(() => {
         const edgeArr = workflowData.edges || [];
+
+        // Track completed nodes using both live executionState (websocket) and the final executionPath (REST payload)
         const completedNodes = new Map<string, string>();
         executionState.forEach(step => {
             completedNodes.set(step.nodeId, step.signal);
         });
 
+        // Fallback or merge with the store's executionPath if the run is finished
+        if (tab.executionPath && Array.isArray(tab.executionPath)) {
+            tab.executionPath.forEach(step => {
+                if (!completedNodes.has(step.nodeId) || step.signal) {
+                    completedNodes.set(step.nodeId, step.signal);
+                }
+            });
+        }
+
         return edgeArr.map((e: any) => {
             const { stroke, strokeWidth } = e.style || {};
 
             const sourceNodeId = e.fromNodeId || e.source;
+            const targetNodeId = e.toNodeId || e.target;
             const edgeSignal = e.signal || 'success';
 
-            // Smart Edge Routing: Bezier normally, but SmoothStep for backward edges or sharp vertical drops
-            // Note: We now use 'hover' type for ALL edges, and let HoverEdge component handle the path calculation logic internally.
             const edgeType = 'hover';
 
-            // Find execution step for source node
-            const sourceStep = executionState.slice().reverse().find(s => s.nodeId === sourceNodeId);
+            // Find execution step for source node to determine traversal
+            const sourceStep = executionState.slice().reverse().find(s => s.nodeId === sourceNodeId) ||
+                (tab.executionPath || []).slice().reverse().find((s: any) => s.nodeId === sourceNodeId);
 
             // Check traversal based on output signals in the step
             let isTraversed = false;
+            let sourceExecuted = false;
             let itemCount = 0;
             let targetIsRunning = false;
 
             if (sourceStep) {
+                sourceExecuted = true;
                 // If it produced output, evaluate the selected wire
                 if (sourceStep.output && Object.keys(sourceStep.output).length > 0) {
                     if (sourceStep.output[edgeSignal]) {
@@ -1262,57 +1289,75 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
 
             if (isExecuting) {
                 // Check if the target node of this edge is currently running
-                const targetStep = executionState.slice().reverse().find(s => s.nodeId === e.toNodeId || s.nodeId === e.target);
+                const targetStep = executionState.slice().reverse().find(s => s.nodeId === targetNodeId);
                 if (targetStep && targetStep.status === 'running') {
                     targetIsRunning = true;
                 }
             }
 
-            let edgeColor = stroke || '#9ca3af'; // Gray-400
+            let edgeColor = stroke || '#cbd5e1'; // Default n8n light slate
             let animated = isExecuting && targetIsRunning && !isTraversed;
             let label = e.signal || 'success';
+            let edgeOpacity = 1;
 
             if (isTraversed) {
-                if (e.signal === 'false') edgeColor = '#ef4444'; // Red for false
-                else if (e.signal === 'true') edgeColor = '#22c55e'; // Green for true
-                else edgeColor = '#22c55e'; // Default success green
-
                 animated = false;
+                // Executed path colors
+                if (e.signal === 'false') {
+                    edgeColor = '#fb7185'; // Rose for false branch
+                } else if (e.signal === 'true') {
+                    edgeColor = '#10b981'; // Emerald for true branch
+                } else {
+                    edgeColor = '#22c55e'; // Bright green for all generic success/traversed paths
+                }
 
                 // Set Label
                 if (e.signal === 'true' || e.signal === 'false') {
                     label = e.signal;
                 } else {
-                    label = `${itemCount} item${itemCount !== 1 ? 's' : ''}`;
+                    label = itemCount > 0 ? `${itemCount} item${itemCount !== 1 ? 's' : ''}` : '';
                 }
+            } else if (sourceExecuted && !isTraversed) {
+                // Source executed, but took a DIFFERENT path. This edge was bypassed.
+                edgeOpacity = 0.25;
+                if (e.signal === 'false') edgeColor = '#fb7185';
             } else if (animated) {
                 edgeColor = '#3b82f6'; // Blue indicating active path flow
+            } else if (!isExecuting && tab.executionPath && tab.executionPath.length > 0) {
+                // Run is finished, but this edge was never reached
+                edgeOpacity = 0.4;
             }
 
             return {
                 id: e.id,
-                source: e.fromNodeId || e.source,
-                target: e.toNodeId || e.target,
+                source: sourceNodeId,
+                target: targetNodeId,
                 sourceHandle: e.signal || 'success',
                 label: label,
                 type: edgeType,
                 animated: animated,
+                data: {
+                    executed: isTraversed,
+                    status: (isExecuting && targetIsRunning) ? 'running' : (isTraversed ? 'success' : undefined),
+                    dataCount: itemCount
+                },
                 className: animated ? 'n8n-flow-active' : '',
                 style: {
                     stroke: edgeColor,
-                    strokeWidth: isTraversed ? 3 : (strokeWidth || 2)
+                    strokeWidth: strokeWidth || 1.5,
+                    opacity: edgeOpacity
                 },
                 labelBgPadding: [8, 4],
                 labelBgBorderRadius: 10,
                 labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9, stroke: '#e5e7eb', strokeWidth: 1 },
                 labelStyle: { fill: '#374151', fontWeight: 600, fontSize: 10 },
-                markerEnd: { type: MarkerType.ArrowClosed, width: 15, height: 15, color: edgeColor },
+                markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color: edgeColor },
                 interactionWidth: 20,
                 selectable: true,
                 updatable: true,
             };
         });
-    }, [workflowData, isExecuting, executionState]);
+    }, [workflowData, isExecuting, executionState, tab.executionPath]);
 
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -1998,7 +2043,7 @@ export const WorkflowViewInner: React.FC<WorkflowViewProps> = ({ tab, onContentC
                         fitView
                         colorMode={flowColorMode}
                         deleteKeyCode={null}
-                        selectionOnDrag={true}
+                        selectionOnDrag={false}
                         panOnDrag={PAN_ON_DRAG}
                         panOnScroll={true}
                         defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}

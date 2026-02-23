@@ -99,6 +99,14 @@ func createSleepExecutor(node *WorkflowNode, bridge *PythonBridge, logger func(s
 
 func createIfExecutor(node *WorkflowNode, bridge *PythonBridge, logger func(string)) NodeExecutor {
 	rawConfig := node.Config
+	logf := func(format string, args ...interface{}) {
+		msg := fmt.Sprintf(format, args...)
+		if logger != nil {
+			logger(msg)
+		} else {
+			fmt.Println(msg)
+		}
+	}
 	return &FunctionalExecutor{Fn: func(ctx context.Context, arg NodeArg) NodeOutput {
 		trueItems := ExecutionData{}
 		falseItems := ExecutionData{}
@@ -127,6 +135,7 @@ func createIfExecutor(node *WorkflowNode, bridge *PythonBridge, logger func(stri
 
 			v1Str := fmt.Sprintf("%v", value1Raw)
 			v2Str := fmt.Sprintf("%v", value2Raw)
+			logf("[Workflow] [%s] IF Condition: '%v' %s '%v'", node.Name, v1Str, operator, v2Str)
 			result := false
 
 			switch operator {
@@ -311,6 +320,8 @@ func createLoopExecutor(node *WorkflowNode, bridge *PythonBridge, logger func(st
 
 		// Check internal state
 		idxKey := fmt.Sprintf("loop_%s_index", node.ID)
+		itemsKey := fmt.Sprintf("loop_%s_items", node.ID)
+
 		idxRaw, exists := arg.GlobalContext[idxKey]
 		idx := 0
 		if exists {
@@ -319,27 +330,35 @@ func createLoopExecutor(node *WorkflowNode, bridge *PythonBridge, logger func(st
 			arg.GlobalContext[idxKey] = 0
 		}
 
-		itemsRaw := config["items"]
 		var items []interface{}
 
-		if itemsRaw != nil {
-			if slice, ok := itemsRaw.([]interface{}); ok {
-				items = slice
-			} else if str, ok := itemsRaw.(string); ok {
-				json.Unmarshal([]byte(str), &items)
+		// If we already have items cached in context, use them (iteration 2+)
+		if cachedItems, ok := arg.GlobalContext[itemsKey].([]interface{}); ok && exists {
+			items = cachedItems
+		} else {
+			// First iteration, resolve items from config
+			itemsRaw := config["items"]
+			if itemsRaw != nil {
+				if slice, ok := itemsRaw.([]interface{}); ok {
+					items = slice
+				} else if str, ok := itemsRaw.(string); ok {
+					json.Unmarshal([]byte(str), &items)
+				}
+			} else if val, ok := config["count"]; ok {
+				// Generate N items
+				count := 0
+				switch v := val.(type) {
+				case int:
+					count = v
+				case float64:
+					count = int(v)
+				}
+				for i := 0; i < count; i++ {
+					items = append(items, map[string]interface{}{"index": i})
+				}
 			}
-		} else if val, ok := config["count"]; ok {
-			// Generate N items
-			count := 0
-			switch v := val.(type) {
-			case int:
-				count = v
-			case float64:
-				count = int(v)
-			}
-			for i := 0; i < count; i++ {
-				items = append(items, map[string]interface{}{"index": i})
-			}
+			// Cache items for next iterations
+			arg.GlobalContext[itemsKey] = items
 		}
 
 		if len(items) == 0 {
