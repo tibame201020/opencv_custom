@@ -52,8 +52,8 @@ const PAN_ON_DRAG = [2];
 const DEFAULT_EDGE_OPTIONS = {
     type: 'hover' as const,
     animated: true,
-    style: { strokeWidth: 2, stroke: '#b1b1b7' }, // n8n light grey
-    markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: '#b1b1b7' },
+    style: { strokeWidth: 1, stroke: '#b1b1b7' }, // n8n light grey
+    markerEnd: { type: MarkerType.ArrowClosed, width: 12, height: 12, color: '#b1b1b7' },
     interactionWidth: 20
 };
 
@@ -98,7 +98,7 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
     }
 
     // Determine stroke width
-    let edgeWidth = (hovered || selected) ? 3 : 2;
+    let edgeWidth = (hovered || selected) ? 1.5 : 1;
 
     return (
         <>

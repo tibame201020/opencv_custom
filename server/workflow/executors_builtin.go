@@ -20,6 +20,7 @@ func init() {
 	RegisterExecutor("convert", createConvertExecutor)
 	RegisterExecutor("sub_workflow", createSubWorkflowExecutor)
 	RegisterExecutor("code", createCodeExecutor)
+	RegisterExecutor("manual_trigger", createManualTriggerExecutor)
 }
 
 func createLogExecutor(node *WorkflowNode, bridge *PythonBridge, logger func(string)) NodeExecutor {
@@ -451,5 +452,16 @@ func createCodeExecutor(node *WorkflowNode, bridge *PythonBridge, logger func(st
 		}
 
 		return singleOutput("success", outputData)
+	}}
+}
+
+func createManualTriggerExecutor(node *WorkflowNode, bridge *PythonBridge, logger func(string)) NodeExecutor {
+	return &FunctionalExecutor{Fn: func(ctx context.Context, arg NodeArg) NodeOutput {
+		// Manual Trigger is a pass-through start node.
+		// It simply forwards input data (or creates empty item if no input).
+		if len(arg.Input) == 0 {
+			return singleOutput("success", ExecutionData{{JSON: map[string]interface{}{}}})
+		}
+		return singleOutput("success", arg.Input)
 	}}
 }

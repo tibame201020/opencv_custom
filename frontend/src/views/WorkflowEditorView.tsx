@@ -3,7 +3,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '../store';
 import {
     Smartphone, LayoutGrid, Plus, Search, ChevronLeft,
-    Save, X, FileEdit, FolderOpen, FolderMinus, FolderPlus
+    Save, X, FileEdit, FolderOpen, FolderMinus, FolderPlus, RefreshCw
 } from 'lucide-react';
 
 import { WorkflowView } from './WorkflowView';
@@ -15,7 +15,7 @@ import clsx from 'clsx';
 export const WorkflowEditorView: React.FC = () => {
     // const { t } = useTranslation(); // t is unused for now
     const {
-        projects, fetchProjects, apiBaseUrl, devices,
+        projects, fetchProjects, apiBaseUrl, devices, fetchDevices,
         projectSelectedId, setProjectSelectedId,
         workflowSelectedId, setWorkflowSelectedId,
         workflowTabs, activeWorkflowTabId,
@@ -37,6 +37,17 @@ export const WorkflowEditorView: React.FC = () => {
 
     // Device Selection
     const [selectedDevice, setSelectedDevice] = useState<string>('');
+    const [isRefreshingDevices, setIsRefreshingDevices] = useState(false);
+
+    const handleRefreshDevices = async () => {
+        if (isRefreshingDevices) return;
+        setIsRefreshingDevices(true);
+        try {
+            await fetchDevices();
+        } finally {
+            setIsRefreshingDevices(false);
+        }
+    };
 
     // Rename Modal State
     const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
@@ -578,7 +589,10 @@ export const WorkflowEditorView: React.FC = () => {
                                 </button>
 
                                 <div className="flex items-center text-sm font-medium text-base-content/70">
-                                    <span className="cursor-pointer hover:text-primary transition-colors">Personal</span>
+                                    <span className="cursor-pointer hover:text-primary transition-colors" onClick={() => {
+                                        setWorkflowSelectedId(null);
+                                        setActiveWorkflowTab('');
+                                    }}>{projects.find(p => p.id === activeTab.projectId)?.name || 'Project'}</span>
                                     <span className="mx-2 opacity-50">/</span>
                                     <div className="flex items-center gap-2 text-base-content font-bold">
                                         <span>{activeTab.name}</span>
@@ -587,27 +601,29 @@ export const WorkflowEditorView: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Center Toggle (n8n style) */}
-                            <div className="absolute left-1/2 -translate-x-1/2 flex items-center bg-gray-100/50 rounded-lg p-1 border border-gray-200/50">
-                                <button className="px-5 py-1.5 text-xs font-bold bg-white shadow-sm rounded-md text-primary transition-all">Editor</button>
-                                <button className="px-5 py-1.5 text-xs font-bold text-gray-500 hover:text-gray-800 transition-all">Executions</button>
-                            </div>
-
                             {/* Right Actions */}
                             <div className="flex items-center gap-2">
                                 {/* Device Selector */}
-                                <div className="flex items-center gap-1 bg-base-200 rounded-lg px-2 h-8">
+                                <div className="flex items-center gap-0 bg-base-200 rounded-lg px-2 h-8">
                                     <Smartphone size={14} className="opacity-50" />
                                     <select
                                         className="select select-xs select-ghost focus:outline-none w-[140px] max-w-[140px] text-xs font-mono"
                                         value={selectedDevice}
                                         onChange={(e) => setSelectedDevice(e.target.value)}
+                                        onClick={() => { if (devices.length === 0) fetchDevices(); }}
                                     >
                                         {devices.length === 0 && <option value="" disabled>No devices</option>}
                                         {devices.map(d => (
                                             <option key={d} value={d}>{d}</option>
                                         ))}
                                     </select>
+                                    <button
+                                        className="btn btn-xs btn-ghost btn-square h-6 w-6"
+                                        onClick={() => handleRefreshDevices()}
+                                        title="Refresh Devices"
+                                    >
+                                        <RefreshCw size={12} className={clsx(isRefreshingDevices && "animate-spin")} />
+                                    </button>
                                 </div>
 
                                 <button

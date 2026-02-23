@@ -66,6 +66,7 @@ func createSchema() error {
 			config TEXT, -- JSON string for node specific settings
 			x REAL,
 			y REAL,
+			disabled BOOLEAN DEFAULT 0,
 			FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE
 		);`,
 		`CREATE TABLE IF NOT EXISTS edges (
@@ -110,6 +111,9 @@ func createSchema() error {
 	// Migration: Ensure workflows table has project_id column
 	// We use a simple ALTER TABLE. If it fails because column exists, it's fine.
 	_, _ = DB.Exec("ALTER TABLE workflows ADD COLUMN project_id TEXT DEFAULT 'default'")
+
+	// Migration: Ensure nodes table has disabled column
+	_, _ = DB.Exec("ALTER TABLE nodes ADD COLUMN disabled BOOLEAN DEFAULT 0")
 
 	return nil
 }

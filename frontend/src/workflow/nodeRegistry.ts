@@ -7,7 +7,7 @@
 import {
     MousePointerClick, Move, Type, Keyboard, Camera, Clock,
     Search, ImagePlus, Timer, Eye, ScanText, Grid3X3,
-    GitBranch, Repeat, Layers, FileText, Braces, Code, StickyNote
+    GitBranch, Repeat, Layers, FileText, Braces, Code, StickyNote, Play
 } from 'lucide-react';
 import type { FC } from 'react';
 
@@ -53,7 +53,7 @@ export interface OutputSchema {
  *  Node Definition
  * ============================================================ */
 
-export type NodeCategory = 'platform' | 'vision' | 'flow' | 'visual';
+export type NodeCategory = 'trigger' | 'platform' | 'vision' | 'flow' | 'visual';
 
 export interface NodeDefinition {
     type: string;              // unique ID, e.g. 'click', 'find_image'
@@ -76,6 +76,7 @@ export interface NodeDefinition {
  * ============================================================ */
 
 export const CATEGORY_LABELS: Record<NodeCategory, string> = {
+    trigger: 'Triggers',
     platform: 'Platform',
     vision: 'Vision / OpenCV',
     flow: 'Flow Control',
@@ -83,6 +84,7 @@ export const CATEGORY_LABELS: Record<NodeCategory, string> = {
 };
 
 export const CATEGORY_COLORS: Record<NodeCategory, string> = {
+    trigger: 'text-success',
     platform: 'text-primary',
     vision: 'text-secondary',
     flow: 'text-accent',
@@ -334,6 +336,26 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
         ],
     },
 
+    /* ── Trigger ─────────────────────────────────────────── */
+    {
+        type: 'manual_trigger',
+        label: 'Manual Trigger',
+        description: '手動觸發此工作流',
+        category: 'trigger',
+        group: 'Trigger',
+        color: 'success',
+        icon: Play,
+        params: [],
+        outputs: [
+            { key: 'success', label: 'Output', type: 'any' },
+        ],
+        handleConfig: {
+            sources: [
+                { id: 'success', label: 'Output' },
+            ],
+        },
+    },
+
     /* ── Flow Control ─────────────────────────────────────── */
     {
         type: 'if_condition',
@@ -569,6 +591,7 @@ export function getNodeDef(type: string): NodeDefinition | undefined {
 /** Get all nodes grouped by category */
 export function getNodesByCategory(): Record<NodeCategory, NodeDefinition[]> {
     const grouped: Record<NodeCategory, NodeDefinition[]> = {
+        trigger: [],
         platform: [],
         vision: [],
         flow: [],

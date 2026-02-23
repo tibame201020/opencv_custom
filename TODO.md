@@ -23,6 +23,7 @@
 | 1.9 | Expression Parser ({{ }}) | ✅ | ⬜ | 動態參數解析 |
 | 1.10 | If Condition Operators (55 types) | ✅ | ⬜ | 完整運算子支援 |
 | 1.11 | Go-Python-ADB-OpenCV Bridge Integration | ✅ | ✅ | 重大里程碑：完整端到端與真機驗證 |
+| 1.12 | 節點停用 (Disable Node) | ✅ | ✅ | 引擎跳過該節點執行並 pass-through |
 
 ## 2. Workflow Engine (Tests)
 
@@ -128,10 +129,11 @@
 |---|------|---------|-----------|------|
 | 3.10.1 | Square Node Shape (64x64) | ✅ | ⬜ | n8n V2 Style |
 | 3.10.2 | External Labels (Below Node) | ✅ | ⬜ | Transparent background |
-| 3.10.3 | Transparent Floating Toolbar | ✅ | ⬜ | Action buttons on hover |
+| 3.10.3 | Transparent Floating Toolbar | ✅ | ✅ | 調整大小並移除多餘按鈕 |
 | 3.10.4 | Connection Stubs (+) | ✅ | ⬜ | Grow on hover, right side |
 | 3.10.5 | Sliding Add Node Sidebar | ✅ | ⬜ | Replaces context menu add |
 | 3.10.6 | Handle Interaction Refinement | ✅ | ⬜ | Left-click menu, Left-drag wire, Auto-hide stub |
+| 3.10.7 | Triggers 獨立節點類別 | ✅ | ✅ | Start / Webhook 等專屬類別排在首位 |
 
 ## 4. Bug Fixes
 
@@ -184,3 +186,14 @@
 | 5.6 | Mini-map 互動優化 | ⬜ | ⬜ | |
 | 5.7 | 畫布 Snap-to-Grid | ⬜ | ⬜ | 對齊輔助 |
 | 5.8 | 邊 Label 編輯 | ⬜ | ⬜ | Signal 標籤 |
+| 5.9 | Manual Trigger 起始節點 | 🔄 | ⬜ | 手動觸發作為 workflow 入口 |
+
+### 3.11 畫布 UI 優化 (2026-02-23)
+
+| # | 功能 | 實作狀態 | User 確認 | 備註 |
+|---|------|---------|-----------|------|
+| 3.11.1 | 麵包屑 ProjectName / WorkflowName | ✅ | ⬜ | 點擊 project name 可返回 |
+| 3.11.2 | 移除 Personal / Executions | ✅ | ⬜ | 非功能性元素清理 |
+| 3.11.3 | Device Refresh 按鈕 | ✅ | ⬜ | RefreshCw icon |
+| 3.11.4 | Handle 大小統一 (10px) | ✅ | ⬜ | Input/Output 一致 |
+| 3.11.5 | Edge 對齊與細化 | ✅ | ⬜ | Handle 置中點 + 3px gap |

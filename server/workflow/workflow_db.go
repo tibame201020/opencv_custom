@@ -43,9 +43,9 @@ func SaveWorkflow(wf *Workflow) error {
 	for _, node := range wf.Nodes {
 		configJSON, _ := json.Marshal(node.Config)
 		_, err = tx.Exec(`
-			INSERT INTO nodes (id, workflow_id, name, type, config, x, y)
-			VALUES (?, ?, ?, ?, ?, ?, ?)
-		`, node.ID, wf.ID, node.Name, node.Type, string(configJSON), node.X, node.Y)
+			INSERT INTO nodes (id, workflow_id, name, type, config, x, y, disabled)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		`, node.ID, wf.ID, node.Name, node.Type, string(configJSON), node.X, node.Y, node.Disabled)
 		if err != nil {
 			return fmt.Errorf("failed to save node %s: %v", node.ID, err)
 		}
@@ -90,7 +90,7 @@ func GetWorkflow(id string) (*Workflow, error) {
 
 	// 2. 讀取節點 (Assuming order of insertion/query matters? Usually Z-index logic should be explicit, but for now we rely on DB order if any, or just array)
 	// We might want to add ORDER BY id or a new 'z_index' column if strictly needed. For now, rely on default scan order.
-	rows, err := db.DB.Query("SELECT id, name, type, config, x, y FROM nodes WHERE workflow_id = ?", id)
+	rows, err := db.DB.Query("SELECT id, name, type, config, x, y, disabled FROM nodes WHERE workflow_id = ?", id)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,8 @@ func GetWorkflow(id string) (*Workflow, error) {
 		node := &WorkflowNode{}
 		var configStr sql.NullString
 		var nx, ny sql.NullFloat64
-		err := rows.Scan(&node.ID, &node.Name, &node.Type, &configStr, &nx, &ny)
+		var disabled bool
+		err := rows.Scan(&node.ID, &node.Name, &node.Type, &configStr, &nx, &ny, &disabled)
 		if err != nil {
 			return nil, fmt.Errorf("node scan error: %v", err)
 		}
@@ -117,6 +118,7 @@ func GetWorkflow(id string) (*Workflow, error) {
 		if ny.Valid {
 			node.Y = ny.Float64
 		}
+		node.Disabled = disabled
 
 		wf.Nodes = append(wf.Nodes, node)
 	}

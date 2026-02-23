@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Handle, Position, type NodeProps, type Node, useHandleConnections, useStore } from '@xyflow/react';
 import {
-    Check, Loader2, Play, Eye, EyeOff, Trash2, MoreHorizontal, Plus, AlertTriangle, Zap
+    Check, Loader2, Eye, EyeOff, Trash2, Plus, AlertTriangle, Zap
 } from 'lucide-react';
 import clsx from 'clsx';
 import { getNodeDef } from '../../workflow/nodeRegistry';
@@ -80,25 +80,26 @@ const N8nOutputHandle = ({ source, nodeId, index, total, type }: { source: any, 
             <div
                 ref={handleRef}
                 className={clsx(
-                    "relative w-3.5 h-3.5 rounded-full bg-white border hover:scale-110 transition-all shadow-sm cursor-crosshair flex items-center justify-center",
+                    "relative w-2.5 h-2.5 rounded-full bg-white border hover:scale-110 transition-all shadow-sm cursor-crosshair flex items-center justify-center",
                     isConnected ? "border-gray-400 bg-gray-50" : "border-gray-400 hover:border-primary"
                 )}
             >
                 {/* Inner dot for unconnected state */}
-                {!isConnected && <div className="w-1.5 h-1.5 bg-gray-400 rounded-full" />}
+                {!isConnected && <div className="w-1 h-1 bg-gray-400 rounded-full" />}
 
                 <Handle
                     type="source"
                     position={Position.Right}
                     id={source.id}
-                    className="!opacity-0 !absolute !inset-0 !w-full !h-full !border-0 cursor-crosshair"
+                    className="!opacity-0 !absolute !border-0 !rounded-none cursor-crosshair"
+                    style={{ top: '50%', right: '-3px', transform: 'translateY(-50%)', width: 2, height: 2 }}
                 />
             </div>
 
             {/* Unconnected STUB (Line + Plus) - Persistent when not connected AND not dragging from it */}
             {!isConnected && !isConnecting && (
                 <div
-                    className="absolute left-[6px] flex items-center pointer-events-none group-hover/stub:pointer-events-auto nodrag opacity-0 group-hover/stub:opacity-100 transition-opacity duration-200 pl-1"
+                    className="absolute left-[4px] flex items-center pointer-events-none group-hover/stub:pointer-events-auto nodrag opacity-0 group-hover/stub:opacity-100 transition-opacity duration-200 pl-1"
                     onMouseDown={onStubMouseDown}
                     onMouseUp={onStubMouseUp}
                 >
@@ -235,7 +236,8 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
                             type="target"
                             position={Position.Left}
                             isConnectableStart={false}
-                            className="!opacity-0 !w-full !h-full !border-0"
+                            className="!opacity-0 !border-0 !rounded-none"
+                            style={{ top: '50%', left: '-3px', transform: 'translateY(-50%)', width: 2, height: 2 }}
                         />
                     </div>
                 )}
@@ -288,23 +290,13 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
 
             {/* 3. Floating Toolbar (Above Node) */}
             <div className={clsx(
-                "absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1 rounded-full bg-white shadow-xl border border-gray-100 z-50 transition-all duration-200",
+                "absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-0.5 px-1 py-0.5 rounded-full bg-white/60 backdrop-blur-sm border border-gray-200/50 z-50 transition-all duration-200",
                 (hovered || selected) ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-95 pointer-events-none"
             )}>
                 <button
-                    className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-primary transition-colors"
-                    title="Execute Step"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        window.dispatchEvent(new CustomEvent('workflow-node-execute', { detail: { nodeId: id } }));
-                    }}
-                >
-                    <Play size={14} fill="currentColor" />
-                </button>
-                <button
                     className={clsx(
-                        "p-1.5 rounded-full hover:bg-gray-100 transition-colors",
-                        isDisabled ? "text-red-500 hover:text-red-600" : "text-gray-500 hover:text-primary"
+                        "p-1 rounded-full hover:bg-gray-200/60 transition-colors",
+                        isDisabled ? "text-red-400 hover:text-red-500" : "text-gray-400 hover:text-primary"
                     )}
                     title={isDisabled ? "Enable Step" : "Disable Step"}
                     onClick={(e) => {
@@ -312,31 +304,17 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
                         window.dispatchEvent(new CustomEvent('workflow-node-toggle', { detail: { nodeId: id, disabled: !isDisabled } }));
                     }}
                 >
-                    {isDisabled ? <EyeOff size={14} /> : <Eye size={14} />}
+                    {isDisabled ? <EyeOff size={11} /> : <Eye size={11} />}
                 </button>
                 <button
-                    className="p-1.5 rounded-full hover:bg-red-50 text-gray-500 hover:text-red-500 transition-colors"
+                    className="p-1 rounded-full hover:bg-red-100/60 text-gray-400 hover:text-red-500 transition-colors"
                     title="Delete Step"
                     onClick={(e) => {
                         e.stopPropagation();
                         window.dispatchEvent(new CustomEvent('workflow-node-delete', { detail: { nodeId: id } }));
                     }}
                 >
-                    <Trash2 size={14} />
-                </button>
-                <div className="w-px h-3 bg-gray-200 mx-0.5" />
-                <button
-                    className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-primary transition-colors"
-                    title="More Actions"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        window.dispatchEvent(new CustomEvent('workflow-context-menu', {
-                            detail: { type: 'node', x: rect.right, y: rect.bottom, id, data }
-                        }));
-                    }}
-                >
-                    <MoreHorizontal size={14} />
+                    <Trash2 size={11} />
                 </button>
             </div>
         </div>

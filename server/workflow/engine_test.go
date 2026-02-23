@@ -266,3 +266,101 @@ func TestWorkflowFailurePersistence(t *testing.T) {
 		t.Errorf("Step status expected error, got %s", status)
 	}
 }
+
+// ── Test: Manual Trigger as Start Node ──────────────────
+func TestManualTriggerStartNode(t *testing.T) {
+	wf := &Workflow{
+		ID: "trigger_test",
+		Nodes: []*WorkflowNode{
+			// manual_trigger should be auto-detected as start node
+			{
+				ID:   "trigger1",
+				Name: "Manual Trigger",
+				Type: "manual_trigger",
+			},
+			CreateConvertNode("n1", "appendExcl", func(input interface{}) interface{} {
+				m := input.(map[string]interface{})
+				val, _ := m["value"].(string)
+				return val + "!"
+			}),
+		},
+		Edges: []WorkflowEdge{
+			{ID: "e1", FromNodeID: "trigger1", ToNodeID: "n1", Signal: "success"},
+		},
+		// Note: No StartNodeID set — engine should find manual_trigger automatically
+	}
+
+	// Wire the registered executor so manual_trigger node gets its executor
+	WireBuiltinExecutors(wf, nil, nil)
+
+	engine := NewFlowEngine(wf)
+	result, err := engine.Execute(context.Background(), "hello")
+	if err != nil {
+		t.Fatalf("Workflow failed: %v", err)
+	}
+
+	// Should have 2 steps: trigger + convert
+	if len(result.ExecutionPath) != 2 {
+		t.Fatalf("Expected 2 steps, got %d", len(result.ExecutionPath))
+	}
+
+	// First step should be the trigger
+	if result.ExecutionPath[0].NodeID != "trigger1" {
+		t.Errorf("Expected first step to be trigger1, got %s", result.ExecutionPath[0].NodeID)
+	}
+
+	// Final output should be the converted value
+	outData := result.Output["success"]
+	finalVal := getFirstValue(outData)
+	if finalVal != "hello!" {
+		t.Errorf("Expected 'hello!', got '%v'", finalVal)
+	}
+}
+
+// ── Test: Disabled Node Skip ─────────────────────────────
+func TestDisabledNodeSkip(t *testing.T) {
+	wf := &Workflow{
+		ID:          "disabled_test",
+		StartNodeID: "start",
+		Nodes: []*WorkflowNode{
+			CreateConvertNode("start", "start_node", func(input interface{}) interface{} {
+				return "init"
+			}),
+			{
+				ID:       "disabled_node",
+				Name:     "Disabled Node",
+				Type:     "convert", // Using a known type
+				Disabled: true,
+				// Even if executor is mapped, it should be skipped
+			},
+			CreateConvertNode("end", "end_node", func(input interface{}) interface{} {
+				m := input.(map[string]interface{})
+				val, _ := m["value"].(string)
+				return val + "_end"
+			}),
+		},
+		Edges: []WorkflowEdge{
+			{ID: "e1", FromNodeID: "start", ToNodeID: "disabled_node", Signal: "success"},
+			{ID: "e2", FromNodeID: "disabled_node", ToNodeID: "end", Signal: "success"},
+		},
+	}
+
+	WireBuiltinExecutors(wf, nil, nil)
+	engine := NewFlowEngine(wf)
+
+	result, err := engine.Execute(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("Workflow execution failed: %v", err)
+	}
+
+	// ExecutionPath should include start, disabled_node (because we emit running/success), and end
+	if len(result.ExecutionPath) != 3 {
+		t.Fatalf("Expected 3 steps, got %d", len(result.ExecutionPath))
+	}
+
+	// The output from start ("init") should pass through disabled_node to end, resulting in "init_end"
+	finalVal := getFirstValue(result.Output["success"])
+	if finalVal != "init_end" {
+		t.Errorf("Expected 'init_end', got '%v'", finalVal)
+	}
+}

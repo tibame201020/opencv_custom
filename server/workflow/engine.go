@@ -48,6 +48,7 @@ type WorkflowNode struct {
 	Name        string                                            `json:"name"`
 	Type        NodeType                                          `json:"type"`
 	Config      map[string]interface{}                            `json:"config"`
+	Disabled    bool                                              `json:"disabled"`
 	Executor    func(ctx context.Context, arg NodeArg) NodeOutput `json:"-"`
 	SubWorkflow *Workflow
 	X           float64 `json:"x"`
@@ -126,12 +127,20 @@ type ExecutionResult struct {
 	ExecutionPath []ExecutionStep          `json:"executionPath"`
 }
 
-// findStartNode 自動尋找起始節點（沒有入邊的節點）
+// findStartNode 自動尋找起始節點
 func (e *FlowEngine) findStartNode() string {
 	if e.Workflow.StartNodeID != "" {
 		return e.Workflow.StartNodeID
 	}
 
+	// Priority: find manual_trigger node
+	for _, node := range e.Workflow.Nodes {
+		if string(node.Type) == "manual_trigger" {
+			return node.ID
+		}
+	}
+
+	// Fallback: 沒有入邊的節點，Y 最小的優先
 	hasIncoming := make(map[string]bool)
 	for _, edge := range e.Workflow.Edges {
 		hasIncoming[edge.ToNodeID] = true
@@ -612,26 +621,38 @@ func (e *FlowEngine) Execute(ctx context.Context, input interface{}) (*Execution
 
 		startTime := time.Now()
 		var nodeOutput NodeOutput
-
-		// Emit 'running' status before execution
-		if e.OnStep != nil {
-			e.OnStep(ExecutionStep{
-				NodeID:    node.ID,
-				NodeName:  node.Name,
-				NodeType:  string(node.Type),
-				Status:    "running",
-				StartTime: startTime,
-			})
-		}
-
-		if node.Type == NodeSubWorkflow && node.SubWorkflow != nil {
-			// Subworkflow logic (stub)
+		if node.Disabled {
+			// Skip disabled nodes by simply passing the input data to 'success' output
+			if e.OnStep != nil {
+				e.OnStep(ExecutionStep{
+					NodeID:    node.ID,
+					NodeName:  node.Name,
+					NodeType:  string(node.Type),
+					Status:    "running", // emit running then success to keep the flow visual
+					StartTime: startTime,
+				})
+			}
 			nodeOutput = singleOutput("success", currentData)
-		} else if node.Executor != nil {
-			nodeOutput = node.Executor(ctx, arg)
 		} else {
-			// No executor? Skip?
-			continue
+			if e.OnStep != nil {
+				e.OnStep(ExecutionStep{
+					NodeID:    node.ID,
+					NodeName:  node.Name,
+					NodeType:  string(node.Type),
+					Status:    "running",
+					StartTime: startTime,
+				})
+			}
+
+			if node.Type == NodeSubWorkflow && node.SubWorkflow != nil {
+				// Subworkflow logic (stub)
+				nodeOutput = singleOutput("success", currentData)
+			} else if node.Executor != nil {
+				nodeOutput = node.Executor(ctx, arg)
+			} else {
+				// No executor? Skip?
+				continue
+			}
 		}
 
 		endTime := time.Now()
