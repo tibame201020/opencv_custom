@@ -154,14 +154,14 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
 
     return (
         <div
-            className="group relative flex items-center font-sans z-10"
+            className="group relative flex flex-col items-center font-sans z-10 w-[120px]"
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
-            {/* 1. Main Node Card (Horizontal Layout) */}
+            {/* 1. Main Node Box (Square Layout) */}
             <div
                 className={clsx(
-                    "relative flex items-center gap-3 w-full min-w-[160px] max-w-[240px] px-2.5 py-2.5 bg-white transition-all duration-200 z-10",
+                    "relative flex items-center justify-center w-[54px] h-[54px] bg-white transition-all duration-200 z-10",
                     "rounded-xl border-[1.2px]",
                     selected ? "border-primary ring-2 ring-primary/20 shadow-lg scale-105" : "border-gray-200 shadow-sm hover:shadow hover:border-gray-300",
                     isSuccess && !isRunning && "border-[#4fcc5d]/50 bg-[#4fcc5d]/5",
@@ -178,8 +178,8 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
                     </>
                 )}
 
-                {/* Left Side: Icon Container */}
-                <div className="relative w-8 h-8 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
+                {/* Icon Container */}
+                <div className="relative w-8 h-8 border-gray-100 flex items-center justify-center shrink-0">
                     {data.imagePreview ? (
                         <img
                             src={data.imagePreview as string}
@@ -224,37 +224,18 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
                     </div>
                 </div>
 
-                {/* Right Side: Text Area */}
-                <div className="flex flex-col flex-1 min-w-0 pr-1">
-                    <span className="text-xs font-semibold text-gray-800 tracking-tight truncate w-full">
-                        {(data.label as string) || def?.label || 'Node'}
-                    </span>
+                {/* End of Main Node Box */}
 
-                    {((data.subtitle as string) || def?.description) && (
-                        <span className="text-[10px] text-gray-400 font-medium tracking-wide truncate w-full mt-0.5" title={typeof ((data.subtitle as string) || def?.description) === 'string' ? ((data.subtitle as string) || def?.description) : ''}>
-                            {(() => {
-                                const sub = (data.subtitle as string) || def?.description || nodeType;
-                                if (typeof sub === 'object') return JSON.stringify(sub);
-                                return sub;
-                            })()}
-                        </span>
-                    )}
-                </div>
-
-
-
-                {/* Warning Indicator (Top-Right Corner of entire card) */}
+                {/* Warning Indicator (Top-Right Corner of the box) */}
                 {isWarning && !isRunning && !isError && (
                     <div className="absolute -top-2 -right-2 z-20 bg-white rounded-full border border-gray-200 p-0.5 shadow-sm text-yellow-500" title="Configuration Warning">
                         <AlertTriangle size={12} fill="currentColor" className="text-white stroke-yellow-500" />
                     </div>
                 )}
 
-
-
                 {/* Input Handle (Left Edge) */}
                 {!isTrigger && (
-                    <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white border border-gray-400 rounded-full z-20 shadow-sm flex items-center justify-center">
+                    <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white border border-gray-400 rounded-full z-20 flex items-center justify-center">
                         <div className="w-1 h-1 bg-gray-400 rounded-full" />
                         <Handle
                             type="target"
@@ -297,6 +278,27 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
                     ));
                 })()}
             </div>
+
+            {/* 2. Text Area (Below the box) */}
+            <div className="flex flex-col items-center mt-2 w-full px-1">
+                <span className="text-xs font-bold text-gray-700 tracking-tight truncate w-full text-center drop-shadow-sm">
+                    {(data.label as string) || def?.label || 'Node'}
+                </span>
+
+                {((data.subtitle as string) || def?.description) && (
+                    <span className="text-[10px] text-gray-400 font-medium tracking-wide truncate w-full mt-0.5 text-center" title={typeof ((data.subtitle as string) || def?.description) === 'string' ? ((data.subtitle as string) || def?.description) : ''}>
+                        {(() => {
+                            const sub = (data.subtitle as string) || def?.description || nodeType;
+                            if (typeof sub === 'object') return JSON.stringify(sub);
+                            return sub;
+                        })()}
+                    </span>
+                )}
+            </div>
+
+
+
+
 
 
             {/* 3. Floating Toolbar (Above Node) */}
