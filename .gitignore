@@ -173,3 +173,11 @@ server/server.test.exe
 
 # Logs
 *.log
+
+# Phase 4 Cleanup Additions
+*.md5
+test_output.txt
+
+# Frontend specific additions
+frontend/allure-results/
+frontend/package.json.md5
