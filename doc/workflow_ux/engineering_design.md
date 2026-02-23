@@ -1,43 +1,61 @@
-# Engineering Design: Workflow UX Optimization
+# Engineering Design: Intrinsic Branching for Vision Nodes
 
-## Objective
-Implement **Static Schema Resolution** for the Variable Picker to allow users to reference node outputs (e.g., `found`) before the workflow has executed.
+## 1. Overview
+This document outlines the changes required to support intrinsic branching (Found / Not Found paths) for `Find Image` and `Wait Image` nodes, eliminating the need for auxiliary `If Condition` nodes.
 
-## Involved Files
-1.  `frontend/src/components/ExpressionInput.tsx`: Primary logic change.
-2.  `frontend/src/workflow/nodeRegistry.ts`: Source of truth for static outputs.
+## 2. Frontend Changes (`frontend/src/workflow/nodeRegistry.ts`)
+We will add `handleConfig` to the `find_image` and `wait_image` node definitions.
 
-## Implementation Details
-
-### `ExpressionInput.tsx` Refactor
-
-**Current Logic:**
+### Before:
 ```typescript
-const nodeResults = new Map<string, any>();
-executionState.forEach(step => {
-    nodeResults.set(step.nodeId, step.output);
-});
+{
+    type: 'find_image',
+    // ...
+    outputs: [ ... ],
+}
 ```
 
-**New Logic:**
-1.  Import `getNodeDef` from `../workflow/nodeRegistry`.
-2.  Iterate over `nodes` (available in props).
-3.  For each node:
-    *   Check if `executionState` has data.
-    *   If **Yes**, use it.
-    *   If **No**, fetch `nodeDef` using `node.type`.
-    *   Construct a "Static Schema Object" from `nodeDef.outputs`.
-        *   Example: `outputs: [{key: 'found'}]` -> `{ found: '(boolean)' }`.
-4.  Display these keys in the picker.
+### After:
+```typescript
+{
+    type: 'find_image',
+    // ...
+    outputs: [ ... ],
+    handleConfig: {
+        sources: [
+            { id: 'true', label: 'Found' },
+            { id: 'false', label: 'Not Found' },
+        ],
+    },
+}
+```
+*(Same for `wait_image`)*
 
-### Risks
-*   **Dynamic Outputs:** Some nodes (like `Code`) have dynamic outputs that `nodeRegistry` cannot predict. These will remain empty until run.
-*   **Schema Drift:** If `nodeRegistry` is outdated compared to Python code, the picker might show wrong keys.
+## 3. Backend Changes (`server/workflow/engine.go`)
+We will modify the `createBridgeExecutor` function to inspect the execution result and route flow based on the `found` property.
 
-## Verification Plan
-1.  **Browser:** Build frontend (`npm run build`). Check for TS errors.
-2.  **Runtime:** Start backend/frontend. The change is purely frontend, so backend logic is unaffected.
-3.  **Playwright:** The existing test can be updated to *verify the picker contains items*.
+### Current Logic:
+Always returns `singleOutput("success", resultItems)`.
 
-## Rollback Strategy
-Revert `frontend/src/components/ExpressionInput.tsx` to previous commit.
+### New Logic:
+1.  Initialize `outputs` map.
+2.  Iterate over input items.
+3.  Execute bridge call.
+4.  Determine `signal`:
+    *   Default: `"success"`
+    *   If `nodeType` is `find_image` or `wait_image`:
+        *   Check `newItem.JSON["found"]`.
+        *   If `true` -> set signal `"true"`.
+        *   If `false` -> set signal `"false"`.
+5.  Append item to `outputs[signal]`.
+6.  Return `NodeOutput{ Outputs: outputs }`.
+
+## 4. Risks & Mitigations
+*   **Backward Compatibility:** Existing `find_image` nodes in saved workflows might rely on the implicit "success" output.
+    *   *Risk:* High for existing users (if any).
+    *   *Mitigation:* For this task (verification/optimization), we accept the breaking change. Alternatively, we could emit to "success" as a fallback if no "true"/"false" edges exist, but the engine doesn't know about edges easily inside the executor.
+    *   *Decision:* Implement clean "true"/"false" signals.
+
+## 5. Verification Plan
+1.  **Unit Test:** `server/workflow/branching_test.go` mocking the bridge.
+2.  **Manual Verification:** Create a workflow with the new structure and verify execution logs.
