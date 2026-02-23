@@ -388,7 +388,7 @@ func createBridgeExecutor(node *WorkflowNode, rawConfig map[string]interface{}, 
 			return singleOutput("success", ExecutionData{{JSON: map[string]interface{}{"stub": true}}})
 		}
 
-		var resultItems ExecutionData
+		outputs := make(map[string]ExecutionData)
 
 		// Platform/Action nodes must execute at least once even with empty input.
 		// If no input items, create one empty item to ensure the bridge call fires.
@@ -463,10 +463,23 @@ func createBridgeExecutor(node *WorkflowNode, rawConfig map[string]interface{}, 
 					logf("[Workflow] [%s] Done", nodeName)
 				}
 			}
-			resultItems = append(resultItems, newItem)
+
+			// Branching Logic for Vision Nodes
+			signal := "success"
+			if nodeType == "find_image" || nodeType == "wait_image" {
+				if found, ok := newItem.JSON["found"].(bool); ok {
+					if found {
+						signal = "true"
+					} else {
+						signal = "false"
+					}
+				}
+			}
+
+			outputs[signal] = append(outputs[signal], newItem)
 		}
 
-		return singleOutput("success", resultItems)
+		return NodeOutput{Outputs: outputs}
 	}
 }
 

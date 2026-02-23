@@ -224,6 +224,12 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
             { key: 'x', label: 'X', type: 'number' },
             { key: 'y', label: 'Y', type: 'number' },
         ],
+        handleConfig: {
+            sources: [
+                { id: 'true', label: 'Found' },
+                { id: 'false', label: 'Not Found' },
+            ],
+        },
     },
     {
         type: 'click_image',
@@ -264,6 +270,12 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
             { key: 'x', label: 'X', type: 'number' },
             { key: 'y', label: 'Y', type: 'number' },
         ],
+        handleConfig: {
+            sources: [
+                { id: 'true', label: 'Found' },
+                { id: 'false', label: 'Not Found' },
+            ],
+        },
     },
     {
         type: 'wait_click_image',
