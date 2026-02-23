@@ -154,15 +154,15 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
     return (
         <div
             className="group relative flex flex-col items-center font-sans"
-            style={{ width: '72px' }}
+            style={{ width: '54px' }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
             {/* 1. Node Card */}
             <div
                 className={clsx(
-                    "relative flex items-center justify-center w-[72px] h-[72px] bg-white transition-all duration-200 z-10",
-                    "rounded-2xl border-[1.5px]",
+                    "relative flex items-center justify-center w-[54px] h-[54px] bg-white transition-all duration-200 z-10",
+                    "rounded-xl border-[1.5px]",
                     selected ? "border-primary ring-2 ring-primary/20 shadow-lg scale-105" : "border-gray-200 shadow hover:shadow-md hover:border-gray-300",
                     isSuccess && !isRunning && "border-[#4fcc5d] bg-[#4fcc5d]/5",
                     isRunning && "border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)] bg-blue-50/10",
@@ -185,17 +185,17 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
                 )}
 
                 {/* Icon Section */}
-                <div className="relative w-10 h-10 flex items-center justify-center transition-colors text-gray-600">
+                <div className="relative w-8 h-8 flex items-center justify-center transition-colors text-gray-600">
                     {data.imagePreview ? (
                         <img
                             src={data.imagePreview as string}
                             alt="Node Preview"
-                            className="w-full h-full object-contain rounded-[8px]"
+                            className="w-full h-full object-contain rounded-[6px]"
                             loading="lazy"
                             draggable={false}
                         />
                     ) : (
-                        IconComp ? <IconComp size={32} strokeWidth={1.5} /> : <div className="text-[10px] font-bold">Node</div>
+                        IconComp ? <IconComp size={24} strokeWidth={1.5} /> : <div className="text-[9px] font-bold">Node</div>
                     )}
                 </div>
 
@@ -229,8 +229,8 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
 
                 {/* Input Handle (Left Edge) */}
                 {!isTrigger && (
-                    <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white border border-gray-400 rounded-full z-20 shadow-sm flex items-center justify-center">
-                        <div className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
+                    <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-white border border-gray-400 rounded-full z-20 shadow-sm flex items-center justify-center">
+                        <div className="w-1 h-1 bg-gray-400 rounded-full" />
                         <Handle
                             type="target"
                             position={Position.Left}
@@ -273,14 +273,14 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
             </div>
 
             {/* Floating Text Section (Bottom) */}
-            <div className="absolute top-[80px] left-1/2 -translate-x-1/2 flex flex-col items-center min-w-[140px] pointer-events-none z-20">
+            <div className="absolute top-[60px] left-1/2 -translate-x-1/2 flex flex-col items-center min-w-[140px] pointer-events-none z-20">
                 <span className={clsx(
-                    "text-[13px] font-bold text-center leading-tight mb-0.5",
+                    "text-[12px] font-bold text-center leading-tight mb-0.5",
                     selected ? "text-primary px-1.5 bg-white/90 rounded-md backdrop-blur-sm shadow-sm" : "text-gray-700"
                 )} style={selected ? {} : { textShadow: '0px 1px 2px rgba(255,255,255,0.8), 0px -1px 2px rgba(255,255,255,0.8)' }}>
                     {(data.label as string) || def?.label || 'Node'}
                 </span>
-                <span className="text-[11px] text-gray-500 text-center font-medium max-w-[160px] truncate bg-white/60 px-1 rounded-sm">
+                <span className="text-[10px] text-gray-500 text-center font-medium max-w-[160px] truncate bg-white/60 px-1 rounded-sm">
                     {(data.subtitle as string) || def?.description || nodeType}
                 </span>
             </div>
