@@ -22,8 +22,6 @@ const N8nOutputHandle = ({ source, nodeId, index, total }: { source: any, nodeId
     );
 
     const handleRef = useRef<HTMLDivElement>(null);
-    const clickStartRef = useRef<number>(0);
-    const mouseStartRef = useRef<{ x: number, y: number }>({ x: 0, y: 0 });
 
     // Distribute handles vertically on the right
     const top = total === 1 ? '50%' : `${((index + 1) * 100) / (total + 1)}%`;
@@ -31,10 +29,6 @@ const N8nOutputHandle = ({ source, nodeId, index, total }: { source: any, nodeId
     const onStubMouseDown = (e: React.MouseEvent) => {
         // ONLY Allow Left Click (button 0)
         if (e.button !== 0) return;
-
-        // Record start time and position for click detection
-        clickStartRef.current = Date.now();
-        mouseStartRef.current = { x: e.clientX, y: e.clientY };
 
         // Forward the mousedown event to the actual handle to trigger React Flow connection dragging
         if (handleRef.current) {
@@ -57,18 +51,10 @@ const N8nOutputHandle = ({ source, nodeId, index, total }: { source: any, nodeId
     };
 
     const onStubMouseUp = (e: React.MouseEvent) => {
-        const duration = Date.now() - clickStartRef.current;
-        const dist = Math.sqrt(
-            Math.pow(e.clientX - mouseStartRef.current.x, 2) +
-            Math.pow(e.clientY - mouseStartRef.current.y, 2)
-        );
-
-        if (duration < 250 && dist < 5) {
-            e.stopPropagation();
-            window.dispatchEvent(new CustomEvent('workflow-quick-add', {
-                detail: { x: 0, y: 0, sourceNodeId: nodeId, sourceHandleId: source.id }
-            }));
-        }
+        e.stopPropagation();
+        window.dispatchEvent(new CustomEvent('workflow-quick-add', {
+            detail: { x: 0, y: 0, sourceNodeId: nodeId, sourceHandleId: source.id }
+        }));
     };
 
     // Show label for multi-output nodes, or when it's not a generic "success"
