@@ -5,11 +5,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 ### Removed — 2026-02-23 (Cleanup Milestone)
-- **Project**: Conducted comprehensive "noise file" cleanup (Phase 1 & 2).
-  - Removed unused screenshots and verification images (`edge_routing_verification.png`, `error_screenshot.png`, `server/robot-snapshot.png`, etc.).
-  - Cleaned up obsolete design specifications (`N8N_UI_SPEC` V1/V2, `INTERVIEW_NOTES.md`).
+- **Project**: Conducted comprehensive "noise file" cleanup (Phase 1, 2, & 3).
+  - Removed all design-related documentation directories (`design_docs/`, `design_process/`, `doc/`, `docs/`) and specifications (`N8N_UI_SPEC_V3.md`) to minimize development noise.
+  - Cleaned up unused screenshots and verification images across the repository.
   - Removed unused test assets in `core/assets/` and legacy Java PoC files.
-  - Permanently deleted unreferenced `screenshots_old` and `test-results` directories.
   - Removed multiple unmanaged binary outputs (`script-platform.exe`, `server.exe`, etc.) and local test databases (`workflows.db`).
 - **Security**: Strengthened `.gitignore` to prevent future accidental commits of binary builds, logs, and local databases.
 
