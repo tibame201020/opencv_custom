@@ -154,18 +154,17 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
 
     return (
         <div
-            className="group relative flex flex-col items-center font-sans"
-            style={{ width: '42px' }}
+            className="group relative flex items-center font-sans z-10"
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
-            {/* 1. Node Card */}
+            {/* 1. Main Node Card (Horizontal Layout) */}
             <div
                 className={clsx(
-                    "relative flex items-center justify-center w-[42px] h-[42px] bg-white transition-all duration-200 z-10",
-                    "rounded-lg border-[1.2px]",
-                    selected ? "border-primary ring-2 ring-primary/20 shadow-lg scale-105" : "border-gray-200 shadow hover:shadow-md hover:border-gray-300",
-                    isSuccess && !isRunning && "border-[#4fcc5d] bg-[#4fcc5d]/5",
+                    "relative flex items-center gap-3 w-full min-w-[160px] max-w-[240px] px-2.5 py-2.5 bg-white transition-all duration-200 z-10",
+                    "rounded-xl border-[1.2px]",
+                    selected ? "border-primary ring-2 ring-primary/20 shadow-lg scale-105" : "border-gray-200 shadow-sm hover:shadow hover:border-gray-300",
+                    isSuccess && !isRunning && "border-[#4fcc5d]/50 bg-[#4fcc5d]/5",
                     isRunning && "border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)] bg-blue-50/10",
                     isError && "border-red-500 bg-red-50/10",
                     isDisabled && "opacity-60 grayscale bg-gray-50"
@@ -174,52 +173,77 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
                 {/* Border Flow & Revolving Dot for Running state */}
                 {isRunning && (
                     <>
-                        <div className="n8n-node-running-border" />
+                        <div className="n8n-node-running-border rounded-xl" />
                         <div className="n8n-node-dot" />
                     </>
                 )}
-                {/* Trigger Icon Overlay (Lightning Bolt) - if applicable */}
-                {isTrigger && (
-                    <div className="absolute -top-2.5 -left-2.5 z-20 bg-white border border-gray-200 rounded-full p-1 shadow-sm text-yellow-500">
-                        <Zap size={12} fill="currentColor" />
-                    </div>
-                )}
 
-                {/* Icon Section */}
-                <div className="relative w-6 h-6 flex items-center justify-center transition-colors text-gray-600">
+                {/* Left Side: Icon Container */}
+                <div className="relative w-8 h-8 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
                     {data.imagePreview ? (
                         <img
                             src={data.imagePreview as string}
                             alt="Node Preview"
-                            className="w-full h-full object-contain rounded-[4px]"
+                            className="w-full h-full object-contain rounded-md"
                             loading="lazy"
                             draggable={false}
                         />
                     ) : (
-                        IconComp ? <IconComp size={16} strokeWidth={1.5} /> : <div className="text-[8px] font-bold">Node</div>
+                        <div className={clsx(
+                            "transition-colors",
+                            isSuccess ? "text-emerald-500" : isError ? "text-red-500" : isRunning ? "text-blue-500" : "text-gray-500"
+                        )}>
+                            {IconComp ? <IconComp size={18} strokeWidth={1.5} /> : <div className="text-[10px] font-bold">Node</div>}
+                        </div>
+                    )}
+
+                    {/* Trigger Lightning Indicator */}
+                    {isTrigger && (
+                        <div className="absolute -top-1.5 -left-1.5 z-20 bg-yellow-100 rounded-full border border-yellow-200 p-0.5 shadow-sm text-yellow-600">
+                            <Zap size={10} fill="currentColor" />
+                        </div>
+                    )}
+
+                    {/* Status Badges Overlay on Icon */}
+                    <div className="absolute -bottom-1 -right-1 z-30 flex">
+                        {isRunning && (
+                            <div className="w-3.5 h-3.5 bg-blue-500 rounded-full flex items-center justify-center shadow-sm">
+                                <Loader2 size={10} strokeWidth={3} className="text-white animate-spin" />
+                            </div>
+                        )}
+                        {isSuccess && !isRunning && (
+                            <div className="w-3.5 h-3.5 bg-emerald-500 rounded-full flex items-center justify-center shadow-sm backdrop-blur-sm">
+                                <Check size={10} strokeWidth={4} className="text-white" />
+                            </div>
+                        )}
+                        {isError && !isRunning && (
+                            <div className="w-3.5 h-3.5 bg-rose-500 rounded-full flex items-center justify-center shadow-sm">
+                                <span className="text-white text-[9px] font-black leading-none mt-px">!</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Right Side: Text Area */}
+                <div className="flex flex-col flex-1 min-w-0 pr-1">
+                    <span className="text-xs font-semibold text-gray-800 tracking-tight truncate w-full">
+                        {(data.label as string) || def?.label || 'Node'}
+                    </span>
+
+                    {((data.subtitle as string) || def?.description) && (
+                        <span className="text-[10px] text-gray-400 font-medium tracking-wide truncate w-full mt-0.5" title={typeof ((data.subtitle as string) || def?.description) === 'string' ? ((data.subtitle as string) || def?.description) : ''}>
+                            {(() => {
+                                const sub = (data.subtitle as string) || def?.description || nodeType;
+                                if (typeof sub === 'object') return JSON.stringify(sub);
+                                return sub;
+                            })()}
+                        </span>
                     )}
                 </div>
 
-                {/* Status Badges (Bottom-Right Corner) */}
-                <div className="absolute -bottom-1 -right-1 z-30 flex">
-                    {isRunning && (
-                        <div className="w-[14px] h-[14px] bg-blue-500 rounded-full flex items-center justify-center shadow-sm">
-                            <Loader2 size={10} strokeWidth={3} className="text-white animate-spin" />
-                        </div>
-                    )}
-                    {isSuccess && !isRunning && (
-                        <div className="w-[14px] h-[14px] bg-[#4fcc5d] rounded-full flex items-center justify-center shadow-sm backdrop-blur-sm">
-                            <Check size={10} strokeWidth={4} className="text-white" />
-                        </div>
-                    )}
-                    {isError && !isRunning && (
-                        <div className="w-[14px] h-[14px] bg-[#ff6d5b] rounded-full flex items-center justify-center shadow-sm">
-                            <span className="text-white text-[9px] font-black leading-none mt-px">!</span>
-                        </div>
-                    )}
-                </div>
 
-                {/* Warning Indicator (Top-Right Corner) */}
+
+                {/* Warning Indicator (Top-Right Corner of entire card) */}
                 {isWarning && !isRunning && !isError && (
                     <div className="absolute -top-2 -right-2 z-20 bg-white rounded-full border border-gray-200 p-0.5 shadow-sm text-yellow-500" title="Configuration Warning">
                         <AlertTriangle size={12} fill="currentColor" className="text-white stroke-yellow-500" />
@@ -274,31 +298,11 @@ export const N8nNode = ({ data, id, type, selected }: NodeProps<Node>) => {
                 })()}
             </div>
 
-            {/* Floating Text Section (Bottom) */}
-            <div className="absolute top-[48px] left-1/2 -translate-x-1/2 flex flex-col items-center min-w-[150px] pointer-events-none z-20">
-                <span className={clsx(
-                    "text-[12px] font-semibold text-center leading-tight mb-0.5 tracking-tight",
-                    selected ? "text-primary px-2 bg-white/90 rounded border border-primary/20 backdrop-blur-sm shadow-sm" : "text-gray-700"
-                )} style={selected ? {} : { textShadow: '0 1px 2px white, 0 -1px 2px white, 1px 0 2px white, -1px 0 2px white' }}>
-                    {(data.label as string) || def?.label || 'Node'}
-                </span>
-
-                {((data.subtitle as string) || def?.description) && (
-                    <span className="text-[9px] text-gray-400 text-center font-medium max-w-[140px] truncate bg-white/40 px-1 rounded backdrop-blur-sm leading-tight mt-0.5">
-                        {(() => {
-                            const sub = (data.subtitle as string) || def?.description || nodeType;
-                            if (typeof sub === 'object') return JSON.stringify(sub);
-                            return sub;
-                        })()}
-                    </span>
-                )}
-            </div>
-
 
             {/* 3. Floating Toolbar (Above Node) */}
             <div className={clsx(
-                "absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-0.5 px-1 py-0.5 rounded-full bg-white/60 backdrop-blur-sm border border-gray-200/50 z-50 transition-all duration-200",
-                (hovered || selected) ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-95 pointer-events-none"
+                "absolute -top-[36px] left-1/2 -translate-x-1/2 flex items-center gap-1 p-1 bg-white/95 rounded-lg border border-gray-200 shadow-md transition-all duration-200 z-50 backdrop-blur-sm pointer-events-auto",
+                (hovered || selected) ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-1 scale-95 pointer-events-none"
             )}>
                 <button
                     className={clsx(

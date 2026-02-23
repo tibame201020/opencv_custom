@@ -420,7 +420,7 @@ export const WorkflowEditorView: React.FC = () => {
                                 </div>
 
                                 <button
-                                    className="btn btn-outline gap-2"
+                                    className="btn btn-primary gap-2 shadow-md hover:shadow-lg transition-all"
                                     onClick={() => setIsCreateProjectModalOpen(true)}
                                 >
                                     <FolderPlus size={18} />
@@ -431,119 +431,118 @@ export const WorkflowEditorView: React.FC = () => {
                     </div>
 
                     {/* Project/Workflow List */}
-                    <div className="flex-1 overflow-y-auto p-8 pt-4 space-y-6">
+                    <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6 bg-slate-50/50">
                         {filteredProjects.map(project => (
-                            <div key={project.id} className="card bg-base-200/50 shadow-sm border border-base-300">
-                                <div className="card-body p-4">
-                                    {/* Project Header (Root Folder) */}
-                                    <div className="flex items-center justify-between group h-9">
-                                        <div className="flex items-center gap-2 select-none cursor-default">
+                            <div key={project.id} className="bg-white rounded-xl shadow-[0_2px_12px_-4px_rgba(0,0,0,0.08)] border border-gray-200 overflow-hidden transition-all hover:shadow-md">
+
+                                {/* Project Header (Root Folder) */}
+                                <div className="flex items-center justify-between group px-5 py-4 bg-gray-50/50 border-b border-gray-100">
+                                    <div className="flex items-center gap-3 select-none cursor-default">
+                                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                                             {project.workflows && project.workflows.length > 0 ? (
-                                                <FolderOpen size={20} className="text-secondary fill-secondary/20" />
+                                                <FolderOpen size={18} className="text-primary" />
                                             ) : (
-                                                <FolderMinus size={20} className="text-secondary fill-secondary/20" />
+                                                <FolderMinus size={18} className="text-primary" />
                                             )}
-                                            <h3 className="font-bold text-lg leading-none">{project.name}</h3>
-                                            <span className="text-xs opacity-40 ml-2">({project.workflows?.length || 0})</span>
                                         </div>
-                                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button
-                                                className="btn btn-xs btn-ghost gap-1"
-                                                onClick={() => {
-                                                    setProjectSelectedId(project.id);
-                                                    setIsCreateWfModalOpen(true);
-                                                }}
-                                            >
-                                                <Plus size={14} />
-                                                New Workflow
-                                            </button>
-                                            <button
-                                                className="btn btn-xs btn-ghost gap-1"
-                                                onClick={() => {
-                                                    setAssetManagerProject({ id: project.id, name: project.name });
-                                                    setIsAssetManagerOpen(true);
-                                                }}
-                                            >
-                                                <FolderOpen size={14} /> // Reusing or using ImageIcon
-                                                Assets
-                                            </button>
-                                            <button
-                                                className="btn btn-xs btn-ghost gap-1"
-                                                onClick={() => {
-                                                    setRenameTarget({ type: 'project', id: project.id, name: project.name });
-                                                    setRenameValue(project.name);
-                                                    setIsRenameModalOpen(true);
-                                                }}
-                                            >
-                                                <FileEdit size={14} />
-                                                Rename
-                                            </button>
-                                            <button
-                                                className="btn btn-xs btn-ghost gap-1 text-error hover:bg-error/10"
-                                                onClick={() => requestDelete('project', project.id, project.name)}
-                                            >
-                                                <X size={14} />
-                                                Delete
-                                            </button>
+                                        <div>
+                                            <h3 className="font-semibold text-[15px] text-gray-800 leading-tight">{project.name}</h3>
+                                            <p className="text-[11px] text-gray-400 mt-0.5">{project.workflows?.length || 0} workflows</p>
                                         </div>
                                     </div>
+                                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                            className="btn btn-xs btn-ghost gap-1"
+                                            onClick={() => {
+                                                setProjectSelectedId(project.id);
+                                                setIsCreateWfModalOpen(true);
+                                            }}
+                                        >
+                                            <Plus size={14} />
+                                            New Workflow
+                                        </button>
+                                        <button
+                                            className="btn btn-xs btn-ghost gap-1"
+                                            onClick={() => {
+                                                setAssetManagerProject({ id: project.id, name: project.name });
+                                                setIsAssetManagerOpen(true);
+                                            }}
+                                        >
+                                            <FolderOpen size={14} /> // Reusing or using ImageIcon
+                                            Assets
+                                        </button>
+                                        <button
+                                            className="btn btn-xs btn-ghost gap-1"
+                                            onClick={() => {
+                                                setRenameTarget({ type: 'project', id: project.id, name: project.name });
+                                                setRenameValue(project.name);
+                                                setIsRenameModalOpen(true);
+                                            }}
+                                        >
+                                            <FileEdit size={14} />
+                                            Rename
+                                        </button>
+                                        <button
+                                            className="btn btn-xs btn-ghost gap-1 text-error hover:bg-error/10"
+                                            onClick={() => requestDelete('project', project.id, project.name)}
+                                        >
+                                            <X size={14} />
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
 
-                                    {/* Workflow List (File Tree) */}
-                                    <div className="mt-2 pl-2 relative">
-                                        {/* Tree guide line */}
-                                        <div className="absolute left-[9px] top-0 bottom-4 w-px bg-base-content/10"></div>
-
-                                        <div className="flex flex-col gap-1">
-                                            {project.workflows?.map((wf: any) => (
-                                                <div
-                                                    key={wf.id}
-                                                    className="flex items-center justify-between pl-6 py-1.5 pr-2 rounded hover:bg-base-300/50 transition-colors cursor-pointer group relative"
-                                                    onClick={() => {
-                                                        setProjectSelectedId(project.id);
-                                                        openWorkflow(wf.id, project.id);
-                                                    }}
-                                                >
-                                                    {/* Horizontal branch line */}
-                                                    <div className="absolute left-[9px] top-1/2 w-4 h-px bg-base-content/10"></div>
-
-                                                    <div className="flex items-center gap-3 min-w-0">
-                                                        <LayoutGrid size={16} className="text-primary/70 shrink-0" />
-                                                        <span className="truncate text-sm font-medium opacity-80 group-hover:opacity-100 transition-opacity">
-                                                            {wf.name}
-                                                        </span>
-                                                    </div>
-
-                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <span className="text-[10px] font-mono opacity-30 mr-2 hidden sm:inline-block">
-                                                            {wf.id.substring(0, 8)}
-                                                        </span>
-                                                        <button
-                                                            className="btn btn-xs btn-ghost btn-square"
-                                                            title="Rename"
-                                                            onClick={(e) => { e.stopPropagation(); setRenameTarget({ type: 'workflow', id: wf.id, name: wf.name }); setRenameValue(wf.name); setIsRenameModalOpen(true); }}
-                                                        >
-                                                            <FileEdit size={12} />
-                                                        </button>
-                                                        <button
-                                                            className="btn btn-xs btn-ghost btn-square text-error"
-                                                            title="Delete"
-                                                            onClick={(e) => { e.stopPropagation(); setDeletingWfId(wf.id); }}
-                                                        >
-                                                            <X size={12} />
-                                                        </button>
-                                                    </div>
+                                {/* Workflow List */}
+                                <div className="flex flex-col p-2">
+                                    {project.workflows?.map((wf: any) => (
+                                        <div
+                                            key={wf.id}
+                                            className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer group"
+                                            onClick={() => {
+                                                setProjectSelectedId(project.id);
+                                                openWorkflow(wf.id, project.id);
+                                            }}
+                                        >
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="w-8 h-8 rounded-md bg-white border border-gray-200 flex items-center justify-center shrink-0 shadow-sm group-hover:border-primary/30 group-hover:text-primary transition-colors">
+                                                    <LayoutGrid size={14} className="opacity-70 group-hover:opacity-100" />
                                                 </div>
-                                            ))}
-                                        </div>
-                                        {(!project.workflows || project.workflows.length === 0) && (
-                                            <div className="pl-6 py-2 text-xs opacity-40 italic relative">
-                                                <div className="absolute left-[9px] top-1/2 w-4 h-px bg-base-content/10"></div>
-                                                <span className="cursor-pointer hover:underline hover:text-primary" onClick={() => { setProjectSelectedId(project.id); setIsCreateWfModalOpen(true); }}>
-                                                    Empty (click to create)
-                                                </span>
+                                                <div className="flex flex-col min-w-0">
+                                                    <span className="truncate text-[13px] font-medium text-gray-700 group-hover:text-gray-900 transition-colors">
+                                                        {wf.name}
+                                                    </span>
+                                                    <span className="text-[10px] font-mono text-gray-400 mt-0.5">
+                                                        ID: {wf.id.substring(0, 8)}
+                                                    </span>
+                                                </div>
                                             </div>
-                                        )}
-                                    </div>
+
+                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    className="btn btn-xs btn-ghost btn-square hover:bg-white hover:shadow-sm border border-transparent hover:border-gray-200"
+                                                    title="Rename"
+                                                    onClick={(e) => { e.stopPropagation(); setRenameTarget({ type: 'workflow', id: wf.id, name: wf.name }); setRenameValue(wf.name); setIsRenameModalOpen(true); }}
+                                                >
+                                                    <FileEdit size={14} className="text-gray-500" />
+                                                </button>
+                                                <button
+                                                    className="btn btn-xs btn-ghost btn-square hover:bg-rose-50 hover:shadow-sm border border-transparent hover:border-rose-200 text-rose-500"
+                                                    title="Delete"
+                                                    onClick={(e) => { e.stopPropagation(); setDeletingWfId(wf.id); }}
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    {(!project.workflows || project.workflows.length === 0) && (
+                                        <div className="flex items-center justify-center py-6 px-4 bg-gray-50/50 rounded-lg border border-dashed border-gray-200 mt-2 mx-2 mb-2">
+                                            <span className="text-[13px] text-gray-400 cursor-pointer hover:text-primary transition-colors flex items-center gap-2" onClick={() => { setProjectSelectedId(project.id); setIsCreateWfModalOpen(true); }}>
+                                                <Plus size={14} /> Create your first workflow securely here
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}
