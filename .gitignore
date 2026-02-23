@@ -33,7 +33,6 @@ build/
 
 ### VS Code ###
 .vscode/
-/.idea/
 
 ### Python ###
 __pycache__/
@@ -41,7 +40,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-build/
 develop-eggs/
 dist/
 downloads/
@@ -64,81 +62,6 @@ htmlcov/
 venv/
 ENV/
 env/
-*.log
-*.pyc
-*.pyo
-*.pyd
-
-.agent
-
-# custom scripts
-HELP.md
-target/
-.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
-*.log
-roi.png
-
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
-.vscode/
-/.idea/
-
-### Python ###
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.venv/
-venv/
-ENV/
-env/
-*.log
 *.pyc
 *.pyo
 *.pyd
@@ -165,19 +88,15 @@ frontend/test_output.txt
 
 # Issue / Debugging Logs
 issues/
+
 # Build Artifacts
 *.exe
 script-platform
 server/server.exe
 server/server.test.exe
 
-# Logs
-*.log
-
-# Phase 4 Cleanup Additions
+# Additional Ignores
 *.md5
 test_output.txt
-
-# Frontend specific additions
-frontend/allure-results/
 frontend/package.json.md5
+debug.txt
