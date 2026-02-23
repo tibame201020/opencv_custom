@@ -71,7 +71,7 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
 
     const [edgePath] = isForward
         ? getBezierPath({
-            sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, curvature: 0.25
+            sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, curvature: 0.35
         })
         : getSmoothStepPath({
             sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, borderRadius: 16
@@ -143,22 +143,24 @@ const HoverEdge: React.FC<EdgeProps & { className?: string }> = (props) => {
             />
 
             <EdgeLabelRenderer>
-                {/* Data count pill OR Custom Text (excluding built-in true/false logic tags) */}
+                {/* Data count pill OR Custom Text (true/false) */}
                 {(() => {
-                    let displayText = '';
-                    if (isExecuted && dataCount !== undefined) {
-                        displayText = `${dataCount} item${dataCount === 1 ? '' : 's'}`;
-                    } else if (label && !['true', 'false', 'success', 'error', 'done', 'loop'].includes(label.toString().toLowerCase())) {
-                        displayText = String(label);
+                    let text = '';
+                    if (label && label.toString().toLowerCase() !== 'success' && label.toString().toLowerCase() !== 'done') {
+                        text = String(label);
                     }
+
+                    // Prioritize specific edge labels like "true" or "false" over data count
+                    const displayText = text || (isExecuted && dataCount !== undefined ? `${dataCount} item${dataCount === 1 ? '' : 's'}` : '');
 
                     if (!displayText) return null;
 
                     return (
                         <div
                             className={clsx(
-                                "absolute px-2 py-0.5 rounded border pointer-events-none z-10 text-[9px] font-medium tracking-wide transition-all duration-300 backdrop-blur-sm whitespace-nowrap",
-                                "bg-white border-gray-200 text-gray-500 shadow-sm hover:shadow"
+                                "absolute px-1.5 py-0.5 rounded border pointer-events-none z-10 text-[9.5px] font-medium tracking-wide transition-all duration-300 backdrop-blur-sm whitespace-nowrap",
+                                "bg-white border-gray-200 shadow-sm hover:shadow",
+                                ["true", "false", "0", "1"].includes(displayText.toLowerCase()) ? "text-slate-600" : "text-gray-400"
                             )}
                             style={{
                                 transform: `translate(0%, -50%) translate(${labelX}px,${labelY}px)`,
