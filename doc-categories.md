@@ -15,7 +15,7 @@
 - [Backend Engine 架構與執行邏輯 (`docs/workflow/backend_engine.md`)](docs/workflow/backend_engine.md)
   - 涵蓋 `engine.go`, Executor 實作, BFS 走訪, Signal 分支控制與 Expression 解析。
 - [Frontend Canvas 視覺引擎 (`docs/workflow/frontend_canvas.md`)](docs/workflow/frontend_canvas.md)
-  - 涵蓋 React Flow, NodeRegistry 配置, Floating Toolbar, 邊線 (Edge) 與動畫邏輯。
+  - 涵蓋 React Flow, NodeRegistry 配置, n8n-Style Handles, 邊線 (Edge) 工具列與右鍵行為優化。
 - [如何新增自訂 Node? Checklist (`docs/workflow/node_development.md`)](docs/workflow/node_development.md)
   - 涵蓋從前端 UI 到後端執行、再到 Python 控制的完整追加節點步驟。
 

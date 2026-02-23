@@ -84,9 +84,9 @@
 
 | # | 功能 | 實作狀態 | User 確認 | 備註 |
 |---|------|---------|-----------|------|
-| 3.5.1 | 節點右鍵選單 | ✅ | ⬜ | Properties / Duplicate / Front / Back / Delete |
-| 3.5.2 | 邊右鍵選單 | ✅ | ⬜ | Delete |
-| 3.5.3 | 畫布右鍵選單 | ✅ | ⬜ | 目前為空 (清除選取) |
+| 3.5.1 | 節點右鍵選單 | ✅ | ✅ | 已移除，僅保留平移功能 |
+| 3.5.2 | 邊右鍵選單 | ✅ | ⬜ | |
+| 3.5.3 | 畫布右鍵選單 | ✅ | ✅ | 已移除，僅保留平移功能 |
 
 ### 3.6 Z-Index 圖層控制
 
@@ -127,13 +127,15 @@
 
 | # | 功能 | 實作狀態 | User 確認 | 備註 |
 |---|------|---------|-----------|------|
-| 3.10.1 | Square Node Shape (64x64) | ✅ | ⬜ | n8n V2 Style |
-| 3.10.2 | External Labels (Below Node) | ✅ | ⬜ | Transparent background |
+| 3.10.1 | Square Node Shape (64x64) | ✅ | ✅ | n8n V2 Style |
+| 3.10.2 | External Labels (Below Node) | ✅ | ✅ | Transparent background |
 | 3.10.3 | Transparent Floating Toolbar | ✅ | ✅ | 調整大小並移除多餘按鈕 |
-| 3.10.4 | Connection Stubs (+) | ✅ | ⬜ | Grow on hover, right side |
-| 3.10.5 | Sliding Add Node Sidebar | ✅ | ⬜ | Replaces context menu add |
-| 3.10.6 | Handle Interaction Refinement | ✅ | ⬜ | Left-click menu, Left-drag wire, Auto-hide stub |
+| 3.10.4 | Connection Stubs (+) | ✅ | ✅ | Grow on hover, right side |
+| 3.10.5 | Sliding Add Node Sidebar | ✅ | ✅ | Replaces context menu add |
+| 3.10.6 | Handle Interaction Refinement | ✅ | ✅ | Click opens menu, Drag pulls wire, Auto-detect drag |
 | 3.10.7 | Triggers 獨立節點類別 | ✅ | ✅ | Start / Webhook 等專屬類別排在首位 |
+| 3.10.8 | n8n-Style Output Handles | ✅ | ✅ | `○ label ——— +` strip layout |
+| 3.10.9 | Edge Info Simplification | ✅ | ✅ | Removed static labels, keep data counts |
 
 ## 4. Bug Fixes
 

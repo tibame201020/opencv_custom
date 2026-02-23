@@ -5,21 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added — 2026-02-23 (Switch Node UI Revamp & UX Polish)
+- **Frontend / Workflow Canvas**: n8n-Style Output Handles implemented — Restructured `N8nOutputHandle` to use the `○ label ——— +` strip layout. Labels for multi-output nodes (If, Switch, Loop) are now hint-style (8px gray) and always visible outside the node for instant routing clarity.
+- **Frontend / Workflow Canvas**: Click vs Drag Separation — Implemented a deferred event forwarding logic for the `+` button. Quick clicking correctly triggers the "Add Node" sidebar, while dragging correctly initiates a connection wire without phantom lines appearing on single clicks.
+- **Frontend / Workflow Canvas**: Edge Toolbar Centering — Repositioned the edge interaction toolbar (Insert/Delete) to the geometric midpoint of the connection line to prevent overlap with node output stubs.
+- **Backend / Maintenance**: Resolved `main redeclared` compilation error by moving standalone utility scripts (`dump_workflows.go`, `run_test_suite.go`, etc.) from the root to the `debug_tools/` directory with independent package names.
+
 ### Fixed — 2026-02-23 (Workflow Canvas UI Polish)
-- **Frontend / Workflow Canvas**: Structural Overhaul (Phase 4) — Removed absolute positioning from Node titles and redefined `N8nNode.tsx` as a refined square icon box layout with text underneath it. Ensures precise Handle boundaries and completely eliminates instances where connection lines and execution badges (like '1 item') overlapped with node text by encompassing the title within the React Flow node bounding box.
-- **Frontend / Workflow Canvas**: Project Dashboard Refined — Completely rebuilt the workflow and project list found at `WorkflowEditorView.tsx`. Replaced the stark table-like view with elevated white cards (`shadow-[0_2px_12px_-4px_rgba(0,0,0,0.08)]`), hover states for workflows, and an emphasized solid primary `New Project` button to replace the subtle outline style.
-- **Frontend / Workflow Canvas**: Comprehensive Node UI Refinement — Titles scaled down to `12px`, subtitles to `9px`, added fine-grained drop shadows (`shadow-sm` and `border-gray-200`) and JSON stringify protection against `[object Object]` rendering errors.
-- **Frontend / Workflow Canvas**: Status Indicators (`Success Checkmark`, `Running Loader`) redesigned — Scaled down to 14px badges with backdrop-blur, meticulously positioned at the icon corners to avoid visual dominance.
-- **Frontend / Workflow Canvas**: Edge & Edge Label Refinement — Removed high-color-saturation background blocks from branch labels (`true`/`false`), opting for subtle `backdrop-blur-sm` and pastel text colors; label text sizes reduced to `9px`.
-- **Frontend / Workflow Canvas**: Global Control Panel Optimization — Replaced the bulky, high-saturation "Execute Workflow" button with an elegant outline primary-style button (`text-emerald-500`); minimized typography and whitespace in the Execution Inspector and added border-radius/shadow to the MiniMap.
-- **Frontend / Workflow Canvas**: Node toolbar refined — size reduced, translucent backdrop added, unused 'Execute Step' and 'More Actions' buttons removed.
-- **Frontend / Workflow Canvas**: New "Triggers" node category added to the top of the node sidebar. `manual_trigger` moved to this category.
-- **Frontend / Workflow Canvas**: Breadcrumb now shows `ProjectName / WorkflowName` format instead of just workflow name; clicking project name navigates back to workflow list.
-- **Frontend / Workflow Canvas**: Removed non-functional "Personal" breadcrumb and "Editor/Executions" tab toggle.
-- **Frontend / Workflow Canvas**: Added device list refresh button (`RefreshCw`) next to device selector.
-- **Frontend / Workflow Canvas**: Unified input/output handle sizes to `w-2.5` (10px) for consistent proportions with 42px node.
-- **Frontend / Workflow Canvas**: Fixed edge line alignment — hidden React Flow Handle repositioned from full-fill to centered 2px point with 3px gap offset, ensuring edges start/end precisely at handle dot edges instead of overlapping.
-- **Frontend / Workflow Canvas**: Reduced edge stroke width (2→1, hover 3→1.5) and arrow marker size (20→12) for cleaner visual appearance.
+- **Frontend / Workflow Canvas**: Toolbar Refinement — Reduced node toolbar top spacing from `36px` to `18px` and removed absolute background/borders/shadows for a cleaner floating appearance.
+- **Frontend / Workflow Canvas**: Context Menu Cleanup — Disabled `onNodeContextMenu` and `onPaneContextMenu` to dedicate right-click solely to canvas panning, significantly improving flow manipulation UX.
+- **Frontend / Workflow Canvas**: Edge Label Simplification — Removed redundant static condition labels from edges; edges now only display performance metrics like `item counts` to reduce visual noise.
+- **Frontend / Workflow Canvas**: Consolidated `.gitignore` and conducted final repository cleanup by deleting noise files like `debug.txt`.
+
 - **Backend / Engine**: Implemented `Disabled` node logic — engine now properly paths execution flow through disabled nodes without executing their logic (pass-through).
 - **Backend / DB**: Added `disabled` column to `nodes` table and synced state correctly.
 - **Documentation**: Established a new hierarchical documentation system (`docs/`) with a central index (`doc-categories.md`). Includes core contribution rules and detailed module guides (`backend_engine.md`, `frontend_canvas.md`, `node_development.md`, `python_bridge.md`, `schema_and_migration.md`, `api_and_store.md`).
